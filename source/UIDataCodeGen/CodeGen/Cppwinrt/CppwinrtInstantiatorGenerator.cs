@@ -4,13 +4,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Numerics;
 using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.MetaData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
+using static CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg.CanvasPathBuilder;
 
 namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 {
@@ -607,6 +610,83 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine("#include <d2d1_1.h>");
                 builder.WriteLine("#include <d2d1helper.h>");
                 builder.WriteLine("#include <Windows.Graphics.Interop.h>");
+
+                builder.WriteLine(@"
+#include <variant>
+
+struct sink_bezier_segment {
+    D2D1_BEZIER_SEGMENT bezier;
+};
+
+struct sink_line_segment {
+    D2D1_POINT_2F endpoint;
+};
+
+struct sink_figure_begin {
+    D2D1_POINT_2F startPoint;
+    D2D1_FIGURE_BEGIN figureBegin;
+};
+
+struct sink_figure_end {
+    D2D1_FIGURE_END figureEnd;
+};
+
+using geometry_step = std::variant<sink_figure_begin, sink_figure_end, sink_line_segment, sink_bezier_segment>;
+
+void generate_figures(const geometry_step* steps, size_t stepCount, ID2D1GeometrySink *sink)
+{
+    auto visitor = [sink](auto&& arg)
+    {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, sink_figure_begin>)
+        {
+            handler->BeginFigure(arg.startPoint, arg.figureBegin);
+        }
+        else if constexpr (std::is_same_v<T, sink_figure_end>)
+        {
+            handler->EndFigure(arg.figureEnd);
+        }
+        else if constexpr (std::is_same_v<T, sink_bezier_segment>)
+        {
+            handler->AddBezier(&arg.bezier);
+        }
+        else if constexpr (std::is_same_v<T, sink_line_segment>)
+        {
+            handler->AddLine(arg.endpoint);
+        }
+        else
+        {
+            static_assert(""unhandled type"");
+        }
+    };
+
+    auto end = steps + stepCount;
+    while (steps != end) 
+    {
+        std::visit(visitor, *steps++);
+    }
+}
+
+struct sink_and_path
+{
+    winrt::com_ptr<ID2D1PathGeometry> path;
+    winrt::com_ptr<ID2D1GeometrySink> sink;
+};
+
+sink_and_path make_sink_and_path(ID2D1Factory* factory, D2D1_FILL_MODE mode) 
+{
+    sink_and_path results;
+    winrt::check_hresult(factory->CreatePathGeometry(results.path.put()));
+    winrt::check_hresult(results.path->Open(results.path.put()));
+
+    if (mode != D2D1_FILL_MODE_ALTERNATE)
+    {
+        results.sink->SetFillMode(mode);
+    }
+
+    return results;
+}
+");
 
                 // Interop
                 // BUILD_WINDOWS is defined if the code is being built as part of a Microsoft internal
@@ -1292,7 +1372,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 SourceInfo.UsesCanvasGeometry)
             {
                 // Utility method for D2D geometries.
-                builder.WriteLine("static IGeometrySource2D CanvasGeometryToIGeometrySource2D(winrt::com_ptr<CanvasGeometry> geo)");
+                builder.WriteLine("static IGeometrySource2D CanvasGeometryToIGeometrySource2D(winrt::com_ptr<CanvasGeometry> const& geo)");
                 builder.OpenScope();
                 builder.WriteLine("return geo.as<IGeometrySource2D>();");
                 builder.CloseScope();
@@ -1404,40 +1484,40 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         protected override void WriteCanvasGeometryPathFactory(CodeBuilder builder, CanvasGeometry.Path obj, string typeName, string fieldName)
         {
             // D2D Setup
-            builder.WriteLine("winrt::com_ptr<ID2D1PathGeometry> path{ nullptr };");
-            builder.WriteLine("winrt::check_hresult(_d2dFactory->CreatePathGeometry(path.put()));");
-            builder.WriteLine("winrt::com_ptr<ID2D1GeometrySink> sink{ nullptr };");
-            builder.WriteLine("winrt::check_hresult(path->Open(sink.put()));");
+            builder.WriteLine($"auto both = make_sink_and_path(_d2dFactory.get(), {_s.FilledRegionDetermination(obj.FilledRegionDetermination)})");
 
-            if (obj.FilledRegionDetermination != CanvasFilledRegionDetermination.Alternate)
+            if (obj.Commands.Any())
             {
-                builder.WriteLine($"sink->SetFillMode({_s.FilledRegionDetermination(obj.FilledRegionDetermination)});");
-            }
+                builder.WriteLine("constexpr static const std::array<geometry_step> steps = {");
+                builder.Indent();
 
-            foreach (var command in obj.Commands)
-            {
-                switch (command.Type)
+                foreach (var command in obj.Commands)
                 {
-                    case CanvasPathBuilder.CommandType.BeginFigure:
-                        // Assume D2D1_FIGURE_BEGIN_FILLED
-                        builder.WriteLine($"sink->BeginFigure({_s.Vector2(((CanvasPathBuilder.Command.BeginFigure)command).StartPoint)}, D2D1_FIGURE_BEGIN_FILLED);");
-                        break;
-                    case CanvasPathBuilder.CommandType.EndFigure:
-                        builder.WriteLine($"sink->EndFigure({_s.CanvasFigureLoop(((CanvasPathBuilder.Command.EndFigure)command).FigureLoop)});");
-                        break;
-                    case CanvasPathBuilder.CommandType.AddLine:
-                        builder.WriteLine($"sink->AddLine({_s.Vector2(((CanvasPathBuilder.Command.AddLine)command).EndPoint)});");
-                        break;
-                    case CanvasPathBuilder.CommandType.AddCubicBezier:
-                        var cb = (CanvasPathBuilder.Command.AddCubicBezier)command;
-                        builder.WriteLine($"sink->AddBezier({{ {_s.Vector2(cb.ControlPoint1)}, {_s.Vector2(cb.ControlPoint2)}, {_s.Vector2(cb.EndPoint)} }});");
-                        break;
-                    default:
-                        throw new InvalidOperationException();
+                    switch (command.Type)
+                    {
+                        case CanvasPathBuilder.CommandType.BeginFigure:
+                            // Assume D2D1_FIGURE_BEGIN_FILLED
+                            builder.WriteLine($"sink_figure_begin {{ {_s.Vector2(((CanvasPathBuilder.Command.BeginFigure)command).StartPoint)}, D2D1_FIGURE_BEGIN_FILLED }}, ");
+                            break;
+                        case CanvasPathBuilder.CommandType.EndFigure:
+                            builder.WriteLine($"sink_figure_end {{ {_s.CanvasFigureLoop(((CanvasPathBuilder.Command.EndFigure)command).FigureLoop)} }},");
+                            break;
+                        case CanvasPathBuilder.CommandType.AddLine:
+                            builder.WriteLine($"sink_line_segment {{ {_s.Vector2(((CanvasPathBuilder.Command.AddLine)command).EndPoint)} }},");
+                            break;
+                        case CanvasPathBuilder.CommandType.AddCubicBezier:
+                            var cb = (CanvasPathBuilder.Command.AddCubicBezier)command;
+                            builder.WriteLine($"sink_bezier_segment {{ {{ {_s.Vector2(cb.ControlPoint1)}, {_s.Vector2(cb.ControlPoint2)}, {_s.Vector2(cb.EndPoint)} }} }},");
+                            break;
+                    }
                 }
+
+                builder.UnIndent();
+                builder.WriteLine("};");
+                builder.WriteLine("generate_figures(steps.data(), steps.size(), both.sink.get());");
             }
 
-            builder.WriteLine("winrt::check_hresult(sink->Close());");
+            builder.WriteLine("winrt::check_hresult(both.sink->Close());");
             builder.WriteLine($"auto result = {FieldAssignment(fieldName)}winrt::make_self<CanvasGeometry>(path);");
         }
 
