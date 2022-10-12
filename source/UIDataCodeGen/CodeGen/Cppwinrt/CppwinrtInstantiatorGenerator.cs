@@ -633,9 +633,9 @@ struct sink_figure_end {
 
 using geometry_step = std::variant<sink_figure_begin, sink_figure_end, sink_line_segment, sink_bezier_segment>;
 
-void generate_figures(const geometry_step* steps, size_t stepCount, ID2D1GeometrySink* handler)
+void generate_figures_and_close(const geometry_step* steps, size_t stepCount, winrt::com_ptr<ID2D1GeometrySink> const& handler)
 {
-    auto visitor = [handler](auto&& arg)
+    auto visitor = [&handler](auto&& arg)
     {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, sink_figure_begin>)
@@ -665,6 +665,8 @@ void generate_figures(const geometry_step* steps, size_t stepCount, ID2D1Geometr
     {
         std::visit(visitor, *steps++);
     }
+
+    winrt::check_hresult(handler->Close());
 }
 
 __declspec(noinline) winrt::Windows::UI::Composition::CompositionPath MakeCompositionPath(winrt::Windows::Graphics::IGeometrySource2D const& source)
@@ -1521,11 +1523,14 @@ sink_and_path make_sink_and_path(ID2D1Factory* factory, D2D1_FILL_MODE mode)
 
                 builder.UnIndent();
                 builder.WriteLine("};");
-                builder.WriteLine("generate_figures(steps, sizeof(steps)/sizeof(steps[0]), both.sink.get());");
+                builder.WriteLine("generate_figures_and_close(steps, sizeof(steps)/sizeof(steps[0]), both.sink);");
+            }
+            else
+            {
+                builder.WriteLine("winrt::check_hresult(both.sink->Close());");
             }
 
-            builder.WriteLine("winrt::check_hresult(both.sink->Close());");
-            builder.WriteLine($"auto result = {FieldAssignment(fieldName)}winrt::make_self<CanvasGeometry>(both.path);");
+            builder.WriteLine($"auto result = {FieldAssignment(fieldName)}winrt::make_self<CanvasGeometry>(std::move(both.path));");
         }
 
         /// <inheritdoc/>
@@ -1653,12 +1658,12 @@ sink_and_path make_sink_and_path(ID2D1Factory* factory, D2D1_FILL_MODE mode)
         winrt::com_ptr<ID2D1Geometry> _geometry{ nullptr };
 
     public:
-        CanvasGeometry(winrt::com_ptr<ID2D1Geometry> geometry)
-            : _geometry{ geometry }
+        CanvasGeometry(winrt::com_ptr<ID2D1Geometry>&& geometry)
+            : _geometry{ std::move(geometry) }
         { }
 
         // IGeometrySource2D.
-        winrt::com_ptr<ID2D1Geometry> Geometry() { return _geometry; }
+        winrt::com_ptr<ID2D1Geometry> const& Geometry() { return _geometry; }
 
         // IGeometrySource2DInterop.
         IFACEMETHODIMP GetGeometry(ID2D1Geometry** value) override
