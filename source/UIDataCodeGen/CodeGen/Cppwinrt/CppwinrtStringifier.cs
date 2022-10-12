@@ -96,7 +96,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             value switch
             {
                 "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry>",
-                _ => value,
+                _ => value
+            };
+
+        public override string ArgumentTypeName(string value) =>
+            value switch
+            {
+                "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry> const&",
+                _ => $"{value} const&"
             };
 
         public override string ScopeResolve => "::";
@@ -111,15 +118,15 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public override string TypeInt64 => "int64_t";
 
-        public override string TypeMatrix3x2 { get; } = "float3x2 const&";
+        public override string TypeMatrix3x2 { get; } = "float3x2";
 
-        public override string TypeString => "std::wstring_view";
+        public override string TypeString => "const wchar_t*";
 
-        public override string TypeVector2 { get; } = "float2 const&";
+        public override string TypeVector2 { get; } = "float2";
 
-        public override string TypeVector3 { get; } = "float3 const&";
+        public override string TypeVector3 { get; } = "float3";
 
-        public override string TypeVector4 { get; } = "float4 const&";
+        public override string TypeVector4 { get; } = "float4";
 
         public override string Var => "auto";
 

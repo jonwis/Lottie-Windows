@@ -98,6 +98,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cx
                     ? "CanvasGeometry" // CanvasGeometry is a typedef for ComPtr<GeoSource>, thus no hat pointer.
                     : $"{value}^";
 
+        public override string ArgumentTypeName(string value) => ReferenceTypeName(value);
+
         public override string String(string value) => $"\"{value}\"";
 
         public override string ScopeResolve => "::";

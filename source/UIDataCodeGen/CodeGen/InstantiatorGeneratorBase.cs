@@ -1200,6 +1200,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string ReferenceTypeName(string value) => _s.ReferenceTypeName(value);
 
+            string ArgumentTypeName(string value) => _s.ArgumentTypeName(value);
+
             string ConstVar => _s.ConstVar;
 
             string Bool(bool value) => value ? "true" : "false";
@@ -2060,10 +2062,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     b.WriteLine("static void StartProgressBoundAnimation(");
                     b.Indent();
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} target,");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} target,");
                     b.WriteLine($"{_s.TypeString} animatedPropertyName,");
-                    b.WriteLine($"{ReferenceTypeName("CompositionAnimation")} animation,");
-                    b.WriteLine($"{ReferenceTypeName("ExpressionAnimation")} controllerProgressExpression)");
+                    b.WriteLine($"{ArgumentTypeName("CompositionAnimation")} animation,");
+                    b.WriteLine($"{ArgumentTypeName("ExpressionAnimation")} controllerProgressExpression)");
                     b.UnIndent();
                     b.OpenScope();
                     b.WriteLine($"target{Deref}StartAnimation(animatedPropertyName, animation);");
@@ -2084,11 +2086,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     // 1 reference parameter version.
                     b.WriteLine("void BindProperty(");
                     b.Indent();
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} target,");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} target,");
                     b.WriteLine($"{_s.TypeString} animatedPropertyName,");
                     b.WriteLine($"{_s.TypeString} expression,");
                     b.WriteLine($"{_s.TypeString} referenceParameterName,");
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} referencedObject)");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} referencedObject)");
                     b.UnIndent();
                     b.OpenScope();
                     b.WriteLine($"{SingletonExpressionAnimationName}{Deref}ClearAllParameters();");
@@ -2110,13 +2112,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     // 2 reference parameter version.
                     b.WriteLine($"void BindProperty2(");
                     b.Indent();
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} target,");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} target,");
                     b.WriteLine($"{_s.TypeString} animatedPropertyName,");
                     b.WriteLine($"{_s.TypeString} expression,");
                     b.WriteLine($"{_s.TypeString} referenceParameterName0,");
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} referencedObject0,");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} referencedObject0,");
                     b.WriteLine($"{_s.TypeString} referenceParameterName1,");
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} referencedObject1)");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} referencedObject1)");
                     b.UnIndent();
                     b.OpenScope();
                     b.WriteLine($"{SingletonExpressionAnimationName}{Deref}ClearAllParameters();");
@@ -2137,7 +2139,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     CompositionObjectType.BooleanKeyFrameAnimation => "bool",
                     CompositionObjectType.ColorKeyFrameAnimation => "Color",
-                    CompositionObjectType.PathKeyFrameAnimation => ReferenceTypeName("CompositionPath"),
+                    CompositionObjectType.PathKeyFrameAnimation => ArgumentTypeName("CompositionPath"),
                     CompositionObjectType.ScalarKeyFrameAnimation => _s.TypeFloat32,
                     CompositionObjectType.Vector2KeyFrameAnimation => _s.TypeVector2,
                     CompositionObjectType.Vector3KeyFrameAnimation => _s.TypeVector3,
@@ -2154,14 +2156,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     var easingParameter =
                         animationType == CompositionObjectType.BooleanKeyFrameAnimation
                             ? string.Empty
-                            : $", {ReferenceTypeName("CompositionEasingFunction")} initialEasingFunction";
+                            : $", {ArgumentTypeName("CompositionEasingFunction")} initialEasingFunction";
 
                     var easingArgument =
                         animationType == CompositionObjectType.BooleanKeyFrameAnimation
                             ? string.Empty
                             : $", initialEasingFunction";
 
-                    b.WriteLine($"{ReferenceTypeName(animationType.ToString())} {methodName}(float initialProgress, {valueType} initialValue{easingParameter})");
+                    b.WriteLine($"{ReferenceTypeName(animationType.ToString())} {methodName}(float initialProgress, {ArgumentTypeName(valueType)} initialValue{easingParameter})");
                     b.OpenScope();
                     b.WriteLine($"{ConstVar} result = _c{Deref}{methodName}();");
                     WriteSetPropertyStatement(b, "Duration", TimeSpan(_owner._compositionDuration));
@@ -2222,7 +2224,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 var b = builder.GetSubBuilder("CreateSpriteShapeWithFillBrush");
                 if (b.IsEmpty)
                 {
-                    b.WriteLine($"{ReferenceTypeName("CompositionSpriteShape")} CreateSpriteShape({ReferenceTypeName("CompositionGeometry")} geometry, {_s.TypeMatrix3x2} transformMatrix, {ReferenceTypeName("CompositionBrush")} fillBrush)");
+                    b.WriteLine($"{ReferenceTypeName("CompositionSpriteShape")} CreateSpriteShape({ArgumentTypeName("CompositionGeometry")} geometry, {ArgumentTypeName(_s.TypeMatrix3x2)} transformMatrix, {ArgumentTypeName("CompositionBrush")} fillBrush)");
                     b.OpenScope();
                     WriteCreateAssignment(b, node, $"_c{Deref}CreateSpriteShape(geometry)");
                     WriteSetPropertyStatement(b, "TransformMatrix", "transformMatrix");
