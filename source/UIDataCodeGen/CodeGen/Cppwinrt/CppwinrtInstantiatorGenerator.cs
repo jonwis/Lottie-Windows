@@ -633,9 +633,9 @@ struct sink_figure_end {
 
 using geometry_step = std::variant<sink_figure_begin, sink_figure_end, sink_line_segment, sink_bezier_segment>;
 
-void generate_figures(const geometry_step* steps, size_t stepCount, ID2D1GeometrySink *sink)
+void generate_figures(const geometry_step* steps, size_t stepCount, ID2D1GeometrySink* handler)
 {
-    auto visitor = [sink](auto&& arg)
+    auto visitor = [handler](auto&& arg)
     {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, sink_figure_begin>)
@@ -667,6 +667,13 @@ void generate_figures(const geometry_step* steps, size_t stepCount, ID2D1Geometr
     }
 }
 
+__declspec(noinline) winrt::Windows::UI::Composition::CompositionPath MakeCompositionPath(winrt::Windows::Graphics::IGeometrySource2D const& source)
+{
+    winrt::Windows::UI::Composition::CompositionPath result { source };
+    return result;
+}
+
+
 struct sink_and_path
 {
     winrt::com_ptr<ID2D1PathGeometry> path;
@@ -677,7 +684,7 @@ sink_and_path make_sink_and_path(ID2D1Factory* factory, D2D1_FILL_MODE mode)
 {
     sink_and_path results;
     winrt::check_hresult(factory->CreatePathGeometry(results.path.put()));
-    winrt::check_hresult(results.path->Open(results.path.put()));
+    winrt::check_hresult(results.path->Open(results.sink.put()));
 
     if (mode != D2D1_FILL_MODE_ALTERNATE)
     {
@@ -1484,11 +1491,11 @@ sink_and_path make_sink_and_path(ID2D1Factory* factory, D2D1_FILL_MODE mode)
         protected override void WriteCanvasGeometryPathFactory(CodeBuilder builder, CanvasGeometry.Path obj, string typeName, string fieldName)
         {
             // D2D Setup
-            builder.WriteLine($"auto both = make_sink_and_path(_d2dFactory.get(), {_s.FilledRegionDetermination(obj.FilledRegionDetermination)})");
+            builder.WriteLine($"auto both = make_sink_and_path(_d2dFactory.get(), {_s.FilledRegionDetermination(obj.FilledRegionDetermination)});");
 
             if (obj.Commands.Any())
             {
-                builder.WriteLine("constexpr static const std::array<geometry_step> steps = {");
+                builder.WriteLine("static const geometry_step steps[] = {");
                 builder.Indent();
 
                 foreach (var command in obj.Commands)
@@ -1514,11 +1521,11 @@ sink_and_path make_sink_and_path(ID2D1Factory* factory, D2D1_FILL_MODE mode)
 
                 builder.UnIndent();
                 builder.WriteLine("};");
-                builder.WriteLine("generate_figures(steps.data(), steps.size(), both.sink.get());");
+                builder.WriteLine("generate_figures(steps, sizeof(steps)/sizeof(steps[0]), both.sink.get());");
             }
 
             builder.WriteLine("winrt::check_hresult(both.sink->Close());");
-            builder.WriteLine($"auto result = {FieldAssignment(fieldName)}winrt::make_self<CanvasGeometry>(path);");
+            builder.WriteLine($"auto result = {FieldAssignment(fieldName)}winrt::make_self<CanvasGeometry>(both.path);");
         }
 
         /// <inheritdoc/>

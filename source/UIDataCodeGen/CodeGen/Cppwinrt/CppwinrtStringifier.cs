@@ -79,7 +79,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public override string Namespace(string value) => value.Replace(".", "::");
 
-        public override string New(string typeName) => typeName;
+        public override string New(string typeName) => typeName switch
+        {
+            "CompositionPath" => "MakeCompositionPath",
+            _ => typeName
+        };
 
         public override string Null => "nullptr";
 
@@ -91,7 +95,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         public override string ReferenceTypeName(string value) =>
             value switch
             {
-                "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry> const&",
+                "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry>",
                 _ => value,
             };
 
