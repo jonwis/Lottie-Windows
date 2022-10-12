@@ -110,6 +110,11 @@
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <CustomBuildStep>
+      <Command>"$(SolutionDir)win-x64\bin\AnyCPU\Release\net5.0\win-x64\LottieGen.exe" -inputfile "$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json" -lang CppWinRT</Command>
+      <Inputs>$(SolutionDir)win-x64\bin\AnyCPU\Release\net5.0\win-x64\LottieGen.exe</Inputs>
+      <Outputs>$(SolutionDir)LottieCppUwpTest\AnimatedVisuals.LottieLogo1.cpp</Outputs>
+    </CustomBuildStep>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
