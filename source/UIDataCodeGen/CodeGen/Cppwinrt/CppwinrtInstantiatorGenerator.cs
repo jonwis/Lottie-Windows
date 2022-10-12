@@ -1383,7 +1383,7 @@ sink_and_path make_sink_and_path(ID2D1Factory* factory, D2D1_FILL_MODE mode)
                 // Utility method for D2D geometries.
                 builder.WriteLine("static IGeometrySource2D CanvasGeometryToIGeometrySource2D(winrt::com_ptr<CanvasGeometry> const& geo)");
                 builder.OpenScope();
-                builder.WriteLine("return geo.as<IGeometrySource2D>();");
+                builder.WriteLine("return *geo.get();");
                 builder.CloseScope();
                 builder.WriteLine();
             }
