@@ -113,7 +113,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public override string TypeMatrix3x2 { get; } = "float3x2 const&";
 
-        public override string TypeString => "winrt::hstring";
+        public override string TypeString => "std::wstring_view";
 
         public override string TypeVector2 { get; } = "float2 const&";
 
