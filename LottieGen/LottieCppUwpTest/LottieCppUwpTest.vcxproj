@@ -94,7 +94,7 @@
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;WINRT_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <CustomBuildStep>
-      <Command>"$(SolutionDir)win-x64\bin\AnyCPU\$(Configuration)\net5.0\win-x64\LottieGen.exe" -inputfile "$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json" -lang CppWinRT -o $(SolutionDir)\LottieCppUwpTest</Command>
+      <Command>"$(SolutionDir)win-x64\bin\AnyCPU\$(Configuration)\net5.0\win-x64\LottieGen.exe" -inputfile "$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json" -MinimumUapVersion 12 -lang CppWinRT -o $(SolutionDir)\LottieCppUwpTest</Command>
       <Inputs>$(SolutionDir)win-x64\bin\AnyCPU\$(Configuration)\net5.0\win-x64\LottieGen.exe</Inputs>
       <Outputs>$(SolutionDir)LottieCppUwpTest\AnimatedVisuals.LottieLogo1.cpp</Outputs>
     </CustomBuildStep>
