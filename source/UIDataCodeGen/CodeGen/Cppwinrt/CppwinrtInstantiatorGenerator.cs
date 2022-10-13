@@ -113,6 +113,89 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         IAnimatedVisualSourceInfo SourceInfo => AnimatedVisualSourceInfo;
 
+        class CppWinrtVisualGenerator : AnimatedVisualGenerator
+        {
+            readonly CppwinrtStringifier _s = new CppwinrtStringifier();
+
+            internal CppWinrtVisualGenerator(
+                InstantiatorGeneratorBase owner,
+                CompositionObject graphRoot,
+                uint requiredUapVersion,
+                bool isPartOfMultiVersionSource,
+                CodegenConfiguration configuration)
+                : base(owner, graphRoot, requiredUapVersion, isPartOfMultiVersionSource, configuration)
+            {
+            }
+
+            protected override bool GenerateSpriteShapeFactory(CodeBuilder builder, CompositionSpriteShape obj, ObjectData node)
+            {
+                builder.WriteComment(node.LongComment);
+                builder.WriteLine($"CompositionSpriteShape {node.Name}()");
+                builder.OpenScope();
+
+                // Write all the constant properties
+                builder.WriteLine("static const SpriteShapeProperties props =");
+                builder.OpenScope();
+                List<string> fields = new List<string>();
+
+                void FieldWriter(object? o, string name)
+                {
+                    if (o is not null)
+                    {
+                        builder.WriteLine($"{_s.Stringify((dynamic)o)}, // {name}");
+                        fields.Add(name);
+                    }
+                    else
+                    {
+                        builder.WriteLine($"{{ /* unset */ }}, // {name}");
+                    }
+                }
+
+                FieldWriter(obj.TransformMatrix, "SpriteFields::Transformation");
+                FieldWriter(obj.StrokeDashCap, "SpriteFields::StrokeDashCap");
+                FieldWriter(obj.StrokeDashOffset, "SpriteFields::StrokeDashOffset");
+                FieldWriter(obj.StrokeStartCap, "SpriteFields::StrokeStartCap");
+                FieldWriter(obj.StrokeEndCap, "SpriteFields::StrokeEndCap");
+                FieldWriter(obj.StrokeLineJoin, "SpriteFields::StrokeLineJoin");
+                FieldWriter(obj.StrokeMiterLimit, "SpriteFields::StrokeMiterLimit");
+                FieldWriter(obj.StrokeThickness, "SpriteFields::StrokeThickness");
+                FieldWriter(obj.IsStrokeNonScaling, "SpriteFields::IsStrokeNonScaling");
+                FieldWriter(obj.CenterPoint, "SpriteFields::CenterPoint");
+                FieldWriter(obj.Offset, "SpriteFields::Offset");
+                FieldWriter(obj.RotationAngleInDegrees, "SpriteFields::RotationInDegrees");
+                FieldWriter(obj.Scale, "SpriteFields::Scale");
+
+                builder.WriteLine(string.Join(" | ", fields));
+                builder.CloseScopeWithSemicolon();
+
+                // Write the call to the maker method
+                string geometryId = (obj.Geometry != null) ? CallFactoryFromFor(node, obj.Geometry) : "nullptr";
+                string fillBrush = (obj.FillBrush != null) ? CallFactoryFromFor(node, obj.FillBrush) : "nullptr";
+                string strokeBrush = (obj.StrokeBrush != null) ? CallFactoryFromFor(node, obj.StrokeBrush) : "nullptr";
+
+                builder.WriteLine($"auto result = MakeAndApplyProperties(_c, props, {geometryId}, {fillBrush}, {strokeBrush});");
+
+                if (obj.StrokeDashArray.Any())
+                {
+                    builder.WriteLine($"static const float dashes[] = {{ {string.Join(", ", obj.StrokeDashArray.Select(_ => _s.Stringify(_)))} }};");
+                    builder.WriteLine("result.StrokeDashArray().ReplaceAll(dashes)");
+                }
+
+                WriteCompositionObjectStartAnimations(builder, obj, node);
+
+                builder.WriteLine("return result;");
+                builder.CloseScope();
+                builder.WriteLine();
+
+                return true;
+            }
+        }
+
+        protected override AnimatedVisualGenerator GetGenerator(InstantiatorGeneratorBase owner, CompositionObject graphRoot, uint requiredUapVersion, bool isPartOfMultiVersionSource, CodegenConfiguration configuration)
+        {
+            return new CppWinrtVisualGenerator(owner, graphRoot, requiredUapVersion, isPartOfMultiVersionSource, configuration);
+        }
+
         /// <summary>
         /// Generates the text for the .IDL file.
         /// </summary>
@@ -768,6 +851,116 @@ sink_and_path make_sink_and_path(ID2D1Factory* factory, D2D1_FILL_MODE mode)
             AddUsingsForTypeAliases(builder);
 
             builder.WriteLine();
+
+            builder.WriteLine(@"
+enum class SpriteFields : uint32_t
+{
+    Transformation = (1 << 0),
+    StrokeDashCap = (1 << 1),
+    StrokeDashOffset = (1 << 2),
+    StrokeStartCap = (1 << 3),
+    StrokeEndCap = (1 << 4),
+    StrokeMiterLimit = (1 << 5),
+    StrokeThickness = (1 << 6),
+    IsStrokeNonScaling = (1 << 7),
+    StrokeLineJoin = (1 << 8),
+    CenterPoint = (1 << 9),
+    Offset = (1 << 10),
+    RotationInDegrees = (1 << 11),
+    Scale = (1 << 12),
+};
+DEFINE_ENUM_FLAG_OPERATORS(SpriteFields);
+
+#define HasFlag(x, y) ((x & y) != static_cast<decltype(x)>(0))
+
+struct SpriteShapeProperties
+{
+    float3x2 Transformation;
+    CompositionStrokeCap StrokeDashCap;
+    float StrokeDashOffset;
+    CompositionStrokeCap StrokeStartCap;
+    CompositionStrokeCap StrokeEndCap;
+    CompositionStrokeLineJoin StrokeLineJoin;
+    float StrokeMiterLimit;
+    float StrokeThickness;
+    bool IsStrokeNonScaling;
+    float2 CenterPoint;
+    float2 Offset;
+    float RotationAngleInDegrees;
+    float2 Scale;
+    SpriteFields Fields;
+};
+
+CompositionSpriteShape MakeAndApplyProperties(
+    Compositor const& source,
+    SpriteShapeProperties const& props,
+    CompositionGeometry const& geometry,
+    CompositionColorBrush const& fillBrush,
+    CompositionBrush const& strokeBrush)
+{
+    CompositionSpriteShape result{ nullptr };
+    if (geometry)
+    {
+        result = source.CreateSpriteShape(geometry);
+    }
+    else
+    {
+        result = source.CreateSpriteShape();
+    }
+    result.TransformMatrix(props.Transformation);
+    if (fillBrush)
+    {
+        result.FillBrush(fillBrush);
+    }
+
+    if (strokeBrush)
+    {
+        result.StrokeBrush(strokeBrush);
+    }
+            
+    if (HasFlag(props.Fields, SpriteFields::IsStrokeNonScaling))
+    {
+        result.IsStrokeNonScaling(props.IsStrokeNonScaling);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeDashCap))
+    {
+        result.StrokeDashCap(props.StrokeDashCap);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeDashOffset))
+    {
+        result.StrokeDashOffset(props.StrokeDashOffset);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeStartCap))
+    {
+        result.StrokeStartCap(props.StrokeStartCap);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeEndCap))
+    {
+        result.StrokeEndCap(props.StrokeEndCap);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeLineJoin))
+    {
+        result.StrokeLineJoin(props.StrokeLineJoin);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeMiterLimit))
+    {
+        result.StrokeMiterLimit(props.StrokeMiterLimit);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeThickness))
+    {
+        result.StrokeThickness(props.StrokeThickness);
+    }
+
+    return result;
+}
+");
 
             builder.WriteLine($"namespace winrt::{_s.Namespace(SourceInfo.Namespace)}::implementation");
             builder.OpenScope();

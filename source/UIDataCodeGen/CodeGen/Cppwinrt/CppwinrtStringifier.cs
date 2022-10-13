@@ -5,6 +5,7 @@
 using System;
 using System.Globalization;
 using System.Numerics;
+using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Wui;
 using Mgcg = CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 
@@ -143,5 +144,31 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         public override string Vector4(Vector4 value) => $"{{ {Vector4Args(value)} }}";
 
         public string Vector4Args(Vector4 value) => $"{Float(value.X)}, {Float(value.Y)}, {Float(value.Z)}, {Float(value.W)}";
+
+        public string Stringify(bool? value) => value.GetValueOrDefault().ToString();
+
+        public string Stringify(float? value) => Float(value.GetValueOrDefault());
+
+        public string Stringify(Vector2? value) => Vector2(value.GetValueOrDefault());
+
+        public string Stringify(Vector3? value) => Vector3(value.GetValueOrDefault());
+
+        public string Stringify(Vector4? value) => Vector4(value.GetValueOrDefault());
+
+        public string Stringify(CompositionStrokeLineJoin? value) => StrokeLineJoin(value.GetValueOrDefault());
+
+        public string Stringify(CompositionStrokeCap? value) => StrokeCap(value.GetValueOrDefault());
+
+        public string Stringify(Matrix3x2? value) => Matrix3x2(value.GetValueOrDefault());
+
+        public string Stringify(Matrix4x4? value) => Matrix4x4(value.GetValueOrDefault());
+
+        public string Stringify(CompositionMappingMode? value) => MappingMode(value.GetValueOrDefault());
+
+        public string Stringify(CompositionGradientExtendMode? value) => ExtendMode(value.GetValueOrDefault());
+
+        public string Stringify(CompositionDropShadowSourcePolicy? value) => DropShadowSourcePolicy(value.GetValueOrDefault());
+
+        public string Stringify(CompositionColorSpace? value) => ColorSpace(value.GetValueOrDefault());
     }
 }

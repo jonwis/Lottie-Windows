@@ -26,6 +26,7 @@
     -->
     <NoWarn>SA0001</NoWarn>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <DebugType>full</DebugType>
   </PropertyGroup>
 
   <PropertyGroup>

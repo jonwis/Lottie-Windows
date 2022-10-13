@@ -79,6 +79,16 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
         AnimatedVisualGenerator? _currentAnimatedVisualGenerator;
 
+        protected virtual AnimatedVisualGenerator GetGenerator(
+                InstantiatorGeneratorBase owner,
+                CompositionObject graphRoot,
+                uint requiredUapVersion,
+                bool isPartOfMultiVersionSource,
+                CodegenConfiguration configuration)
+        {
+            return new AnimatedVisualGenerator(owner, graphRoot, requiredUapVersion, isPartOfMultiVersionSource, configuration);
+        }
+
         private protected InstantiatorGeneratorBase(
             CodegenConfiguration configuration,
             bool setCommentProperties,
@@ -106,7 +116,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             var graphs = configuration.ObjectGraphs;
 
-            _animatedVisualGenerators = graphs.Select(g => new AnimatedVisualGenerator(this, g.graphRoot, g.requiredUapVersion, graphs.Count > 1, configuration)).ToArray();
+            _animatedVisualGenerators = graphs.Select(g => GetGenerator(this, g.graphRoot, g.requiredUapVersion, graphs.Count > 1, configuration)).ToArray();
 
             // Determine whether theming is enabled.
             _isThemed = _animatedVisualGenerators.Any(avg => avg.IsThemed);
@@ -581,7 +591,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         /// Returns the code to call the factory for the given object.
         /// </summary>
         /// <returns>The code to call the factory for the given object.</returns>
-        protected string CallFactoryFor(CanvasGeometry obj)
+        public string CallFactoryFor(CanvasGeometry obj)
         {
             return _currentAnimatedVisualGenerator!.CallFactoryFor(obj);
         }
@@ -1009,7 +1019,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         /// <summary>
         /// Generates an IAnimatedVisual implementation.
         /// </summary>
-        sealed class AnimatedVisualGenerator : IAnimatedVisualInfo
+        internal class AnimatedVisualGenerator : IAnimatedVisualInfo
         {
             readonly HashSet<(ObjectData, ObjectData)> _factoriesAlreadyCalled = new HashSet<(ObjectData, ObjectData)>();
             readonly InstantiatorGeneratorBase _owner;
@@ -1036,7 +1046,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             private CodegenConfiguration _configuration;
 
-            internal AnimatedVisualGenerator(
+            protected internal AnimatedVisualGenerator(
                 InstantiatorGeneratorBase owner,
                 CompositionObject graphRoot,
                 uint requiredUapVersion,
@@ -1214,7 +1224,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string Int(int value) => _s.Int32(value);
 
-            string Matrix3x2(Sn.Matrix3x2 value) => _s.Matrix3x2(value);
+            public string Matrix3x2(Sn.Matrix3x2 value) => _s.Matrix3x2(value);
 
             string Matrix4x4(Matrix4x4 value) => _s.Matrix4x4(value);
 
@@ -1251,11 +1261,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             /// Returns the code to call the factory for the given object.
             /// </summary>
             /// <returns>The code to call the factory for the given object.</returns>
-            internal string CallFactoryFor(CanvasGeometry obj)
+            public string CallFactoryFor(CanvasGeometry obj)
                 => CallFactoryFromFor(_currentObjectFactoryNode!, obj);
 
             // Returns the code to call the factory for the given node from the given node.
-            string CallFactoryFromFor(ObjectData callerNode, ObjectData calleeNode)
+            protected string CallFactoryFromFor(ObjectData callerNode, ObjectData calleeNode)
             {
                 if (callerNode.CallFactoryFromForCache.TryGetValue(calleeNode, out string? result))
                 {
@@ -1364,14 +1374,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             }
 
             // Returns the code to call the factory for the given object from the given node.
-            string CallFactoryFromFor(ObjectData callerNode, CompositionObject? obj) =>
+            protected string CallFactoryFromFor(ObjectData callerNode, CompositionObject? obj) =>
                 obj is null
                 ? _s.Null
                 : CallFactoryFromFor(callerNode, NodeFor(obj));
 
-            string CallFactoryFromFor(ObjectData callerNode, CompositionPath obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
+            protected string CallFactoryFromFor(ObjectData callerNode, CompositionPath obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
 
-            string CallFactoryFromFor(ObjectData callerNode, Wg.IGeometrySource2D obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
+            protected string CallFactoryFromFor(ObjectData callerNode, Wg.IGeometrySource2D obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
 
             bool GenerateCompositionPathFactory(CodeBuilder builder, CompositionPath obj, ObjectData node)
             {
@@ -1401,11 +1411,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _currentObjectFactoryNode = null;
             }
 
-            /// <summary>
-            /// Combines the calls to <see cref="StartAnimations(CodeBuilder, CompositionObject, ObjectData, string)"/>
-            /// with <see cref="WriteObjectFactoryEnd(CodeBuilder)"/>.
-            /// </summary>
-            void WriteCompositionObjectFactoryEnd(CodeBuilder builder, CompositionObject obj, ObjectData node)
+            protected void WriteCompositionObjectStartAnimations(CodeBuilder builder, CompositionObject obj, ObjectData node)
             {
                 if (_configuration.ImplementCreateAndDestroyMethods)
                 {
@@ -1417,7 +1423,15 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     StartAnimationsOnResult(builder, obj, node);
                 }
+            }
 
+            /// <summary>
+            /// Combines the calls to <see cref="StartAnimations(CodeBuilder, CompositionObject, ObjectData, string)"/>
+            /// with <see cref="WriteObjectFactoryEnd(CodeBuilder)"/>.
+            /// </summary>
+            void WriteCompositionObjectFactoryEnd(CodeBuilder builder, CompositionObject obj, ObjectData node)
+            {
+                WriteCompositionObjectStartAnimations(builder, obj, node);
                 WriteObjectFactoryEnd(builder);
             }
 
@@ -1904,10 +1918,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            void StartAnimationsOnResult(CodeBuilder builder, CompositionObject obj, ObjectData node)
+            protected void StartAnimationsOnResult(CodeBuilder builder, CompositionObject obj, ObjectData node)
                 => StartAnimations(builder, obj, node, "result");
 
-            void StartAnimations(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName)
+            protected void StartAnimations(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName)
             {
                 var controllerVariableAdded = false;
                 StartAnimations(builder, obj, node, localName, ref controllerVariableAdded);
@@ -2989,7 +3003,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateShapeVisualFactory(CodeBuilder builder, ShapeVisual obj, ObjectData node)
+            protected virtual bool GenerateShapeVisualFactory(CodeBuilder builder, ShapeVisual obj, ObjectData node)
             {
                 // Sanity check: A ShapeVisual's size is its clip. If it's not set, nothing will display.
                 Debug.Assert(obj.Size.HasValue && obj.Size.Value.Length() > 0, "ShapeVisuals need a size");
@@ -3043,7 +3057,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateSpriteShapeFactory(CodeBuilder builder, CompositionSpriteShape obj, ObjectData node)
+            protected virtual bool GenerateSpriteShapeFactory(CodeBuilder builder, CompositionSpriteShape obj, ObjectData node)
             {
                 var setFillBrush = true;
                 WriteObjectFactoryStart(builder, node);
@@ -3274,7 +3288,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         }
 
         // A node in the object graph, annotated with extra stuff to assist in code generation.
-        sealed class ObjectData : Graph.Node<ObjectData>
+        public sealed class ObjectData : Graph.Node<ObjectData>
         {
             Func<string>? _overriddenFactoryCall;
             Dictionary<ObjectData, string>? _callFactoryFromForCache;
