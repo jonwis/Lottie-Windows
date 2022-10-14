@@ -7,7 +7,7 @@
 //           7.1.2-build.32+gd56040340e
 //       
 //       Command:
-//           LottieGen -Language Cppwinrt -MinimumUapVersion 12 -WinUIVersion 2.4 -InputFile LottieLogo1.json
+//           LottieGen -Language Cppwinrt -MinimumUapVersion 12 -Namespace After -RootNamespace After -WinUIVersion 2.4 -InputFile LottieLogo1.json
 //       
 //       Input file:
 //           LottieLogo1.json (190271 bytes created 17:19-07:00 Oct 10 2022)
@@ -19,9 +19,9 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
-#include "AnimatedVisuals.LottieLogo1.g.h"
+#include "LottieLogo1.g.h"
 
-namespace winrt::AnimatedVisuals
+namespace winrt::After
 {
     // Frame rate:  30 fps
     // Frame count: 179

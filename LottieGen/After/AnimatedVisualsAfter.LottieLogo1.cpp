@@ -6,7 +6,7 @@
 //           7.1.2-build.32+gd56040340e
 //       
 //       Command:
-//           LottieGen -Language Cppwinrt -MinimumUapVersion 12 -WinUIVersion 2.4 -InputFile LottieLogo1.json
+//           LottieGen -Language Cppwinrt -MinimumUapVersion 12 -Namespace AnimatedVisualsAfter -WinUIVersion 2.4 -InputFile LottieLogo1.json
 //       
 //       Input file:
 //           LottieLogo1.json (190271 bytes created 17:19-07:00 Oct 10 2022)
@@ -44,9 +44,9 @@
 // | CompositionVisualSurface |     - |
 // ------------------------------------
 #include "pch.h"
-#include "AnimatedVisuals.LottieLogo1.h"
-#if __has_include ("AnimatedVisuals.LottieLogo1.g.cpp")
-#include "AnimatedVisuals.LottieLogo1.g.cpp"
+#include "AnimatedVisualsAfter.LottieLogo1.h"
+#if __has_include ("AnimatedVisualsAfter.LottieLogo1.g.cpp")
+#include "AnimatedVisualsAfter.LottieLogo1.g.cpp"
 #endif
 #include <winrt/Windows.Foundation.Metadata.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -267,7 +267,7 @@ CompositionSpriteShape MakeAndApplyProperties(
     return result;
 }
 
-namespace winrt::AnimatedVisuals::implementation
+namespace winrt::AnimatedVisualsAfter::implementation
 {
     class CanvasGeometry : public winrt::implements<CanvasGeometry,
         IGeometrySource2D,

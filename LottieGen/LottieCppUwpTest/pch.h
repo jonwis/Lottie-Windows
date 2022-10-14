@@ -16,3 +16,6 @@
 
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.XamlTypeInfo.h>
+
+#include <winrt/Before.h>
+#include <winrt/After.h>
