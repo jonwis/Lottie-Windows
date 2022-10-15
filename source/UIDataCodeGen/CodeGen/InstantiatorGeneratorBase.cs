@@ -1453,7 +1453,9 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     else
                     {
                         // If field optimization is enabled, the method will only get called once.
-                        builder.WriteLine($"return {node.FieldName} = {createCallText};");
+                        builder.WriteLine($"{_s.Var} created = {createCallText};");
+                        builder.WriteLine($"{node.FieldName} = created;");
+                        builder.WriteLine($"return created;");
                     }
                 }
                 else
@@ -1477,7 +1479,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         builder.WriteLine($"if ({node.FieldName} != {Null}) {{ return {node.FieldName}; }}");
                     }
 
-                    builder.WriteLine($"{ConstVar} result = {node.FieldName} = {createCallText};");
+                    builder.WriteLine($"{ConstVar} result = {createCallText};");
+                    builder.WriteLine($"{node.FieldName} = result;");
                 }
                 else
                 {
@@ -1664,7 +1667,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 foreach (var node in OrderByTypeThenName(_nodes.Where(n => n.RequiresStorage && !n.RequiresReadonlyStorage)))
                 {
                     // Generate a field for the non-read-only storage.
-                    _owner.WriteDefaultInitializedField(builder, _s.ReferenceTypeName(node.TypeName), node.FieldName!);
+                    _owner.WriteDefaultInitializedField(builder, _s.FieldTypeName(node.TypeName), node.FieldName!);
                 }
             }
 

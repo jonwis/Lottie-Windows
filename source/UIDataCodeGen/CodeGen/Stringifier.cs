@@ -155,6 +155,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
         public abstract string ReferenceTypeName(string value);
 
+        public abstract string FieldTypeName(string value);
+
         public abstract string ArgumentTypeName(string value);
 
         public abstract string ScopeResolve { get; }

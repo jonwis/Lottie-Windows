@@ -86,6 +86,33 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             _ => typeName
         };
 
+        public override string FieldTypeName(string value) => value switch
+        {
+            "BackEasingFunction" => "CompositionEasingFunction",
+            "BounceEasingFunction" => "CompositionEasingFunction",
+            "CircleEasingFunction" => "CompositionEasingFunction",
+            "CubicBezierEasingFunction" => "CompositionEasingFunction",
+            "ElasticEasingFunction" => "CompositionEasingFunction",
+            "ExponentialEasingFunction" => "CompositionEasingFunction",
+            "LinearEasingFunction" => "CompositionEasingFunction",
+            "PowerEasingFunction" => "CompositionEasingFunction",
+            "SineEasingFunction" => "CompositionEasingFunction",
+            "StepEasingFunction" => "CompositionEasingFunction",
+
+            // "ExpressionAnimation" => "CompositionAnimation",
+            "KeyframeAnimation" => "CompositionAnimation",
+            "NaturalMotionAnimation" => "CompositionAnimation",
+            "BooleanKeyFrameAnimation" => "CompositionAnimation",
+            "ColorKeyFrameAnimation" => "CompositionAnimation",
+            "PathKeyFrameAnimation" => "CompositionAnimation",
+            "QuaternionKeyFrameAnimation" => "CompositionAnimation",
+            "ScalarKeyFrameAnimation" => "CompositionAnimation",
+            "Vector2KeyFrameAnimation" => "CompositionAnimation",
+            "Vector3KeyFrameAnimation" => "CompositionAnimation",
+            "Vector4KeyFrameAnimation" => "CompositionAnimation",
+            _ => value
+        };
+
         public override string Null => "nullptr";
 
         public override string PropertyGet(string target, string propertyName) => $"{target}.{propertyName}()";
