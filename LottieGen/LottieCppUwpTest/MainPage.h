@@ -2,8 +2,6 @@
 
 #include "MainPage.g.h"
 
-#include "AnimatedVisuals.LottieLogo1.h"
-
 namespace winrt::LottieCppUwpTest::implementation
 {
     struct MainPage : MainPageT<MainPage>
