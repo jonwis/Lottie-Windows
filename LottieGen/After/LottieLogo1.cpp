@@ -6,7 +6,7 @@
 //           7.1.2-build.32+gd56040340e
 //       
 //       Command:
-//           LottieGen -Language Cppwinrt -MinimumUapVersion 12 -WinUIVersion 2.4 -InputFile LottieLogo1.json
+//           LottieGen -Language Cppwinrt -MinimumUapVersion 12 -Namespace After -RootNamespace After -WinUIVersion 2.4 -InputFile LottieLogo1.json
 //       
 //       Input file:
 //           LottieLogo1.json (190271 bytes created 17:19-07:00 Oct 10 2022)
@@ -44,9 +44,9 @@
 // | CompositionVisualSurface |     - |
 // ------------------------------------
 #include "pch.h"
-#include "AnimatedVisuals.LottieLogo1.h"
-#if __has_include ("AnimatedVisuals.LottieLogo1.g.cpp")
-#include "AnimatedVisuals.LottieLogo1.g.cpp"
+#include "LottieLogo1.h"
+#if __has_include ("LottieLogo1.g.cpp")
+#include "LottieLogo1.g.cpp"
 #endif
 #include <winrt/Windows.Foundation.Metadata.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -267,7 +267,7 @@ CompositionSpriteShape MakeAndApplyProperties(
     return result;
 }
 
-namespace winrt::AnimatedVisuals::implementation
+namespace winrt::After::implementation
 {
     class CanvasGeometry : public winrt::implements<CanvasGeometry,
         IGeometrySource2D,
@@ -317,32 +317,32 @@ namespace winrt::AnimatedVisuals::implementation
         CompositionPath _path_7{ nullptr };
         CompositionPath _path_8{ nullptr };
         ContainerVisual _root{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_0{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_1{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_2{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_3{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_4{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_5{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_6{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_7{ nullptr };
-        CompositionEasingFunction _cubicBezierEasingFunction_8{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_0{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_1{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_2{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_3{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_4{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_5{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_6{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_7{ nullptr };
+        CubicBezierEasingFunction _cubicBezierEasingFunction_8{ nullptr };
         ExpressionAnimation _rootProgress{ nullptr };
-        CompositionAnimation _tEndScalarAnimation_1_to_0_02{ nullptr };
-        CompositionAnimation _tEndScalarAnimation_1_to_0_03{ nullptr };
-        CompositionAnimation _tEndScalarAnimation_1_to_0_06{ nullptr };
-        CompositionAnimation _tEndScalarAnimation_1_to_0_11{ nullptr };
-        CompositionAnimation _tEndScalarAnimation_1_to_0_13{ nullptr };
-        CompositionAnimation _tStartScalarAnimation_0_to_0p249{ nullptr };
-        CompositionAnimation _tStartScalarAnimation_0p87_to_0_02{ nullptr };
-        CompositionEasingFunction _holdThenStepEasingFunction{ nullptr };
-        CompositionEasingFunction _stepThenHoldEasingFunction{ nullptr };
-        CompositionAnimation _offsetVector2Animation_02{ nullptr };
-        CompositionAnimation _offsetVector2Animation_03{ nullptr };
-        CompositionAnimation _offsetVector2Animation_04{ nullptr };
-        CompositionAnimation _offsetVector2Animation_05{ nullptr };
-        CompositionAnimation _offsetVector2Animation_06{ nullptr };
-        CompositionAnimation _radiusVector2Animation{ nullptr };
-        CompositionAnimation _shapeVisibilityAnimation_04{ nullptr };
+        ScalarKeyFrameAnimation _tEndScalarAnimation_1_to_0_02{ nullptr };
+        ScalarKeyFrameAnimation _tEndScalarAnimation_1_to_0_03{ nullptr };
+        ScalarKeyFrameAnimation _tEndScalarAnimation_1_to_0_06{ nullptr };
+        ScalarKeyFrameAnimation _tEndScalarAnimation_1_to_0_11{ nullptr };
+        ScalarKeyFrameAnimation _tEndScalarAnimation_1_to_0_13{ nullptr };
+        ScalarKeyFrameAnimation _tStartScalarAnimation_0_to_0p249{ nullptr };
+        ScalarKeyFrameAnimation _tStartScalarAnimation_0p87_to_0_02{ nullptr };
+        StepEasingFunction _holdThenStepEasingFunction{ nullptr };
+        StepEasingFunction _stepThenHoldEasingFunction{ nullptr };
+        Vector2KeyFrameAnimation _offsetVector2Animation_02{ nullptr };
+        Vector2KeyFrameAnimation _offsetVector2Animation_03{ nullptr };
+        Vector2KeyFrameAnimation _offsetVector2Animation_04{ nullptr };
+        Vector2KeyFrameAnimation _offsetVector2Animation_05{ nullptr };
+        Vector2KeyFrameAnimation _offsetVector2Animation_06{ nullptr };
+        Vector2KeyFrameAnimation _radiusVector2Animation{ nullptr };
+        Vector2KeyFrameAnimation _shapeVisibilityAnimation_04{ nullptr };
 
         static void StartProgressBoundAnimation(
             CompositionObject const& target,
@@ -785,16 +785,12 @@ namespace winrt::AnimatedVisuals::implementation
 
         CompositionColorBrush ColorBrush_AlmostTeal_FF007A87()
         {
-            auto created = _c.CreateColorBrush({ 0xFF, 0x00, 0x7A, 0x87 });
-            _colorBrush_AlmostTeal_FF007A87 = created;
-            return created;
+            return _colorBrush_AlmostTeal_FF007A87 = _c.CreateColorBrush({ 0xFF, 0x00, 0x7A, 0x87 });
         }
 
         CompositionColorBrush ColorBrush_White()
         {
-            auto created = _c.CreateColorBrush({ 0xFF, 0xFF, 0xFF, 0xFF });
-            _colorBrush_White = created;
-            return created;
+            return _colorBrush_White = _c.CreateColorBrush({ 0xFF, 0xFF, 0xFF, 0xFF });
         }
 
         // Layer aggregator
@@ -1195,8 +1191,7 @@ namespace winrt::AnimatedVisuals::implementation
         // Ellipse Path 1.EllipseGeometry
         CompositionEllipseGeometry Ellipse_4p7()
         {
-            const auto result = _c.CreateEllipseGeometry();
-            _ellipse_4p7 = result;
+            const auto result = _ellipse_4p7 = _c.CreateEllipseGeometry();
             result.Center({ 0.800000012F, -0.5F });
             result.Radius({ 4.69999981F, 4.69999981F });
             return result;
@@ -1204,64 +1199,55 @@ namespace winrt::AnimatedVisuals::implementation
 
         CompositionPath Path_0()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_00()));
-            _path_0 = result;
+            const auto result = _path_0 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_00()));
             return result;
         }
 
         CompositionPath Path_1()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_01()));
-            _path_1 = result;
+            const auto result = _path_1 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_01()));
             return result;
         }
 
         CompositionPath Path_2()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_02()));
-            _path_2 = result;
+            const auto result = _path_2 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_02()));
             return result;
         }
 
         CompositionPath Path_3()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_03()));
-            _path_3 = result;
+            const auto result = _path_3 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_03()));
             return result;
         }
 
         CompositionPath Path_4()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_04()));
-            _path_4 = result;
+            const auto result = _path_4 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_04()));
             return result;
         }
 
         CompositionPath Path_5()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_05()));
-            _path_5 = result;
+            const auto result = _path_5 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_05()));
             return result;
         }
 
         CompositionPath Path_6()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_06()));
-            _path_6 = result;
+            const auto result = _path_6 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_06()));
             return result;
         }
 
         CompositionPath Path_7()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_07()));
-            _path_7 = result;
+            const auto result = _path_7 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_07()));
             return result;
         }
 
         CompositionPath Path_8()
         {
-            const auto result = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_08()));
-            _path_8 = result;
+            const auto result = _path_8 = MakeCompositionPath(CanvasGeometryToIGeometrySource2D(Geometry_08()));
             return result;
         }
 
@@ -2911,8 +2897,7 @@ namespace winrt::AnimatedVisuals::implementation
         // The root of the composition.
         ContainerVisual Root()
         {
-            const auto result = _c.CreateContainerVisual();
-            _root = result;
+            const auto result = _root = _c.CreateContainerVisual();
             const auto propertySet = result.Properties();
             propertySet.InsertScalar(L"Progress", 0.0F);
             propertySet.InsertScalar(L"t0", 0.0F);
@@ -2924,71 +2909,52 @@ namespace winrt::AnimatedVisuals::implementation
 
         CubicBezierEasingFunction CubicBezierEasingFunction_0()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.180000007F, 1.0F });
-            _cubicBezierEasingFunction_0 = created;
-            return created;
+            return _cubicBezierEasingFunction_0 = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.180000007F, 1.0F });
         }
 
         CubicBezierEasingFunction CubicBezierEasingFunction_1()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.819999993F, 0.0F }, { 0.833000004F, 0.833000004F });
-            _cubicBezierEasingFunction_1 = created;
-            return created;
+            return _cubicBezierEasingFunction_1 = _c.CreateCubicBezierEasingFunction({ 0.819999993F, 0.0F }, { 0.833000004F, 0.833000004F });
         }
 
         CubicBezierEasingFunction CubicBezierEasingFunction_2()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.833000004F, 0.833000004F });
-            _cubicBezierEasingFunction_2 = created;
-            return created;
+            return _cubicBezierEasingFunction_2 = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.833000004F, 0.833000004F });
         }
 
         CubicBezierEasingFunction CubicBezierEasingFunction_3()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.666999996F, 1.0F });
-            _cubicBezierEasingFunction_3 = created;
-            return created;
+            return _cubicBezierEasingFunction_3 = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.666999996F, 1.0F });
         }
 
         CubicBezierEasingFunction CubicBezierEasingFunction_4()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.119999997F, 1.0F });
-            _cubicBezierEasingFunction_4 = created;
-            return created;
+            return _cubicBezierEasingFunction_4 = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.119999997F, 1.0F });
         }
 
         CubicBezierEasingFunction CubicBezierEasingFunction_5()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.0F }, { 0.119999997F, 1.0F });
-            _cubicBezierEasingFunction_5 = created;
-            return created;
+            return _cubicBezierEasingFunction_5 = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.0F }, { 0.119999997F, 1.0F });
         }
 
         CubicBezierEasingFunction CubicBezierEasingFunction_6()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.300999999F, 0.0F }, { 0.666999996F, 1.0F });
-            _cubicBezierEasingFunction_6 = created;
-            return created;
+            return _cubicBezierEasingFunction_6 = _c.CreateCubicBezierEasingFunction({ 0.300999999F, 0.0F }, { 0.666999996F, 1.0F });
         }
 
         CubicBezierEasingFunction CubicBezierEasingFunction_7()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.0599999987F, 1.0F });
-            _cubicBezierEasingFunction_7 = created;
-            return created;
+            return _cubicBezierEasingFunction_7 = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.0599999987F, 1.0F });
         }
 
         CubicBezierEasingFunction CubicBezierEasingFunction_8()
         {
-            auto created = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.337000012F, 1.0F });
-            _cubicBezierEasingFunction_8 = created;
-            return created;
+            return _cubicBezierEasingFunction_8 = _c.CreateCubicBezierEasingFunction({ 0.166999996F, 0.166999996F }, { 0.337000012F, 1.0F });
         }
 
         ExpressionAnimation RootProgress()
         {
-            const auto result = _c.CreateExpressionAnimation(L"_.Progress");
-            _rootProgress = result;
+            const auto result = _rootProgress = _c.CreateExpressionAnimation(L"_.Progress");
             result.SetReferenceParameter(L"_", _root);
             return result;
         }
@@ -3087,8 +3053,7 @@ namespace winrt::AnimatedVisuals::implementation
         ScalarKeyFrameAnimation TEndScalarAnimation_1_to_0_02()
         {
             // Frame 0.
-            const auto result = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
-            _tEndScalarAnimation_1_to_0_02 = result;
+            const auto result = _tEndScalarAnimation_1_to_0_02 = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
             // Frame 65.
             result.InsertKeyFrame(0.363128483F, 1.0F, _holdThenStepEasingFunction);
             // Frame 70.
@@ -3102,8 +3067,7 @@ namespace winrt::AnimatedVisuals::implementation
         ScalarKeyFrameAnimation TEndScalarAnimation_1_to_0_03()
         {
             // Frame 0.
-            const auto result = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
-            _tEndScalarAnimation_1_to_0_03 = result;
+            const auto result = _tEndScalarAnimation_1_to_0_03 = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
             // Frame 54.
             result.InsertKeyFrame(0.301675975F, 1.0F, _holdThenStepEasingFunction);
             // Frame 57.
@@ -3145,8 +3109,7 @@ namespace winrt::AnimatedVisuals::implementation
         ScalarKeyFrameAnimation TEndScalarAnimation_1_to_0_06()
         {
             // Frame 0.
-            const auto result = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
-            _tEndScalarAnimation_1_to_0_06 = result;
+            const auto result = _tEndScalarAnimation_1_to_0_06 = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
             // Frame 97.
             result.InsertKeyFrame(0.541899443F, 1.0F, _holdThenStepEasingFunction);
             // Frame 100.
@@ -3216,8 +3179,7 @@ namespace winrt::AnimatedVisuals::implementation
         ScalarKeyFrameAnimation TEndScalarAnimation_1_to_0_11()
         {
             // Frame 0.
-            const auto result = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
-            _tEndScalarAnimation_1_to_0_11 = result;
+            const auto result = _tEndScalarAnimation_1_to_0_11 = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
             // Frame 75.
             result.InsertKeyFrame(0.418994427F, 1.0F, _holdThenStepEasingFunction);
             // Frame 78.
@@ -3245,8 +3207,7 @@ namespace winrt::AnimatedVisuals::implementation
         ScalarKeyFrameAnimation TEndScalarAnimation_1_to_0_13()
         {
             // Frame 0.
-            const auto result = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
-            _tEndScalarAnimation_1_to_0_13 = result;
+            const auto result = _tEndScalarAnimation_1_to_0_13 = CreateScalarKeyFrameAnimation(0.0F, 1.0F, _stepThenHoldEasingFunction);
             // Frame 76.
             result.InsertKeyFrame(0.424580991F, 1.0F, _holdThenStepEasingFunction);
             // Frame 79.
@@ -3583,8 +3544,7 @@ namespace winrt::AnimatedVisuals::implementation
         ScalarKeyFrameAnimation TStartScalarAnimation_0_to_0p249()
         {
             // Frame 0.
-            const auto result = CreateScalarKeyFrameAnimation(0.0F, 0.0F, _stepThenHoldEasingFunction);
-            _tStartScalarAnimation_0_to_0p249 = result;
+            const auto result = _tStartScalarAnimation_0_to_0p249 = CreateScalarKeyFrameAnimation(0.0F, 0.0F, _stepThenHoldEasingFunction);
             // Frame 54.
             result.InsertKeyFrame(0.301675975F, 0.0F, _holdThenStepEasingFunction);
             // Frame 70.
@@ -3652,8 +3612,7 @@ namespace winrt::AnimatedVisuals::implementation
         ScalarKeyFrameAnimation TStartScalarAnimation_0p87_to_0_02()
         {
             // Frame 0.
-            const auto result = CreateScalarKeyFrameAnimation(0.0F, 0.870000005F, _stepThenHoldEasingFunction);
-            _tStartScalarAnimation_0p87_to_0_02 = result;
+            const auto result = _tStartScalarAnimation_0p87_to_0_02 = CreateScalarKeyFrameAnimation(0.0F, 0.870000005F, _stepThenHoldEasingFunction);
             // Frame 65.
             result.InsertKeyFrame(0.363128483F, 0.870000005F, _holdThenStepEasingFunction);
             // Frame 70.
@@ -3964,16 +3923,14 @@ namespace winrt::AnimatedVisuals::implementation
 
         StepEasingFunction HoldThenStepEasingFunction()
         {
-            const auto result = _c.CreateStepEasingFunction();
-            _holdThenStepEasingFunction = result;
+            const auto result = _holdThenStepEasingFunction = _c.CreateStepEasingFunction();
             result.IsFinalStepSingleFrame(true);
             return result;
         }
 
         StepEasingFunction StepThenHoldEasingFunction()
         {
-            const auto result = _c.CreateStepEasingFunction();
-            _stepThenHoldEasingFunction = result;
+            const auto result = _stepThenHoldEasingFunction = _c.CreateStepEasingFunction();
             result.IsInitialStepSingleFrame(true);
             return result;
         }
@@ -4019,8 +3976,7 @@ namespace winrt::AnimatedVisuals::implementation
         Vector2KeyFrameAnimation OffsetVector2Animation_02()
         {
             // Frame 0.
-            const auto result = CreateVector2KeyFrameAnimation(0.0F, { -225.957001F, -204.322006F }, _stepThenHoldEasingFunction);
-            _offsetVector2Animation_02 = result;
+            const auto result = _offsetVector2Animation_02 = CreateVector2KeyFrameAnimation(0.0F, { -225.957001F, -204.322006F }, _stepThenHoldEasingFunction);
             // Frame 84.
             result.InsertKeyFrame(0.469273746F, { -225.957001F, -204.322006F }, _holdThenStepEasingFunction);
             // Frame 92.
@@ -4034,8 +3990,7 @@ namespace winrt::AnimatedVisuals::implementation
         Vector2KeyFrameAnimation OffsetVector2Animation_03()
         {
             // Frame 0.
-            const auto result = CreateVector2KeyFrameAnimation(0.0F, { -210.207993F, -219.320999F }, _stepThenHoldEasingFunction);
-            _offsetVector2Animation_03 = result;
+            const auto result = _offsetVector2Animation_03 = CreateVector2KeyFrameAnimation(0.0F, { -210.207993F, -219.320999F }, _stepThenHoldEasingFunction);
             // Frame 78.
             result.InsertKeyFrame(0.43575418F, { -210.207993F, -219.320999F }, _holdThenStepEasingFunction);
             // Frame 88.
@@ -4049,8 +4004,7 @@ namespace winrt::AnimatedVisuals::implementation
         Vector2KeyFrameAnimation OffsetVector2Animation_04()
         {
             // Frame 0.
-            const auto result = CreateVector2KeyFrameAnimation(0.0F, { -222.957993F, -204.322006F }, _stepThenHoldEasingFunction);
-            _offsetVector2Animation_04 = result;
+            const auto result = _offsetVector2Animation_04 = CreateVector2KeyFrameAnimation(0.0F, { -222.957993F, -204.322006F }, _stepThenHoldEasingFunction);
             // Frame 83.
             result.InsertKeyFrame(0.463687152F, { -222.957993F, -204.322006F }, _holdThenStepEasingFunction);
             // Frame 92.
@@ -4062,8 +4016,7 @@ namespace winrt::AnimatedVisuals::implementation
         Vector2KeyFrameAnimation OffsetVector2Animation_05()
         {
             // Frame 0.
-            const auto result = CreateVector2KeyFrameAnimation(0.0F, { -230.957001F, -205.695999F }, _stepThenHoldEasingFunction);
-            _offsetVector2Animation_05 = result;
+            const auto result = _offsetVector2Animation_05 = CreateVector2KeyFrameAnimation(0.0F, { -230.957001F, -205.695999F }, _stepThenHoldEasingFunction);
             // Frame 79.
             result.InsertKeyFrame(0.441340774F, { -230.957001F, -205.695999F }, _holdThenStepEasingFunction);
             // Frame 88.
@@ -4077,8 +4030,7 @@ namespace winrt::AnimatedVisuals::implementation
         Vector2KeyFrameAnimation OffsetVector2Animation_06()
         {
             // Frame 0.
-            const auto result = CreateVector2KeyFrameAnimation(0.0F, { -210.957001F, -201.322006F }, _stepThenHoldEasingFunction);
-            _offsetVector2Animation_06 = result;
+            const auto result = _offsetVector2Animation_06 = CreateVector2KeyFrameAnimation(0.0F, { -210.957001F, -201.322006F }, _stepThenHoldEasingFunction);
             // Frame 56.
             result.InsertKeyFrame(0.312849164F, { -210.957001F, -201.322006F }, _holdThenStepEasingFunction);
             // Frame 64.
@@ -4158,8 +4110,7 @@ namespace winrt::AnimatedVisuals::implementation
         Vector2KeyFrameAnimation RadiusVector2Animation()
         {
             // Frame 0.
-            const auto result = CreateVector2KeyFrameAnimation(0.0F, { 1.5F, 1.5F }, _stepThenHoldEasingFunction);
-            _radiusVector2Animation = result;
+            const auto result = _radiusVector2Animation = CreateVector2KeyFrameAnimation(0.0F, { 1.5F, 1.5F }, _stepThenHoldEasingFunction);
             // Frame 54.
             result.InsertKeyFrame(0.301675975F, { 1.5F, 1.5F }, _holdThenStepEasingFunction);
             // Frame 61.
@@ -4218,8 +4169,7 @@ namespace winrt::AnimatedVisuals::implementation
         Vector2KeyFrameAnimation ShapeVisibilityAnimation_04()
         {
             // Frame 0.
-            const auto result = CreateVector2KeyFrameAnimation(0.0F, { 0.0F, 0.0F }, _holdThenStepEasingFunction);
-            _shapeVisibilityAnimation_04 = result;
+            const auto result = _shapeVisibilityAnimation_04 = CreateVector2KeyFrameAnimation(0.0F, { 0.0F, 0.0F }, _holdThenStepEasingFunction);
             // Frame 81.
             result.InsertKeyFrame(0.452513963F, { 1.0F, 1.0F }, _holdThenStepEasingFunction);
             return result;

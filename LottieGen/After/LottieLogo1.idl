@@ -6,7 +6,7 @@
 //           7.1.2-build.32+gd56040340e
 //       
 //       Command:
-//           LottieGen -Language Cppwinrt -MinimumUapVersion 12 -WinUIVersion 2.4 -InputFile LottieLogo1.json
+//           LottieGen -Language Cppwinrt -MinimumUapVersion 12 -Namespace After -RootNamespace After -WinUIVersion 2.4 -InputFile LottieLogo1.json
 //       
 //       Input file:
 //           LottieLogo1.json (190271 bytes created 17:19-07:00 Oct 10 2022)
@@ -18,7 +18,7 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
-namespace AnimatedVisuals
+namespace After
 {
     runtimeclass LottieLogo1
         : [default] Microsoft.UI.Xaml.Controls.IAnimatedVisualSource
