@@ -17,7 +17,6 @@
     <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
     <WindowsTargetPlatformVersion Condition=" '$(WindowsTargetPlatformVersion)' == '' ">10.0.22000.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
-    <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <ItemGroup Label="ProjectConfigurations">
@@ -81,9 +80,6 @@
     <Import Project="PropertySheet.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <CustomBuildBeforeTargets>PreBuildEvent</CustomBuildBeforeTargets>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -93,11 +89,6 @@
       <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;WINRT_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <CustomBuildStep>
-      <Command>"$(SolutionDir)win-x64\bin\AnyCPU\$(Configuration)\net5.0\win-x64\LottieGen.exe" -inputfile "$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json" -MinimumUapVersion 12 -lang CppWinRT -o $(SolutionDir)\LottieCppUwpTest</Command>
-      <Inputs>$(SolutionDir)win-x64\bin\AnyCPU\$(Configuration)\net5.0\win-x64\LottieGen.exe</Inputs>
-      <Outputs>$(SolutionDir)LottieCppUwpTest\AnimatedVisuals.LottieLogo1.cpp</Outputs>
-    </CustomBuildStep>
     <Link>
       <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
     </Link>
