@@ -14,6 +14,7 @@ using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
 using static CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg.CanvasPathBuilder;
+using Sn = System.Numerics;
 
 namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 {
@@ -125,6 +126,19 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 CodegenConfiguration configuration)
                 : base(owner, graphRoot, requiredUapVersion, isPartOfMultiVersionSource, configuration)
             {
+            }
+
+            protected override bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+
+                builder.WriteLine($"constexpr static const float2 center = {_s.Vector2(obj.Center)};");
+                builder.WriteLine($"constexpr static const float2 radius = {_s.Vector2(obj.Radius)};");
+                WriteCreateAssignment(builder, node, $"CreateEllipseGeometry(center, radius)");
+                InitializeCompositionGeometry(builder, obj, node);
+
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+                return true;
             }
 
             protected override bool GenerateSpriteShapeFactory(CodeBuilder builder, CompositionSpriteShape obj, ObjectData node)
@@ -1596,6 +1610,14 @@ CompositionSpriteShape MakeAndApplyProperties(
             builder.WriteLine("return _c.CreateCubicBezierEasingFunction(a, b);");
             builder.CloseScope();
             builder.WriteLine();
+
+            builder.WriteLine("__declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(float2 const& center, float2 const& radius)");
+            builder.OpenScope();
+            builder.WriteLine("auto result = _c.CreateEllipseGeometry();");
+            builder.WriteLine("result.Center(center);");
+            builder.WriteLine("result.Radius(radius);");
+            builder.WriteLine("return result;");
+            builder.CloseScope();
 
             WriteIsRuntimeCompatibleMethod(builder, info);
 

@@ -1429,7 +1429,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             /// Combines the calls to <see cref="StartAnimations(CodeBuilder, CompositionObject, ObjectData, string)"/>
             /// with <see cref="WriteObjectFactoryEnd(CodeBuilder)"/>.
             /// </summary>
-            void WriteCompositionObjectFactoryEnd(CodeBuilder builder, CompositionObject obj, ObjectData node)
+            protected void WriteCompositionObjectFactoryEnd(CodeBuilder builder, CompositionObject obj, ObjectData node)
             {
                 WriteCompositionObjectStartAnimations(builder, obj, node);
                 WriteObjectFactoryEnd(builder);
@@ -1469,7 +1469,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _currentObjectFactoryNode = null;
             }
 
-            void WriteCreateAssignment(CodeBuilder builder, ObjectData node, string createCallText)
+            protected void WriteCreateAssignment(CodeBuilder builder, ObjectData node, string createCallText)
             {
                 if (node.RequiresStorage)
                 {
@@ -2504,7 +2504,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
+            protected void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 
@@ -2925,7 +2925,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
+            protected virtual bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"_c{Deref}CreateEllipseGeometry()");
