@@ -166,7 +166,21 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public override string VariableInitialization(string value) => $"{{ {value} }}";
 
-        public override string Vector2(Vector2 value) => $"{{ {Vector2Args(value)} }}";
+        public override string Vector2(Vector2 value)
+        {
+            if ((value.X == 0) && (value.Y == 0))
+            {
+                return "f2_zero_zero";
+            }
+            else if ((value.X == 1) && (value.Y == 1))
+            {
+                return "f2_one_one";
+            }
+            else
+            {
+                return $"{{ {Vector2Args(value)} }}";
+            }
+        }
 
         public string Vector2Args(Vector2 value) => $"{Float(value.X)}, {Float(value.Y)}";
 

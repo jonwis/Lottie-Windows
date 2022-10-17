@@ -664,6 +664,9 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 // D2D factory field.
                 builder.WriteLine("winrt::com_ptr<ID2D1Factory> _d2dFactory{ nullptr };");
             }
+
+            builder.WriteLine("constexpr static const float2 f2_zero_zero = { 0.0f, 0.0f };");
+            builder.WriteLine("constexpr static const float2 f2_one_one = { 1.0f, 1.0f };");
         }
 
         void AddUsingsForTypeAliases(CodeBuilder builder)
