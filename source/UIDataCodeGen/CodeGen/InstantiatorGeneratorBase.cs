@@ -1392,7 +1392,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            void WriteObjectFactoryStart(CodeBuilder builder, ObjectData node, IEnumerable<string>? parameters = null)
+            protected void WriteObjectFactoryStart(CodeBuilder builder, ObjectData node, IEnumerable<string>? parameters = null)
             {
                 // Save the node as the current node while the factory is being written.
                 _currentObjectFactoryNode = node;
@@ -1403,7 +1403,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 builder.OpenScope();
             }
 
-            void WriteObjectFactoryEnd(CodeBuilder builder)
+            protected void WriteObjectFactoryEnd(CodeBuilder builder)
             {
                 builder.WriteLine("return result;");
                 builder.CloseScope();
@@ -1696,7 +1696,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             protected virtual string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
                 => $"_c{Deref}CreateCubicBezierEasingFunction({Vector2(obj.ControlPoint1)}, {Vector2(obj.ControlPoint2)})";
 
-            bool GenerateCanvasGeometryFactory(CodeBuilder builder, CanvasGeometry obj, ObjectData node)
+            protected virtual bool GenerateCanvasGeometryFactory(CodeBuilder builder, CanvasGeometry obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var typeName = _s.ReferenceTypeName(node.TypeName);
