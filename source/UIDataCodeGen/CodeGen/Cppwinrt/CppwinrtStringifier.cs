@@ -124,6 +124,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             value switch
             {
                 "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry>",
+                "CubicBezierEasingFunction" => "CompositionEasingFunction",
+                "CompositionContainerShape" => "CompositionShape",
+                "CompositionSpriteShape" => "CompositionShape",
+                "CompositionEllipseGeometry" => "CompositionGeometry",
+                "CompositionPathGeometry" => "CompositionGeometry",
                 _ => value
             };
 

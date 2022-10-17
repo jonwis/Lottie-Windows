@@ -1693,7 +1693,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
+            protected virtual string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
                 => $"_c{Deref}CreateCubicBezierEasingFunction({Vector2(obj.ControlPoint1)}, {Vector2(obj.ControlPoint2)})";
 
             bool GenerateCanvasGeometryFactory(CodeBuilder builder, CanvasGeometry obj, ObjectData node)

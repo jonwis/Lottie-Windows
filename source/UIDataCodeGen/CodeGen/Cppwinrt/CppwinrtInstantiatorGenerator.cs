@@ -130,7 +130,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             protected override bool GenerateSpriteShapeFactory(CodeBuilder builder, CompositionSpriteShape obj, ObjectData node)
             {
                 builder.WriteComment(node.LongComment);
-                builder.WriteLine($"CompositionSpriteShape {node.Name}()");
+                builder.WriteLine($"CompositionShape {node.Name}()");
                 builder.OpenScope();
 
                 // Write all the constant properties
@@ -188,6 +188,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine();
 
                 return true;
+            }
+
+            protected override string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
+            {
+                return $"CreateCubicBezierEasingFunction({_s.Vector2(obj.ControlPoint1)}, {_s.Vector2(obj.ControlPoint2)})";
             }
         }
 
@@ -1662,6 +1667,12 @@ CompositionSpriteShape MakeAndApplyProperties(
                 builder.CloseScope();
                 builder.WriteLine();
             }
+
+            builder.WriteLine("CompositionEasingFunction CreateCubicBezierEasingFunction(float2 const& a, float2 const &b)");
+            builder.OpenScope();
+            builder.WriteLine("return _c.CreateCubicBezierEasingFunction(a, b);");
+            builder.CloseScope();
+            builder.WriteLine();
 
             WriteIsRuntimeCompatibleMethod(builder, info);
 
