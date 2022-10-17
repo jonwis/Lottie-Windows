@@ -77,6 +77,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         readonly IReadOnlyList<MarkerInfo> _markers;
         readonly IReadOnlyList<NamedConstant> _internalConstants;
 
+        public bool SetCommentProperties => _setCommentProperties;
+
         AnimatedVisualGenerator? _currentAnimatedVisualGenerator;
 
         protected virtual AnimatedVisualGenerator GetGenerator(
@@ -980,7 +982,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _ => throw new InvalidOperationException(),
             };
 
-        string PropertySetValueInitializer(CompositionPropertySet propertySet, string propertyName, PropertySetValueType propertyType)
+        public string PropertySetValueInitializer(CompositionPropertySet propertySet, string propertyName, PropertySetValueType propertyType)
             => propertyType switch
             {
                 PropertySetValueType.Color => PropertySetColorValueInitializer(propertySet, propertyName),
@@ -991,27 +993,27 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _ => throw new InvalidOperationException(),
             };
 
-        string PropertySetColorValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetColorValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetColor(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Color(value!.Value)
                     : throw new InvalidOperationException();
 
-        string PropertySetScalarValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetScalarValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetScalar(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Float(value!.Value)
                     : throw new InvalidOperationException();
 
-        string PropertySetVector2ValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetVector2ValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetVector2(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Vector2(value!.Value)
                     : throw new InvalidOperationException();
 
-        string PropertySetVector3ValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetVector3ValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetVector3(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Vector3(value!.Value)
                     : throw new InvalidOperationException();
 
-        string PropertySetVector4ValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetVector4ValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetVector4(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Vector4(value!.Value)
                     : throw new InvalidOperationException();
@@ -1045,6 +1047,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             private CodeBuilder _destroyAnimationsCodeBuilder = new CodeBuilder();
 
             private CodegenConfiguration _configuration;
+
+            protected InstantiatorGeneratorBase Owner => _owner;
 
             protected internal AnimatedVisualGenerator(
                 InstantiatorGeneratorBase owner,
@@ -1533,7 +1537,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void WriteSetPropertyStatementDefaultIsNullOrWhitespace(
+            protected void WriteSetPropertyStatementDefaultIsNullOrWhitespace(
                 CodeBuilder builder,
                 string propertyName,
                 string? value,
@@ -2380,7 +2384,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return CallFactoryFromFor(animationNode, referenceParameter.Value);
             }
 
-            void InitializeCompositionObject(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName = "result")
+            protected virtual void InitializeCompositionObject(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName = "result")
             {
                 if (_owner._setCommentProperties)
                 {

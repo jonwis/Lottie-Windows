@@ -128,6 +128,42 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             {
             }
 
+            protected override void InitializeCompositionObject(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName = "result")
+            {
+                if (Owner.SetCommentProperties)
+                {
+                    WriteSetPropertyStatementDefaultIsNullOrWhitespace(builder, nameof(obj.Comment), obj.Comment, localName);
+                }
+
+                var propertySet = obj.Properties;
+
+                if (propertySet.Names.Count > 0)
+                {
+                    builder.WriteLine($"constexpr static const propset_value props[] =");
+                    builder.OpenScope();
+
+                    foreach (var (name, type) in propertySet.Names)
+                    {
+                        string propType = type switch
+                        {
+                            PropertySetValueType.Color => "Color",
+                            PropertySetValueType.Scalar => "float",
+                            PropertySetValueType.Vector2 => "float2",
+                            PropertySetValueType.Vector3 => "float3",
+                            PropertySetValueType.Vector4 => "float4",
+                            _ => throw new NotImplementedException()
+                        };
+
+                        string propValue = Owner.PropertySetValueInitializer(propertySet, name, type);
+
+                        builder.WriteLine($"{{ L\"{name}\", {propType} {{ {propValue} }} }},");
+                    }
+
+                    builder.CloseScopeWithSemicolon();
+                    builder.WriteLine($"ApplyProperties({localName}.Properties(), props, _countof(props));");
+                }
+            }
+
             protected override bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
@@ -1817,6 +1853,51 @@ struct sink_figure_end {
 };
 
 using geometry_step = std::variant<sink_figure_begin, sink_figure_end, sink_line_segment, sink_bezier_segment>;
+
+struct propset_value
+{
+    const wchar_t* Name;
+    std::variant<Color, float, float2, float3, float4> Value;
+};
+
+__declspec(noinline) void ApplyProperties(CompositionPropertySet const& propSet, const propset_value* props, int propCount)
+{
+    auto visitor = [&propSet, &props](auto&& prop)
+    {
+        using T = std::decay_t<decltype(prop)>;
+        if constexpr (std::is_same_v<T, Color>)
+        {
+            propSet.InsertColor(props->Name, prop);
+        }
+        else if constexpr (std::is_same_v<T, float>)
+        {
+            propSet.InsertScalar(props->Name, prop);
+        }
+        else if constexpr (std::is_same_v<T, float2>)
+        {
+            propSet.InsertVector2(props->Name, prop);
+        }
+        else if constexpr (std::is_same_v<T, float3>)
+        {
+            propSet.InsertVector3(props->Name, prop);
+        }
+        else if constexpr (std::is_same_v<T, float4>)
+        {
+            propSet.InsertVector4(props->Name, prop);
+        }
+        else
+        {
+            static_assert(""incomplete"");
+        }
+    };
+
+    auto end = props + propCount;
+    while (props != end)
+    {
+        std::visit(visitor, props->Value);
+        ++props;
+    }
+}
 
 class CanvasGeometry : public winrt::implements<CanvasGeometry,
         IGeometrySource2D,
