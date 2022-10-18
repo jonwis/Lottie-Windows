@@ -79,6 +79,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
         public bool SetCommentProperties => _setCommentProperties;
 
+        public TimeSpan CompositionDuration => _compositionDuration;
+
         AnimatedVisualGenerator? _currentAnimatedVisualGenerator;
 
         protected virtual AnimatedVisualGenerator GetGenerator(
@@ -1224,7 +1226,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string IListAdd => _s.IListAdd;
 
-            string Float(float value) => _s.Float(value);
+            protected string Float(float value) => _s.Float(value);
 
             string Int(int value) => _s.Int32(value);
 
@@ -1235,11 +1237,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             // readonly on C#, const on C++.
             string Readonly(string value) => _s.Readonly(value);
 
-            string String(WinCompData.Expressions.Expression value) => String(value.ToText());
+            protected string String(WinCompData.Expressions.Expression value) => String(value.ToText());
 
-            string String(string value) => _s.String(value);
+            protected string String(string value) => _s.String(value);
 
-            string Vector2(Sn.Vector2 value) => _s.Vector2(value);
+            protected string Vector2(Sn.Vector2 value) => _s.Vector2(value);
 
             string Vector3(Sn.Vector3 value) => _s.Vector3(value);
 
@@ -1259,7 +1261,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string StrokeLineJoin(CompositionStrokeLineJoin value) => _s.StrokeLineJoin(value);
 
-            string TimeSpan(TimeSpan value) => value == _owner._compositionDuration ? _s.TimeSpan(DurationTicksFieldName) : _s.TimeSpan(value);
+            protected string TimeSpan(TimeSpan value) => value == _owner._compositionDuration ? _s.TimeSpan(DurationTicksFieldName) : _s.TimeSpan(value);
 
             /// <summary>
             /// Returns the code to call the factory for the given object.
@@ -1594,7 +1596,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void WriteFrameNumberComment(CodeBuilder builder, double progress)
+            protected void WriteFrameNumberComment(CodeBuilder builder, double progress)
             {
                 builder.WriteComment($"Frame {_owner._sourceMetadata.ProgressToFrameNumber(progress):0.##}.");
             }
@@ -2517,7 +2519,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 WriteSetPropertyStatement(builder, nameof(obj.TrimStart), obj.TrimStart);
             }
 
-            void InitializeCompositionAnimation(CodeBuilder builder, CompositionAnimation obj, ObjectData node)
+            protected void InitializeCompositionAnimation(CodeBuilder builder, CompositionAnimation obj, ObjectData node)
             {
                 InitializeCompositionAnimationWithParameters(
                     builder,
@@ -2656,7 +2658,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateVector2KeyFrameAnimationFactory(CodeBuilder builder, Vector2KeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateVector2KeyFrameAnimationFactory(CodeBuilder builder, Vector2KeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
@@ -2854,7 +2856,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateScalarKeyFrameAnimationFactory(CodeBuilder builder, ScalarKeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateScalarKeyFrameAnimationFactory(CodeBuilder builder, ScalarKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var keyFrames = obj.KeyFrames;

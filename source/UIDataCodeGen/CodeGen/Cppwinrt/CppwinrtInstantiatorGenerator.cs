@@ -14,6 +14,7 @@ using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
 using static CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg.CanvasPathBuilder;
+using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
 using Sn = System.Numerics;
 
 namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
@@ -237,6 +238,108 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.CloseScope();
                 builder.WriteLine();
 
+                return true;
+            }
+
+            protected override bool GenerateVector2KeyFrameAnimationFactory(CodeBuilder builder, Vector2KeyFrameAnimation obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+                var keyFrames = obj.KeyFrames;
+                var firstKeyFrame = keyFrames.First();
+                string durationAmount = "nullptr";
+
+                if (obj.Duration == Owner.CompositionDuration)
+                {
+                    builder.WriteLine($"static const auto duration = {TimeSpan(obj.Duration)};");
+                    durationAmount = "&duration";
+                }
+
+                builder.WriteLine("constexpr static const Vector2KeyFrameStep steps[] =");
+                builder.OpenScope();
+                foreach (var kf in keyFrames)
+                {
+                    WriteFrameNumberComment(builder, kf.Progress);
+
+                    switch (kf.Type)
+                    {
+                        case KeyFrameType.Expression:
+                            var expressionKeyFrame = (KeyFrameAnimation<Vector2, Expr.Vector2>.ExpressionKeyFrame)kf;
+                            builder.WriteLine($"MakeVector2KeyFrameStep({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}),");
+                            break;
+                        case KeyFrameType.Value:
+                            var valueKeyFrame = (KeyFrameAnimation<Vector2, Expr.Vector2>.ValueKeyFrame)kf;
+                            builder.WriteLine($"MakeVector2KeyFrameStep({Float(kf.Progress)}, {Vector2(valueKeyFrame.Value)}),");
+                            break;
+                        default:
+                            throw new InvalidOperationException();
+                    }
+                }
+
+                builder.CloseScopeWithSemicolon();
+
+                builder.WriteLine("const Vector2KeyFrameStepFunction funcs[] = ");
+                builder.OpenScope();
+                foreach (var kf in keyFrames)
+                {
+                    builder.WriteLine($"{CallFactoryFromFor(node, kf.Easing)},");
+                }
+
+                builder.CloseScopeWithSemicolon();
+
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames(_c, {durationAmount}, steps, _countof(steps), funcs)");
+                InitializeCompositionAnimation(builder, obj, node);
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+                return true;
+            }
+
+            protected override bool GenerateScalarKeyFrameAnimationFactory(CodeBuilder builder, ScalarKeyFrameAnimation obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+                var keyFrames = obj.KeyFrames;
+                var firstKeyFrame = keyFrames.First();
+                string durationAmount = "nullptr";
+
+                if (obj.Duration == Owner.CompositionDuration)
+                {
+                    builder.WriteLine($"static const auto duration = {TimeSpan(obj.Duration)};");
+                    durationAmount = "&duration";
+                }
+
+                builder.WriteLine("constexpr static const ScalarKeyFrameStep steps[] =");
+                builder.OpenScope();
+                foreach (var kf in keyFrames)
+                {
+                    WriteFrameNumberComment(builder, kf.Progress);
+
+                    switch (kf.Type)
+                    {
+                        case KeyFrameType.Expression:
+                            var expressionKeyFrame = (KeyFrameAnimation<float, Expr.Scalar>.ExpressionKeyFrame)kf;
+                            builder.WriteLine($"MakeScalarKeyFrameStep({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}),");
+                            break;
+                        case KeyFrameType.Value:
+                            var valueKeyFrame = (KeyFrameAnimation<float, Expr.Scalar>.ValueKeyFrame)kf;
+                            builder.WriteLine($"MakeScalarKeyFrameStep({Float(kf.Progress)}, {Float(valueKeyFrame.Value)}),");
+                            break;
+                        default:
+                            throw new InvalidOperationException();
+                    }
+                }
+
+                builder.CloseScopeWithSemicolon();
+
+                builder.WriteLine("const ScalarKeyFrameStepFunction funcs[] = ");
+                builder.OpenScope();
+                foreach (var kf in keyFrames)
+                {
+                    builder.WriteLine($"{CallFactoryFromFor(node, kf.Easing)},");
+                }
+
+                builder.CloseScopeWithSemicolon();
+
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames(_c, {durationAmount}, steps, _countof(steps), funcs)");
+                InitializeCompositionAnimation(builder, obj, node);
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
                 return true;
             }
 
@@ -937,6 +1040,121 @@ CompositionSpriteShape MakeAndApplyProperties(
     if (HasFlag(props.Fields, SpriteFields::StrokeThickness))
     {
         result.StrokeThickness(props.StrokeThickness);
+    }
+
+    return result;
+}
+
+struct Vector2KeyFrameStep {
+    union {
+        float2 value;
+        const wchar_t* expression;
+    };
+    float progressKey;
+    bool isExpression;
+};
+
+static constexpr Vector2KeyFrameStep MakeVector2KeyFrameStep(float key, float2 value)
+{
+    Vector2KeyFrameStep result{};
+    result.progressKey = key;
+    result.isExpression = false;
+    result.value = value;
+    return result;
+}
+
+static constexpr Vector2KeyFrameStep MakeVector2KeyFrameStep(float key, const wchar_t* expression)
+{
+    Vector2KeyFrameStep result{};
+    result.progressKey = key;
+    result.isExpression = true;
+    result.expression = expression;
+    return result;
+}
+
+struct Vector2KeyFrameStepFunction {
+    CompositionEasingFunction const& function;
+};
+
+__declspec(noinline) static Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(Compositor const& c, const TimeSpan* duration, const Vector2KeyFrameStep* steps, int stepCount, const Vector2KeyFrameStepFunction* funcs)
+{
+    auto result = c.CreateVector2KeyFrameAnimation();
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (step.isExpression)
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, funcs[i].function);
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, step.value, funcs[i].function);
+        }
+    }
+
+    return result;
+}
+
+
+struct ScalarKeyFrameStep {
+    union {
+        float value;
+        const wchar_t* expression;
+    };
+    float progressKey;
+    bool isExpression;
+};
+
+static constexpr ScalarKeyFrameStep MakeScalarKeyFrameStep(float key, float value)
+{
+    ScalarKeyFrameStep result{};
+    result.progressKey = key;
+    result.isExpression = false;
+    result.value = value;
+    return result;
+}
+
+static constexpr ScalarKeyFrameStep MakeScalarKeyFrameStep(float key, const wchar_t* expression)
+{
+    ScalarKeyFrameStep result{};
+    result.progressKey = key;
+    result.isExpression = true;
+    result.expression = expression;
+    return result;
+}
+
+struct ScalarKeyFrameStepFunction {
+    CompositionEasingFunction const& function;
+};
+
+__declspec(noinline) static ScalarKeyFrameAnimation ConfigureAnimationKeyFrames(Compositor const& c, const TimeSpan* duration, const ScalarKeyFrameStep* steps, int stepCount, const ScalarKeyFrameStepFunction* funcs)
+{
+    auto result = c.CreateScalarKeyFrameAnimation();
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (step.isExpression)
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, funcs[i].function);
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, step.value, funcs[i].function);
+        }
     }
 
     return result;
