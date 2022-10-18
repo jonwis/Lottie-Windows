@@ -34,7 +34,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 _ => throw new InvalidOperationException(),
             };
 
-        public override string CanvasGeometryFactoryCall(string value) => $"CanvasGeometryToIGeometrySource2D({value})";
+        public override string CanvasGeometryFactoryCall(string value) => value;
 
         public override string Color(Color value) => $"{{ {ColorArgs(value)} }}";
 

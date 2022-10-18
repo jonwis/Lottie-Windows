@@ -1052,6 +1052,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             protected InstantiatorGeneratorBase Owner => _owner;
 
+            protected ObjectData GetObjectData(WinCompData.Wg.IGeometrySource2D source) => _objectGraph[source];
+
             protected internal AnimatedVisualGenerator(
                 InstantiatorGeneratorBase owner,
                 CompositionObject graphRoot,
@@ -1389,7 +1391,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             protected string CallFactoryFromFor(ObjectData callerNode, Wg.IGeometrySource2D obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
 
-            bool GenerateCompositionPathFactory(CodeBuilder builder, CompositionPath obj, ObjectData node)
+            protected virtual bool GenerateCompositionPathFactory(CodeBuilder builder, CompositionPath obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var canvasGeometry = _objectGraph[(CanvasGeometry)obj.Source];

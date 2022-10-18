@@ -343,6 +343,15 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 return true;
             }
 
+            protected override bool GenerateCompositionPathFactory(CodeBuilder builder, CompositionPath obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+                var canvasGeometry = GetObjectData((CanvasGeometry)obj.Source);
+                WriteCreateAssignment(builder, node, $"MakeCompositionPath({canvasGeometry.FactoryCall()})");
+                WriteObjectFactoryEnd(builder);
+                return true;
+            }
+
             protected override string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
             {
                 return $"CreateCubicBezierEasingFunction({_s.Vector2(obj.ControlPoint1)}, {_s.Vector2(obj.ControlPoint2)})";
@@ -855,14 +864,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine("#include <d2d1_1.h>");
                 builder.WriteLine("#include <d2d1helper.h>");
                 builder.WriteLine("#include <Windows.Graphics.Interop.h>");
-
-                builder.WriteLine(@"
-__declspec(noinline) winrt::Windows::UI::Composition::CompositionPath MakeCompositionPath(winrt::Windows::Graphics::IGeometrySource2D const& source)
-{
-    winrt::Windows::UI::Composition::CompositionPath result { source };
-    return result;
-}
-");
 
                 // Interop
                 // BUILD_WINDOWS is defined if the code is being built as part of a Microsoft internal
@@ -1769,17 +1770,6 @@ __declspec(noinline) static ScalarKeyFrameAnimation ConfigureAnimationKeyFrames(
             CodeBuilder createAnimations,
             CodeBuilder destroyAnimations)
         {
-            if (SourceInfo.UsesCanvasEffects ||
-                SourceInfo.UsesCanvasGeometry)
-            {
-                // Utility method for D2D geometries.
-                builder.WriteLine("static IGeometrySource2D CanvasGeometryToIGeometrySource2D(winrt::com_ptr<CanvasGeometry> const& geo)");
-                builder.OpenScope();
-                builder.WriteLine("return *geo.get();");
-                builder.CloseScope();
-                builder.WriteLine();
-            }
-
             // Write the constructor for the AnimatedVisual class.
             builder.UnIndent();
             builder.WriteLine("public:");
@@ -1867,6 +1857,11 @@ __declspec(noinline) static ScalarKeyFrameAnimation ConfigureAnimationKeyFrames(
             builder.WriteLine("return _c.CreateCubicBezierEasingFunction(a, b);");
             builder.CloseScope();
             builder.WriteLine();
+
+            builder.WriteLine("__declspec(noinline) static CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry>&& src)");
+            builder.OpenScope();
+            builder.WriteLine("return CompositionPath { *src };");
+            builder.CloseScope();
 
             builder.WriteLine("__declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(float2 const& center, float2 const& radius)");
             builder.OpenScope();
