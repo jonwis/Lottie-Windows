@@ -145,19 +145,33 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                     foreach (var (name, type) in propertySet.Names)
                     {
-                        string propType = type switch
-                        {
-                            PropertySetValueType.Color => "Color",
-                            PropertySetValueType.Scalar => "float",
-                            PropertySetValueType.Vector2 => "float2",
-                            PropertySetValueType.Vector3 => "float3",
-                            PropertySetValueType.Vector4 => "float4",
-                            _ => throw new NotImplementedException()
-                        };
-
                         string propValue = Owner.PropertySetValueInitializer(propertySet, name, type);
 
-                        builder.WriteLine($"{{ L\"{name}\", {propType} {{ {propValue} }} }},");
+                        switch (type)
+                        {
+                            case PropertySetValueType.Color:
+                                builder.WriteLine($"{{ L\"{name}\", Color {{ {propValue} }} }},");
+                                break;
+
+                            case PropertySetValueType.Scalar:
+                                builder.WriteLine($"{{ L\"{name}\", float {{ {propValue} }} }},");
+                                break;
+
+                            case PropertySetValueType.Vector2:
+                                builder.WriteLine($"{{ L\"{name}\", float2 {propValue} }},");
+                                break;
+
+                            case PropertySetValueType.Vector3:
+                                builder.WriteLine($"{{ L\"{name}\", float3 {propValue} }},");
+                                break;
+
+                            case PropertySetValueType.Vector4:
+                                builder.WriteLine($"{{ L\"{name}\", float4 {propValue} }},");
+                                break;
+
+                            default:
+                                throw new NotImplementedException();
+                        }
                     }
 
                     builder.CloseScopeWithSemicolon();
@@ -977,7 +991,7 @@ struct SpriteShapeProperties
     SpriteFields Fields;
 };
 
-CompositionSpriteShape MakeAndApplyProperties(
+__declspec(noinline) static CompositionSpriteShape MakeAndApplyProperties(
     Compositor const& source,
     SpriteShapeProperties const& props,
     CompositionGeometry const& geometry,
@@ -2077,7 +2091,7 @@ struct propset_value
     std::variant<Color, float, float2, float3, float4> Value;
 };
 
-__declspec(noinline) void ApplyProperties(CompositionPropertySet const& propSet, const propset_value* props, int propCount)
+__declspec(noinline) static void ApplyProperties(CompositionPropertySet const& propSet, const propset_value* props, int propCount)
 {
     auto visitor = [&propSet, &props](auto&& prop)
     {
