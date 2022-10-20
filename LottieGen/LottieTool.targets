@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <LottieGenExe Condition="'$(LottieGenExe)'==''">$(SolutionDir)win-x64\bin\AnyCPU\$(Configuration)\net5.0\win-x64\LottieGen.exe</LottieGenExe>
+        <LottieArgs>-MinimumUapVersion 12 -lang CppWinRT</LottieArgs>
+        <LottieOutputDir>$(GeneratedFilesDir)\lotties</LottieOutputDir>
+    </PropertyGroup>
+    <Target Name="BuildLottieSource" BeforeTargets="PrepareForBuild">
+        <MakeDir Directories="$(LottieOutputDir)"/>
+        <Exec Command="$(LottieGenExe) -inputFile %(LottieJsonFile.FullPath) $(LottieArgs) -o &quot;$(LottieOutputDir)&quot;"/>
+        <ItemGroup>
+            <ClCompile Include="$(LottieOutputDir)\*.cpp"/>
+            <ClInclude Include="$(LottieOutputDir)\*.h"/>
+            <Midl Include="$(LottieOutputDir)\*.idl"/>
+        </ItemGroup>
+    </Target>
+</Project>

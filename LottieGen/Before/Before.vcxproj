@@ -96,12 +96,8 @@
       <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
       <PreprocessorDefinitions>_WINRT_DLL;WIN32_LEAN_AND_MEAN;WINRT_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
+      <AdditionalIncludeDirectories>$(GeneratedFilesDir)\lotties;$(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <CustomBuildStep>
-      <Command>"$(SolutionDir)packages\LottieGen.MsBuild.7.1.1\bin\LottieGen.exe" -inputfile "$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json" -MinimumUapVersion 12 -lang CppWinRT -o $(SolutionDir)\Before -Namespace Before -RootNamespace Before</Command>
-      <Inputs>$(SolutionDir)packages\LottieGen.MsBuild.7.1.1\bin\LottieGen.exe</Inputs>
-      <Outputs>$(SolutionDir)Before\LottieLogo1.cpp</Outputs>
-    </CustomBuildStep>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
@@ -123,11 +119,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="LottieLogo1.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="LottieLogo1.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -142,9 +136,6 @@
     <Text Include="readme.txt">
       <DeploymentContent>false</DeploymentContent>
     </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <Midl Include="LottieLogo1.idl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
@@ -163,15 +154,19 @@
     <Error Condition="!Exists('..\packages\Microsoft.UI.Xaml.2.8.1\build\native\Microsoft.UI.Xaml.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.UI.Xaml.2.8.1\build\native\Microsoft.UI.Xaml.targets'))" />
     <Error Condition="!Exists('..\packages\LottieGen.MsBuild.7.1.1\build\native\LottieGen.MsBuild.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\LottieGen.MsBuild.7.1.1\build\native\LottieGen.MsBuild.props'))" />
   </Target>
-  <Target Name="PatchLottieGenBug" AfterTargets="CustomBuildStep">
-    <Message Text="Test" />
-    <!-- <ReadLinesFromFile
-        File="Before.LottieLogo1.cpp" >
-        <Output
-            TaskParameter="Lines"
-            ItemName="SourceLines"/>
-    </ReadLinesFromFile> -->
-    <WriteLinesToFile File="LottieLogo1.cpp" Lines="$([System.IO.File]::ReadAllText('LottieLogo1.cpp').Replace('.Properties,', '.Properties(),'))" Overwrite="true">
-    </WriteLinesToFile>
+
+  <PropertyGroup>
+      <LottieGenExe Condition="$(LottieGenExe)==''">"$(SolutionDir)packages\LottieGen.MsBuild.7.1.1\bin\LottieGen.exe"</LottieGenExe>
+  </PropertyGroup>
+  <ItemGroup>
+    <LottieJsonFile Include="$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json"/>
+    <LottieJsonFile Include="$(SolutionDir)..\..\Lottie-Tests\*.json"/>
+  </ItemGroup>
+  <Import Project="$(SolutionDir)\LottieTool.targets"/>
+
+  <Target Name="PatchLottieGenBug" AfterTargets="BuildLottieSource" BeforeTargets="ClCompile">
+    <Exec
+      Command="%WINDIR%\System32\WindowsPowerShell\v1.0\powershell.exe -NonInteractive -executionpolicy Unrestricted -File $(SolutionDir)\Before\fix-lotties.ps1"
+      WorkingDirectory="$(LottieOutputDir)"/>
   </Target>
 </Project>
