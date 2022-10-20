@@ -137,6 +137,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             value switch
             {
                 "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry> const&",
+                "CompositionPath" => "CompositionPath",
                 _ => $"{value} const&"
             };
 

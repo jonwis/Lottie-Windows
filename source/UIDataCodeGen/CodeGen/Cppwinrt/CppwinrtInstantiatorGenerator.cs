@@ -161,7 +161,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     }
 
                     builder.CloseScopeWithSemicolon();
-                    builder.WriteLine($"ApplyProperties({localName}.Properties(), props, _countof(props));");
+                    builder.WriteLine($"auto propertySet = {localName}.Properties();");
+                    builder.WriteLine($"ApplyProperties(propertySet, props, _countof(props));");
                 }
             }
 
@@ -229,7 +230,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 if (obj.StrokeDashArray.Any())
                 {
                     builder.WriteLine($"static const float dashes[] = {{ {string.Join(", ", obj.StrokeDashArray.Select(_ => _s.Stringify(_)))} }};");
-                    builder.WriteLine("result.StrokeDashArray().ReplaceAll(dashes)");
+                    builder.WriteLine("result.StrokeDashArray().ReplaceAll(dashes);");
                 }
 
                 WriteCompositionObjectStartAnimations(builder, obj, node);
@@ -980,7 +981,7 @@ CompositionSpriteShape MakeAndApplyProperties(
     Compositor const& source,
     SpriteShapeProperties const& props,
     CompositionGeometry const& geometry,
-    CompositionColorBrush const& fillBrush,
+    CompositionBrush const& fillBrush,
     CompositionBrush const& strokeBrush)
 {
     CompositionSpriteShape result{ nullptr };
