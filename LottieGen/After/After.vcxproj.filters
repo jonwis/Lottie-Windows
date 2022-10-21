@@ -12,11 +12,9 @@
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
-    <ClCompile Include="AnimatedVisualsAfter.LottieLogo1.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="AnimatedVisualsAfter.LottieLogo1.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="After.def" />
@@ -27,8 +25,5 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="readme.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <Midl Include="AnimatedVisualsAfter.LottieLogo1.idl" />
   </ItemGroup>
 </Project>

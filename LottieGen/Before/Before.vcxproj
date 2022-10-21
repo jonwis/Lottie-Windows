@@ -112,6 +112,10 @@
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">MinSpace</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">MinSpace</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MinSpace</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MinSpace</Optimization>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -154,19 +158,15 @@
     <Error Condition="!Exists('..\packages\Microsoft.UI.Xaml.2.8.1\build\native\Microsoft.UI.Xaml.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.UI.Xaml.2.8.1\build\native\Microsoft.UI.Xaml.targets'))" />
     <Error Condition="!Exists('..\packages\LottieGen.MsBuild.7.1.1\build\native\LottieGen.MsBuild.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\LottieGen.MsBuild.7.1.1\build\native\LottieGen.MsBuild.props'))" />
   </Target>
-
   <PropertyGroup>
-      <LottieGenExe Condition="$(LottieGenExe)==''">"$(SolutionDir)packages\LottieGen.MsBuild.7.1.1\bin\LottieGen.exe"</LottieGenExe>
+    <LottieGenExe Condition="$(LottieGenExe)==''">"$(SolutionDir)packages\LottieGen.MsBuild.7.1.1\bin\LottieGen.exe"</LottieGenExe>
   </PropertyGroup>
   <ItemGroup>
-    <LottieJsonFile Include="$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json"/>
-    <LottieJsonFile Include="$(SolutionDir)..\..\Lottie-Tests\*.json"/>
+    <LottieJsonFile Include="$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json" />
+    <LottieJsonFile Include="$(SolutionDir)..\..\Lottie-Tests\*.json" />
   </ItemGroup>
-  <Import Project="$(SolutionDir)\LottieTool.targets"/>
-
+  <Import Project="$(SolutionDir)\LottieTool.targets" />
   <Target Name="PatchLottieGenBug" AfterTargets="BuildLottieSource" BeforeTargets="ClCompile">
-    <Exec
-      Command="%WINDIR%\System32\WindowsPowerShell\v1.0\powershell.exe -NonInteractive -executionpolicy Unrestricted -File $(SolutionDir)\Before\fix-lotties.ps1"
-      WorkingDirectory="$(LottieOutputDir)"/>
+    <Exec Command="%WINDIR%\System32\WindowsPowerShell\v1.0\powershell.exe -NonInteractive -executionpolicy Unrestricted -File $(SolutionDir)\Before\fix-lotties.ps1" WorkingDirectory="$(LottieOutputDir)" />
   </Target>
 </Project>

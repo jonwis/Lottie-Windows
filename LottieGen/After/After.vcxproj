@@ -112,6 +112,10 @@
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">MinSpace</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">MinSpace</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MinSpace</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MinSpace</Optimization>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -137,7 +141,7 @@
       <DeploymentContent>false</DeploymentContent>
     </Text>
   </ItemGroup>
-    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets')" />
     <Import Project="..\packages\Microsoft.Web.WebView2.1.0.1264.42\build\native\Microsoft.Web.WebView2.targets" Condition="Exists('..\packages\Microsoft.Web.WebView2.1.0.1264.42\build\native\Microsoft.Web.WebView2.targets')" />
@@ -154,10 +158,9 @@
     <Error Condition="!Exists('..\packages\Microsoft.UI.Xaml.2.8.1\build\native\Microsoft.UI.Xaml.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.UI.Xaml.2.8.1\build\native\Microsoft.UI.Xaml.targets'))" />
     <Error Condition="!Exists('..\packages\LottieGen.MsBuild.7.1.1\build\native\LottieGen.MsBuild.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\LottieGen.MsBuild.7.1.1\build\native\LottieGen.MsBuild.props'))" />
   </Target>
-
   <ItemGroup>
-    <LottieJsonFile Include="$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json"/>
-    <LottieJsonFile Include="$(SolutionDir)..\..\Lottie-Tests\*.json"/>
+    <LottieJsonFile Include="$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json" />
+    <LottieJsonFile Include="$(SolutionDir)..\..\Lottie-Tests\*.json" />
   </ItemGroup>
-  <Import Project="$(SolutionDir)\LottieTool.targets"/>
+  <Import Project="$(SolutionDir)\LottieTool.targets" />
 </Project>
