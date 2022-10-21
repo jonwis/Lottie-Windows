@@ -130,6 +130,24 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 "CompositionSpriteShape" => "CompositionShape",
                 "CompositionEllipseGeometry" => "CompositionGeometry",
                 "CompositionPathGeometry" => "CompositionGeometry",
+
+                "CompositionSurfaceBrush" => "CompositionBrush",
+                "CompositionBackdropBrush" => "CompositionBrush",
+                "CompositionColorBrush" => "CompositionBrush",
+                "CompositionEffectBrush" => "CompositionBrush",
+                "CompositionGradientBrush" => "CompositionBrush",
+                "CompositionMaskBrush" => "CompositionBrush",
+                "CompositionNineGridBrush" => "CompositionBrush",
+
+                "BooleanKeyFrameAnimation" => "CompositionAnimation",
+                "ScalarKeyFrameAnimation" => "CompositionAnimation",
+                "ColorKeyFrameAnimation" => "CompositionAnimation",
+
+                "SpriteVisual" => "Visual",
+                "ShapeVisual" => "Visual",
+                "LayerVisual" => "Visual",
+                "RedirectVisual" => "Visual",
+                "ContainerVisual" => "Visual",
                 _ => value
             };
 

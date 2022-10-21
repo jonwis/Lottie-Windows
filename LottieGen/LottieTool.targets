@@ -5,7 +5,7 @@
         <LottieArgs>-MinimumUapVersion 12 -lang CppWinRT</LottieArgs>
         <LottieOutputDir>$(GeneratedFilesDir)\lotties</LottieOutputDir>
     </PropertyGroup>
-    <Target Name="BuildLottieSource" BeforeTargets="PrepareForBuild">
+    <Target Name="BuildLottieSource" BeforeTargets="PrepareForBuild" Inputs="@(LottieJsonFile);$(LottieGenExe)" Outputs="$(LottieOutputDir)\*.*">
         <MakeDir Directories="$(LottieOutputDir)"/>
         <Exec Command="$(LottieGenExe) -inputFile %(LottieJsonFile.FullPath) $(LottieArgs) -o &quot;$(LottieOutputDir)&quot;"/>
         <ItemGroup>

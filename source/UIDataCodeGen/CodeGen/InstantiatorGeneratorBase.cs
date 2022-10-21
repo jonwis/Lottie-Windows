@@ -1222,19 +1222,19 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string ConstVar => _s.ConstVar;
 
-            string Bool(bool value) => value ? "true" : "false";
+            protected string Bool(bool value) => value ? "true" : "false";
 
-            string Color(Wui.Color value) => _s.Color(value);
+            protected string Color(Wui.Color value) => _s.Color(value);
 
             string IListAdd => _s.IListAdd;
 
             protected string Float(float value) => _s.Float(value);
 
-            string Int(int value) => _s.Int32(value);
+            protected string Int(int value) => _s.Int32(value);
 
             public string Matrix3x2(Sn.Matrix3x2 value) => _s.Matrix3x2(value);
 
-            string Matrix4x4(Matrix4x4 value) => _s.Matrix4x4(value);
+            protected string Matrix4x4(Matrix4x4 value) => _s.Matrix4x4(value);
 
             // readonly on C#, const on C++.
             string Readonly(string value) => _s.Readonly(value);
@@ -2555,7 +2555,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 InitializeCompositionAnimation(builder, animation, node);
             }
 
-            bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
@@ -2604,7 +2604,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateColorKeyFrameAnimationFactory(CodeBuilder builder, ColorKeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateColorKeyFrameAnimationFactory(CodeBuilder builder, ColorKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
