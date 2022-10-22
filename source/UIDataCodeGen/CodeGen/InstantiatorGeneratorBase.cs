@@ -1911,7 +1911,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
+            protected virtual bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"_c{Deref}CreateContainerVisual()");
@@ -2413,7 +2413,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             void InitializeCompositionShadow(CodeBuilder builder, CompositionShadow obj, ObjectData node) =>
                 InitializeCompositionObject(builder, obj, node);
 
-            void InitializeVisual(CodeBuilder builder, Visual obj, ObjectData node)
+            protected void InitializeVisual(CodeBuilder builder, Visual obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 
@@ -3266,7 +3266,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            static void WriteShortDescriptionComment(CodeBuilder builder, IDescribable obj) =>
+            protected static void WriteShortDescriptionComment(CodeBuilder builder, IDescribable obj) =>
                 builder.WriteComment(obj.ShortDescription);
         }
 

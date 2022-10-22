@@ -51,6 +51,21 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         // True iff the generated code implements IDynamicAnimatedVisualSource.
         readonly bool _isIDynamic;
 
+        Dictionary<Tuple<Vector2, Vector2>, int> _cubicBeziers = new Dictionary<Tuple<Vector2, Vector2>, int>();
+
+        internal int GetCubicBezierId(Vector2 point1, Vector2 point2)
+        {
+            Tuple<Vector2, Vector2> control = new Tuple<Vector2, Vector2>(point1, point2);
+            int id;
+            if (!_cubicBeziers.TryGetValue(control, out id))
+            {
+                id = _cubicBeziers.Count;
+                _cubicBeziers.Add(control, id);
+            }
+
+            return id;
+        }
+
         /// <summary>
         /// Returns the Cppwinrt code for a factory that will instantiate the given <see cref="Visual"/> as a
         /// Windows.UI.Composition Visual.
@@ -119,8 +134,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         class CppWinrtVisualGenerator : AnimatedVisualGenerator
         {
             readonly CppwinrtStringifier _s = new CppwinrtStringifier();
+            readonly CppwinrtInstantiatorGenerator _generator;
 
             internal CppWinrtVisualGenerator(
+                CppwinrtInstantiatorGenerator generator,
                 InstantiatorGeneratorBase owner,
                 CompositionObject graphRoot,
                 uint requiredUapVersion,
@@ -128,6 +145,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 CodegenConfiguration configuration)
                 : base(owner, graphRoot, requiredUapVersion, isPartOfMultiVersionSource, configuration)
             {
+                _generator = generator;
             }
 
             protected override void InitializeCompositionObject(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName = "result")
@@ -181,13 +199,41 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 }
             }
 
+            protected override bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+
+                if (obj.Children.Any())
+                {
+                    builder.WriteLine("const std::reference_wrapper<Visual const> visuals[] =");
+                    builder.OpenScope();
+                    foreach (var child in obj.Children)
+                    {
+                        WriteShortDescriptionComment(builder, child);
+                        builder.WriteLine($"static_cast<Visual const&>({CallFactoryFromFor(node, child)}),");
+                    }
+
+                    builder.CloseScopeWithSemicolon();
+                    builder.WriteLine("const size_t visualCount = _countof(visuals);");
+                }
+                else
+                {
+                    builder.WriteLine("const std::reference_wrapper<Visual const>* visuals = nullptr;");
+                    builder.WriteLine("const size_t visualCount = 0;");
+                }
+
+                WriteCreateAssignment(builder, node, $"CreateContainerVisual(visuals, visualCount)");
+                InitializeVisual(builder, obj, node);
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+                return true;
+            }
+
             protected override bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
-                builder.WriteLine($"constexpr static const float2 center = {_s.Vector2(obj.Center)};");
-                builder.WriteLine($"constexpr static const float2 radius = {_s.Vector2(obj.Radius)};");
-                WriteCreateAssignment(builder, node, $"CreateEllipseGeometry(center, radius)");
+                builder.WriteLine($"constexpr static const std::pair<float2, float2> center_radius = {{ {_s.Vector2(obj.Center)}, {_s.Vector2(obj.Radius)} }};");
+                WriteCreateAssignment(builder, node, $"CreateEllipseGeometry(center_radius)");
                 InitializeCompositionGeometry(builder, obj, node);
 
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
@@ -463,13 +509,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
             protected override string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
             {
-                return $"CreateCubicBezierEasingFunction({_s.Vector2(obj.ControlPoint1)}, {_s.Vector2(obj.ControlPoint2)})";
+                return $"CreateCubicBezierEasingFunction({_generator.GetCubicBezierId(obj.ControlPoint1, obj.ControlPoint2)})";
             }
         }
 
         protected override AnimatedVisualGenerator GetGenerator(InstantiatorGeneratorBase owner, CompositionObject graphRoot, uint requiredUapVersion, bool isPartOfMultiVersionSource, CodegenConfiguration configuration)
         {
-            return new CppWinrtVisualGenerator(owner, graphRoot, requiredUapVersion, isPartOfMultiVersionSource, configuration);
+            return new CppWinrtVisualGenerator(this, owner, graphRoot, requiredUapVersion, isPartOfMultiVersionSource, configuration);
         }
 
         /// <summary>
@@ -1991,9 +2037,17 @@ __declspec(noinline) static CompositionAnimation ConfigureAnimationKeyFrames(Com
                 builder.WriteLine();
             }
 
-            builder.WriteLine("__declspec(noinline) CompositionEasingFunction CreateCubicBezierEasingFunction(float2 const& a, float2 const &b)");
+            builder.WriteLine("__declspec(noinline) CompositionEasingFunction CreateCubicBezierEasingFunction(int index)");
             builder.OpenScope();
-            builder.WriteLine("return _c.CreateCubicBezierEasingFunction(a, b);");
+            builder.WriteLine("constexpr static const std::pair<float2, float2> bezier_params[] =");
+            builder.OpenScope();
+            foreach (var (p, id) in _cubicBeziers)
+            {
+                builder.WriteLine($"{{ {_s.Vector2(p.Item1)}, {_s.Vector2(p.Item2)} }},");
+            }
+
+            builder.CloseScopeWithSemicolon();
+            builder.WriteLine("return _c.CreateCubicBezierEasingFunction(bezier_params[index].first, bezier_params[index].second);");
             builder.CloseScope();
             builder.WriteLine();
 
@@ -2002,11 +2056,22 @@ __declspec(noinline) static CompositionAnimation ConfigureAnimationKeyFrames(Com
             builder.WriteLine("return CompositionPath { *src };");
             builder.CloseScope();
 
-            builder.WriteLine("__declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(float2 const& center, float2 const& radius)");
+            builder.WriteLine("__declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)");
             builder.OpenScope();
             builder.WriteLine("auto result = _c.CreateEllipseGeometry();");
-            builder.WriteLine("result.Center(center);");
-            builder.WriteLine("result.Radius(radius);");
+            builder.WriteLine("result.Center(center_point.first);");
+            builder.WriteLine("result.Radius(center_point.second);");
+            builder.WriteLine("return result;");
+            builder.CloseScope();
+
+            builder.WriteLine("__declspec(noinline) ContainerVisual CreateContainerVisual(const std::reference_wrapper<Visual const>* visuals, size_t visualCount)");
+            builder.OpenScope();
+            builder.WriteLine("auto result = _c.CreateContainerVisual();");
+            builder.WriteLine("auto children = result.Children();");
+            builder.WriteLine("for (size_t i = 0; i < visualCount; ++i)");
+            builder.OpenScope();
+            builder.WriteLine("children.InsertAtTop(visuals[i].get());");
+            builder.CloseScope();
             builder.WriteLine("return result;");
             builder.CloseScope();
 
