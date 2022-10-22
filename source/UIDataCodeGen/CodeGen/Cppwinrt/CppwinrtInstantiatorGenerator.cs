@@ -312,7 +312,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"static const auto duration = {TimeSpan(obj.Duration)};");
+                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
                     durationAmount = "&duration";
                 }
 
@@ -363,7 +363,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"static const auto duration = {TimeSpan(obj.Duration)};");
+                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
                     durationAmount = "&duration";
                 }
 
@@ -414,7 +414,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"static const auto duration = {TimeSpan(obj.Duration)};");
+                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
                     durationAmount = "&duration";
                 }
 
@@ -465,7 +465,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"static const auto duration = {TimeSpan(obj.Duration)};");
+                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
                     durationAmount = "&duration";
                 }
 
