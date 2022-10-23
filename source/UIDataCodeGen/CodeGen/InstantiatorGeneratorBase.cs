@@ -1186,13 +1186,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             internal IEnumerable<ObjectData> GetSharedNodes() => _objectGraph.Nodes.Where(n => n.IsSharedNode);
 
             // Returns the node for the given object.
-            ObjectData NodeFor(CompositionObject obj) => _objectGraph[obj];
+            protected ObjectData NodeFor(CompositionObject obj) => _objectGraph[obj];
 
-            ObjectData NodeFor(CompositionPath obj) => _objectGraph[obj];
+            protected ObjectData NodeFor(CompositionPath obj) => _objectGraph[obj];
 
-            ObjectData NodeFor(Wg.IGeometrySource2D obj) => _objectGraph[obj];
+            protected ObjectData NodeFor(Wg.IGeometrySource2D obj) => _objectGraph[obj];
 
-            ObjectData NodeFor(Wmd.LoadedImageSurface obj) => _objectGraph[obj];
+            protected ObjectData NodeFor(Wmd.LoadedImageSurface obj) => _objectGraph[obj];
 
             internal bool UsesCanvas => _nodes.Where(n => n.UsesCanvas).Any();
 

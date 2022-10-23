@@ -199,18 +199,30 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 }
             }
 
+            protected string ToFuncOrFieldFromFor(string s) => "&TSelf::" + s.Replace("()", string.Empty);
+
+            protected string FuncOrFieldFromFor(ObjectData callerNode, ObjectData calleeNode)
+            {
+                return ToFuncOrFieldFromFor(CallFactoryFromFor(callerNode, calleeNode!));
+            }
+
+            protected string FuncOrFieldFromFor(ObjectData callerNode, CompositionObject? obj) =>
+                obj is null
+                ? "std::monostate"
+                : ToFuncOrFieldFromFor(CallFactoryFromFor(callerNode, NodeFor(obj)));
+
             protected override bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
                 if (obj.Children.Any())
                 {
-                    builder.WriteLine("const std::reference_wrapper<Visual const> visuals[] =");
+                    builder.WriteLine("constexpr static const func_or_field<Visual> visuals[] =");
                     builder.OpenScope();
                     foreach (var child in obj.Children)
                     {
                         WriteShortDescriptionComment(builder, child);
-                        builder.WriteLine($"static_cast<Visual const&>({CallFactoryFromFor(node, child)}),");
+                        builder.WriteLine($"{FuncOrFieldFromFor(node, child)},");
                     }
 
                     builder.CloseScopeWithSemicolon();
@@ -218,8 +230,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 }
                 else
                 {
-                    builder.WriteLine("const std::reference_wrapper<Visual const>* visuals = nullptr;");
-                    builder.WriteLine("const size_t visualCount = 0;");
+                    builder.WriteLine("constexpr static const const func_or_field<Visual>* visuals = nullptr;");
+                    builder.WriteLine("constexpr const size_t visualCount = 0;");
                 }
 
                 WriteCreateAssignment(builder, node, $"CreateContainerVisual(visuals, visualCount)");
@@ -326,11 +338,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     {
                         case KeyFrameType.Expression:
                             var expressionKeyFrame = (KeyFrameAnimation<Vector2, Expr.Vector2>.ExpressionKeyFrame)kf;
-                            builder.WriteLine($"Vector2KeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}),");
+                            builder.WriteLine($"Vector2KeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
                             break;
                         case KeyFrameType.Value:
                             var valueKeyFrame = (KeyFrameAnimation<Vector2, Expr.Vector2>.ValueKeyFrame)kf;
-                            builder.WriteLine($"Vector2KeyFrameStep::Make({Float(kf.Progress)}, {Vector2(valueKeyFrame.Value)}),");
+                            builder.WriteLine($"Vector2KeyFrameStep::Make({Float(kf.Progress)}, {Vector2(valueKeyFrame.Value)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -339,16 +351,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 builder.CloseScopeWithSemicolon();
 
-                builder.WriteLine("const KeyFrameStepFunction funcs[] = ");
-                builder.OpenScope();
-                foreach (var kf in keyFrames)
-                {
-                    builder.WriteLine($"{CallFactoryFromFor(node, kf.Easing)},");
-                }
-
-                builder.CloseScopeWithSemicolon();
-
-                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames(_c, {durationAmount}, steps, _countof(steps), funcs)");
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames({durationAmount}, steps, _countof(steps))");
                 InitializeCompositionAnimation(builder, obj, node);
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
                 return true;
@@ -377,11 +380,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     {
                         case KeyFrameType.Expression:
                             var expressionKeyFrame = (KeyFrameAnimation<float, Expr.Scalar>.ExpressionKeyFrame)kf;
-                            builder.WriteLine($"ScalarKeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}),");
+                            builder.WriteLine($"ScalarKeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
                             break;
                         case KeyFrameType.Value:
                             var valueKeyFrame = (KeyFrameAnimation<float, Expr.Scalar>.ValueKeyFrame)kf;
-                            builder.WriteLine($"ScalarKeyFrameStep::Make({Float(kf.Progress)}, {Float(valueKeyFrame.Value)}),");
+                            builder.WriteLine($"ScalarKeyFrameStep::Make({Float(kf.Progress)}, {Float(valueKeyFrame.Value)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -390,16 +393,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 builder.CloseScopeWithSemicolon();
 
-                builder.WriteLine("const KeyFrameStepFunction funcs[] = ");
-                builder.OpenScope();
-                foreach (var kf in keyFrames)
-                {
-                    builder.WriteLine($"{CallFactoryFromFor(node, kf.Easing)},");
-                }
-
-                builder.CloseScopeWithSemicolon();
-
-                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames(_c, {durationAmount}, steps, _countof(steps), funcs)");
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames({durationAmount}, steps, _countof(steps))");
                 InitializeCompositionAnimation(builder, obj, node);
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
                 return true;
@@ -428,11 +422,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     {
                         case KeyFrameType.Expression:
                             var expressionKeyFrame = (KeyFrameAnimation<Wui.Color, Expr.Color>.ExpressionKeyFrame)kf;
-                            builder.WriteLine($"ColorKeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}),");
+                            builder.WriteLine($"ColorKeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
                             break;
                         case KeyFrameType.Value:
                             var valueKeyFrame = (KeyFrameAnimation<Wui.Color, Expr.Color>.ValueKeyFrame)kf;
-                            builder.WriteLine($"ColorKeyFrameStep::Make({Float(kf.Progress)}, {Color(valueKeyFrame.Value)}),");
+                            builder.WriteLine($"ColorKeyFrameStep::Make({Float(kf.Progress)}, {Color(valueKeyFrame.Value)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -441,16 +435,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 builder.CloseScopeWithSemicolon();
 
-                builder.WriteLine("const KeyFrameStepFunction funcs[] = ");
-                builder.OpenScope();
-                foreach (var kf in keyFrames)
-                {
-                    builder.WriteLine($"{CallFactoryFromFor(node, kf.Easing)},");
-                }
-
-                builder.CloseScopeWithSemicolon();
-
-                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames(_c, {durationAmount}, steps, _countof(steps), funcs)");
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames({durationAmount}, steps, _countof(steps))");
                 InitializeCompositionAnimation(builder, obj, node);
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
                 return true;
@@ -492,7 +477,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 builder.CloseScopeWithSemicolon();
 
-                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames(_c, {durationAmount}, steps, _countof(steps))");
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames({durationAmount}, steps, _countof(steps))");
                 InitializeCompositionAnimation(builder, obj, node);
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
                 return true;
@@ -509,7 +494,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
             protected override string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
             {
-                return $"CreateCubicBezierEasingFunction({_generator.GetCubicBezierId(obj.ControlPoint1, obj.ControlPoint2)})";
+                return $"CreateCubicBezierEasingFunction<{_generator.GetCubicBezierId(obj.ControlPoint1, obj.ControlPoint2)}>()";
             }
         }
 
@@ -932,8 +917,219 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine("winrt::com_ptr<ID2D1Factory> _d2dFactory{ nullptr };");
             }
 
-            builder.WriteLine("constexpr static const float2 f2_zero_zero = { 0.0f, 0.0f };");
-            builder.WriteLine("constexpr static const float2 f2_one_one = { 1.0f, 1.0f };");
+            builder.WriteLine($"using TSelf = {info.ClassName};");
+            builder.WriteLine(@"
+constexpr static const float2 f2_zero_zero = { 0.0f, 0.0f };
+constexpr static const float2 f2_one_one = { 1.0f, 1.0f };
+template<typename T> using func_or_field = std::variant<T(TSelf::*)(), T TSelf::*, std::monostate>;
+template<typename T> T const& invoke_func_or_field(func_or_field<T> const& fof)
+{
+    if (std::holds_alternative<T(TSelf::*)()>(fof))
+    {
+        return (this->*std::get<T(TSelf::*)()>(fof))();
+    }
+    else if (std::holds_alternative<T(TSelf::*)>(fof))
+    {
+        return (this->*std::get<T(TSelf::*)>(fof));
+    }
+    else
+    {
+        static const T empty{nullptr};
+        return empty;
+    }
+};
+template<typename TValue> struct KeyFrameStep {
+    union {
+        TValue value;
+        const wchar_t* expression;
+    };
+    float progressKey;
+    bool isExpression;
+    func_or_field<CompositionEasingFunction> func;
+
+    static constexpr KeyFrameStep Make(float key, TValue value, func_or_field<CompositionEasingFunction> func = {})
+    {
+        KeyFrameStep result{};
+        result.progressKey = key;
+        result.isExpression = false;
+        result.value = value;
+        result.func = func;
+        return result;
+    }
+
+    static constexpr KeyFrameStep Make(float key, const wchar_t* expression, func_or_field<CompositionEasingFunction> func = {})
+    {
+        KeyFrameStep result{};
+        result.progressKey = key;
+        result.isExpression = true;
+        result.expression = expression;
+        result.func = func;
+        return result;
+    }
+};
+
+using Vector2KeyFrameStep = KeyFrameStep<float2>;
+
+__declspec(noinline) Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const Vector2KeyFrameStep* steps, int stepCount)
+{
+    auto result = _c.CreateVector2KeyFrameAnimation();
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (step.isExpression)
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, invoke_func_or_field(step.func));
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, step.value, invoke_func_or_field(step.func));
+        }
+    }
+
+    return result;
+}
+
+using ScalarKeyFrameStep = KeyFrameStep<float>;
+
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const ScalarKeyFrameStep* steps, int stepCount)
+{
+    auto result = _c.CreateScalarKeyFrameAnimation();
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (step.isExpression)
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, invoke_func_or_field(step.func));
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, step.value, invoke_func_or_field(step.func));
+        }
+    }
+
+    return result;
+}
+
+
+using ColorKeyFrameStep = KeyFrameStep<Color>;
+
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const ColorKeyFrameStep* steps, int stepCount)
+{
+    auto result = _c.CreateColorKeyFrameAnimation();
+    result.InterpolationColorSpace(CompositionColorSpace::Rgb);
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (step.isExpression)
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, invoke_func_or_field(step.func));
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, step.value, invoke_func_or_field(step.func));
+        }
+    }
+
+    return result;
+}
+
+using BooleanKeyFrameStep = KeyFrameStep<bool>;
+
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const BooleanKeyFrameStep* steps, int stepCount)
+{
+    auto result = _c.CreateBooleanKeyFrameAnimation();
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (step.isExpression)
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression);
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, step.value);
+        }
+    }
+
+    return result;
+}
+
+template<int index> auto CreateCubicBezierEasingFunction()
+{
+    return CreateCubicBezierEasingFunction(index);
+}
+
+__declspec(noinline) static CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry>&& src)
+{
+    return CompositionPath { *src };
+}
+
+__declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)
+{
+    auto result = _c.CreateEllipseGeometry();
+    result.Center(center_point.first);
+    result.Radius(center_point.second);
+    return result;
+}
+
+__declspec(noinline) ContainerVisual CreateContainerVisual(const func_or_field<Visual>* visuals, size_t visualCount)
+{
+    auto result = _c.CreateContainerVisual();
+    auto children = result.Children();
+    for (size_t i = 0; i < visualCount; ++i)
+    {
+        children.InsertAtTop(invoke_func_or_field(visuals[i]));
+    }
+    return result;
+}
+
+template<typename TComp, typename TExpr> auto StartProgressBoundAnimation(
+    CompositionObject const& target,
+    const wchar_t* animatedPropertyName,
+    func_or_field<TComp> const& animation,
+    func_or_field<TExpr> const& controllerProgressExpression)
+{
+    return StartProgressBoundAnimation(target, animatedPropertyName, invoke_func_or_field(animation), invoke_func_or_field(controllerProgressExpression));
+}
+
+template<typename T> auto BindProperty(
+    CompositionObject const& target,
+    const wchar_t* animatedPropertyName,
+    const wchar_t* expression,
+    const wchar_t* referenceParameterName,
+    func_or_field<T> const& referencedObject)
+{
+    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(referencedObject));
+}
+");
         }
 
         void AddUsingsForTypeAliases(CodeBuilder builder)
@@ -1200,151 +1396,6 @@ __declspec(noinline) static CompositionSpriteShape MakeAndApplyProperties(
 
     return result;
 }
-
-struct KeyFrameStepFunction {
-    CompositionEasingFunction const& function;
-};
-
-template<typename TValue> struct KeyFrameStep {
-    union {
-        TValue value;
-        const wchar_t* expression;
-    };
-    float progressKey;
-    bool isExpression;
-
-    static constexpr KeyFrameStep Make(float key, TValue value)
-    {
-        KeyFrameStep result{};
-        result.progressKey = key;
-        result.isExpression = false;
-        result.value = value;
-        return result;
-    }
-
-    static constexpr KeyFrameStep Make(float key, const wchar_t* expression)
-    {
-        KeyFrameStep result{};
-        result.progressKey = key;
-        result.isExpression = true;
-        result.expression = expression;
-        return result;
-    }
-};
-
-using Vector2KeyFrameStep = KeyFrameStep<float2>;
-
-__declspec(noinline) static Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(Compositor const& c, const TimeSpan* duration, const Vector2KeyFrameStep* steps, int stepCount, const KeyFrameStepFunction* funcs)
-{
-    auto result = c.CreateVector2KeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (step.isExpression)
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, funcs[i].function);
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, step.value, funcs[i].function);
-        }
-    }
-
-    return result;
-}
-
-using ScalarKeyFrameStep = KeyFrameStep<float>;
-
-__declspec(noinline) static CompositionAnimation ConfigureAnimationKeyFrames(Compositor const& c, const TimeSpan* duration, const ScalarKeyFrameStep* steps, int stepCount, const KeyFrameStepFunction* funcs)
-{
-    auto result = c.CreateScalarKeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (step.isExpression)
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, funcs[i].function);
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, step.value, funcs[i].function);
-        }
-    }
-
-    return result;
-}
-
-using BooleanKeyFrameStep = KeyFrameStep<bool>;
-
-__declspec(noinline) static CompositionAnimation ConfigureAnimationKeyFrames(Compositor const& c, const TimeSpan* duration, const BooleanKeyFrameStep* steps, int stepCount)
-{
-    auto result = c.CreateBooleanKeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (step.isExpression)
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression);
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, step.value);
-        }
-    }
-
-    return result;
-}
-
-using ColorKeyFrameStep = KeyFrameStep<Color>;
-
-__declspec(noinline) static CompositionAnimation ConfigureAnimationKeyFrames(Compositor const& c, const TimeSpan* duration, const ColorKeyFrameStep* steps, int stepCount, const KeyFrameStepFunction* funcs)
-{
-    auto result = c.CreateColorKeyFrameAnimation();
-    result.InterpolationColorSpace(CompositionColorSpace::Rgb);
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (step.isExpression)
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, funcs[i].function);
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, step.value, funcs[i].function);
-        }
-    }
-
-    return result;
-}
-
 ");
 
             builder.WriteLine($"namespace winrt::{_s.Namespace(SourceInfo.Namespace)}::implementation");
@@ -2048,31 +2099,6 @@ __declspec(noinline) static CompositionAnimation ConfigureAnimationKeyFrames(Com
 
             builder.CloseScopeWithSemicolon();
             builder.WriteLine("return _c.CreateCubicBezierEasingFunction(bezier_params[index].first, bezier_params[index].second);");
-            builder.CloseScope();
-            builder.WriteLine();
-
-            builder.WriteLine("__declspec(noinline) static CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry>&& src)");
-            builder.OpenScope();
-            builder.WriteLine("return CompositionPath { *src };");
-            builder.CloseScope();
-
-            builder.WriteLine("__declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)");
-            builder.OpenScope();
-            builder.WriteLine("auto result = _c.CreateEllipseGeometry();");
-            builder.WriteLine("result.Center(center_point.first);");
-            builder.WriteLine("result.Radius(center_point.second);");
-            builder.WriteLine("return result;");
-            builder.CloseScope();
-
-            builder.WriteLine("__declspec(noinline) ContainerVisual CreateContainerVisual(const std::reference_wrapper<Visual const>* visuals, size_t visualCount)");
-            builder.OpenScope();
-            builder.WriteLine("auto result = _c.CreateContainerVisual();");
-            builder.WriteLine("auto children = result.Children();");
-            builder.WriteLine("for (size_t i = 0; i < visualCount; ++i)");
-            builder.OpenScope();
-            builder.WriteLine("children.InsertAtTop(visuals[i].get());");
-            builder.CloseScope();
-            builder.WriteLine("return result;");
             builder.CloseScope();
 
             WriteIsRuntimeCompatibleMethod(builder, info);
