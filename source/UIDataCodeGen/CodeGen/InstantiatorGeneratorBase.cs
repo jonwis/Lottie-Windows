@@ -1273,7 +1273,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 => CallFactoryFromFor(_currentObjectFactoryNode!, obj);
 
             // Returns the code to call the factory for the given node from the given node.
-            protected string CallFactoryFromFor(ObjectData callerNode, ObjectData calleeNode)
+            protected virtual string CallFactoryFromFor(ObjectData callerNode, ObjectData calleeNode)
             {
                 if (callerNode.CallFactoryFromForCache.TryGetValue(calleeNode, out string? result))
                 {
@@ -1382,7 +1382,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             }
 
             // Returns the code to call the factory for the given object from the given node.
-            protected string CallFactoryFromFor(ObjectData callerNode, CompositionObject? obj) =>
+            protected virtual string CallFactoryFromFor(ObjectData callerNode, CompositionObject? obj) =>
                 obj is null
                 ? _s.Null
                 : CallFactoryFromFor(callerNode, NodeFor(obj));
@@ -1429,7 +1429,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
                 else
                 {
-                    StartAnimationsOnResult(builder, obj, node);
+                    StartAnimations(builder, obj, node, "result");
                 }
             }
 
@@ -1566,7 +1566,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void WritePopulateShapesCollection(CodeBuilder builder, IList<CompositionShape> shapes, ObjectData node)
+            protected virtual void WritePopulateShapesCollection(CodeBuilder builder, IList<CompositionShape> shapes, ObjectData node)
             {
                 switch (shapes.Count)
                 {
@@ -1929,9 +1929,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            protected void StartAnimationsOnResult(CodeBuilder builder, CompositionObject obj, ObjectData node)
-                => StartAnimations(builder, obj, node, "result");
-
             protected void StartAnimations(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName)
             {
                 var controllerVariableAdded = false;
@@ -2001,12 +1998,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                                     {
                                         // If we are implementing IAnimatedVisual2 we should create these animation not in the tree initialization code,
                                         // but inside CreateAnimations method.
-                                        _createAnimationsCodeBuilder
-                                            .WriteLine(
-                                            $"StartProgressBoundAnimation({localName}, " +
-                                            $"{String(animator.AnimatedProperty)}, " +
-                                            $"{animationFactoryCall}, " +
-                                            $"{CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode)});");
+                                        WriteProgressBoundAnimationBuild(_createAnimationsCodeBuilder, localName, String(animator.AnimatedProperty), animationFactoryCall, CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode));
 
                                         // If we are implementing IAnimatedVisual2 we should also write a destruction call.
                                         _destroyAnimationsCodeBuilder
@@ -2014,11 +2006,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                                     }
                                     else
                                     {
-                                        builder.WriteLine(
-                                            $"StartProgressBoundAnimation({localName}, " +
-                                            $"{String(animator.AnimatedProperty)}, " +
-                                            $"{animationFactoryCall}, " +
-                                            $"{CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode)});");
+                                        WriteProgressBoundAnimationBuild(builder, localName, String(animator.AnimatedProperty), animationFactoryCall, CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode));
                                     }
 
                                     return;
@@ -2044,6 +2032,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         ConfigureAnimationController(builder, localName, ref controllerVariableAdded, animator);
                     }
                 }
+            }
+
+            protected virtual void WriteProgressBoundAnimationBuild(CodeBuilder builder, string name, string property, string animationFactory, string expressionFactory)
+            {
+                builder.WriteLine($"StartProgressBoundAnimation({name}, {property}, {animationFactory}, {expressionFactory});");
             }
 
             void ConfigureAnimationController(CodeBuilder builder, string localName, ref bool controllerVariableAdded, CompositionObject.Animator animator)
@@ -2077,7 +2070,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             }
 
             // Helper method that starts an animation and binds its AnimationController.Progress to an expression.
-            void EnsureStartProgressBoundAnimationWritten(CodeBuilder builder)
+            protected virtual void EnsureStartProgressBoundAnimationWritten(CodeBuilder builder)
             {
                 // Write a static method that starts an animation, then binds the Progress property of its
                 // AnimationController for that animation to an expression. This is used to start animations
@@ -2102,7 +2095,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void EnsureBindPropertyWritten(CodeBuilder builder)
+            protected virtual void EnsureBindPropertyWritten(CodeBuilder builder)
             {
                 // Write the method that binds an expression to an object using the singleton ExpressionAnimation object.
                 var b = builder.GetSubBuilder("BindProperty");

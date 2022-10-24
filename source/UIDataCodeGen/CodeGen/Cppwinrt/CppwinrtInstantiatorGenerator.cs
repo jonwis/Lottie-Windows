@@ -201,15 +201,15 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
             protected string ToFuncOrFieldFromFor(string s) => "&TSelf::" + s.Replace("()", string.Empty);
 
-            protected string FuncOrFieldFromFor(ObjectData callerNode, ObjectData calleeNode)
+            protected override string CallFactoryFromFor(ObjectData callerNode, ObjectData calleeNode)
             {
-                return ToFuncOrFieldFromFor(CallFactoryFromFor(callerNode, calleeNode!));
+                return ToFuncOrFieldFromFor(base.CallFactoryFromFor(callerNode, calleeNode!));
             }
 
-            protected string FuncOrFieldFromFor(ObjectData callerNode, CompositionObject? obj) =>
+            protected override string CallFactoryFromFor(ObjectData callerNode, CompositionObject? obj) =>
                 obj is null
                 ? "std::monostate"
-                : ToFuncOrFieldFromFor(CallFactoryFromFor(callerNode, NodeFor(obj)));
+                : ToFuncOrFieldFromFor(base.CallFactoryFromFor(callerNode, NodeFor(obj)));
 
             protected override bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
@@ -222,7 +222,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     foreach (var child in obj.Children)
                     {
                         WriteShortDescriptionComment(builder, child);
-                        builder.WriteLine($"{FuncOrFieldFromFor(node, child)},");
+                        builder.WriteLine($"{CallFactoryFromFor(node, child)},");
                     }
 
                     builder.CloseScopeWithSemicolon();
@@ -258,6 +258,12 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine($"CompositionShape {node.Name}()");
                 builder.OpenScope();
 
+                if (obj.StrokeDashArray.Any())
+                {
+                    builder.WriteLine($"constexpr static const float dashes[] = {{ {string.Join(", ", obj.StrokeDashArray.Select(_ => _s.Stringify(_)))} }};");
+                    builder.WriteLine("constexpr uint32_t dashCount = _countof(dashes);");
+                }
+
                 // Write all the constant properties
                 builder.WriteLine("constexpr static const SpriteShapeProperties props =");
                 builder.OpenScope();
@@ -290,21 +296,24 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 FieldWriter(obj.RotationAngleInDegrees, "SpriteFields::RotationInDegrees");
                 FieldWriter(obj.Scale, "SpriteFields::Scale");
 
+                if (obj.StrokeDashArray.Any())
+                {
+                    builder.WriteLine("dashes, dashCount,");
+                }
+                else
+                {
+                    builder.WriteLine("nullptr, 0,");
+                }
+
+                builder.WriteLine((obj.Geometry != null) ? $"{CallFactoryFromFor(node, obj.Geometry)}," : "{ /* no geometry */ },");
+                builder.WriteLine((obj.FillBrush != null) ? $"{CallFactoryFromFor(node, obj.FillBrush)}," : "{ /* no fill */ },");
+                builder.WriteLine((obj.StrokeBrush != null) ? $"{CallFactoryFromFor(node, obj.StrokeBrush)}," : "{ /* no stroke */ },");
+
                 builder.WriteLine(string.Join(" | ", fields));
                 builder.CloseScopeWithSemicolon();
 
                 // Write the call to the maker method
-                string geometryId = (obj.Geometry != null) ? CallFactoryFromFor(node, obj.Geometry) : "nullptr";
-                string fillBrush = (obj.FillBrush != null) ? CallFactoryFromFor(node, obj.FillBrush) : "nullptr";
-                string strokeBrush = (obj.StrokeBrush != null) ? CallFactoryFromFor(node, obj.StrokeBrush) : "nullptr";
-
-                builder.WriteLine($"auto result = MakeAndApplyProperties(_c, props, {geometryId}, {fillBrush}, {strokeBrush});");
-
-                if (obj.StrokeDashArray.Any())
-                {
-                    builder.WriteLine($"static const float dashes[] = {{ {string.Join(", ", obj.StrokeDashArray.Select(_ => _s.Stringify(_)))} }};");
-                    builder.WriteLine("result.StrokeDashArray().ReplaceAll(dashes);");
-                }
+                builder.WriteLine($"auto result = MakeAndApplyProperties(_c, props);");
 
                 WriteCompositionObjectStartAnimations(builder, obj, node);
 
@@ -338,11 +347,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     {
                         case KeyFrameType.Expression:
                             var expressionKeyFrame = (KeyFrameAnimation<Vector2, Expr.Vector2>.ExpressionKeyFrame)kf;
-                            builder.WriteLine($"Vector2KeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {CallFactoryFromFor(node, kf.Easing)} }},");
                             break;
                         case KeyFrameType.Value:
                             var valueKeyFrame = (KeyFrameAnimation<Vector2, Expr.Vector2>.ValueKeyFrame)kf;
-                            builder.WriteLine($"Vector2KeyFrameStep::Make({Float(kf.Progress)}, {Vector2(valueKeyFrame.Value)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, float2 {Vector2(valueKeyFrame.Value)}, {CallFactoryFromFor(node, kf.Easing)} }},");
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -380,11 +389,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     {
                         case KeyFrameType.Expression:
                             var expressionKeyFrame = (KeyFrameAnimation<float, Expr.Scalar>.ExpressionKeyFrame)kf;
-                            builder.WriteLine($"ScalarKeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {CallFactoryFromFor(node, kf.Easing)} }},");
                             break;
                         case KeyFrameType.Value:
                             var valueKeyFrame = (KeyFrameAnimation<float, Expr.Scalar>.ValueKeyFrame)kf;
-                            builder.WriteLine($"ScalarKeyFrameStep::Make({Float(kf.Progress)}, {Float(valueKeyFrame.Value)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {Float(valueKeyFrame.Value)}, {CallFactoryFromFor(node, kf.Easing)} }},");
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -422,11 +431,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     {
                         case KeyFrameType.Expression:
                             var expressionKeyFrame = (KeyFrameAnimation<Wui.Color, Expr.Color>.ExpressionKeyFrame)kf;
-                            builder.WriteLine($"ColorKeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {CallFactoryFromFor(node, kf.Easing)} }},");
                             break;
                         case KeyFrameType.Value:
                             var valueKeyFrame = (KeyFrameAnimation<Wui.Color, Expr.Color>.ValueKeyFrame)kf;
-                            builder.WriteLine($"ColorKeyFrameStep::Make({Float(kf.Progress)}, {Color(valueKeyFrame.Value)}, {FuncOrFieldFromFor(node, kf.Easing)}),");
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, Color {Color(valueKeyFrame.Value)}, {CallFactoryFromFor(node, kf.Easing)} }},");
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -464,11 +473,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     {
                         case KeyFrameType.Expression:
                             var expressionKeyFrame = (KeyFrameAnimation<bool, Expr.Boolean>.ExpressionKeyFrame)kf;
-                            builder.WriteLine($"BooleanKeyFrameStep::Make({Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}),");
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {String(expressionKeyFrame.Expression)} }},");
                             break;
                         case KeyFrameType.Value:
                             var valueKeyFrame = (KeyFrameAnimation<bool, Expr.Boolean>.ValueKeyFrame)kf;
-                            builder.WriteLine($"BooleanKeyFrameStep::Make({Float(kf.Progress)}, {Bool(valueKeyFrame.Value)}),");
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {Bool(valueKeyFrame.Value)} }},");
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -490,6 +499,37 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 WriteCreateAssignment(builder, node, $"MakeCompositionPath({canvasGeometry.FactoryCall()})");
                 WriteObjectFactoryEnd(builder);
                 return true;
+            }
+
+            protected override void WritePopulateShapesCollection(CodeBuilder builder, IList<CompositionShape> shapes, ObjectData node)
+            {
+                if (shapes.Any())
+                {
+                    builder.WriteLine("constexpr static const func_or_field<CompositionShape> shapes[] =");
+                    builder.OpenScope();
+
+                    foreach (var shape in shapes)
+                    {
+                        WriteShortDescriptionComment(builder, shape);
+                        builder.WriteLine($"{CallFactoryFromFor(node, shape)},");
+                    }
+
+                    builder.CloseScopeWithSemicolon();
+                    builder.WriteLine($"AddCompositionShapes(result, shapes, _countof(shapes));");
+                }
+            }
+
+            protected override void WriteProgressBoundAnimationBuild(CodeBuilder builder, string name, string property, string animationFactory, string expressionFactory)
+            {
+                builder.OpenScope();
+                builder.WriteLine($"constexpr static const BoundAnimation anim = {{ {property}, {animationFactory}, {expressionFactory} }};");
+                builder.WriteLine($"StartProgressBoundAnimation({name}, anim);");
+                builder.CloseScope();
+            }
+
+            protected override void EnsureStartProgressBoundAnimationWritten(CodeBuilder builder)
+            {
+                // Do nothing, we have our own
             }
 
             protected override string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
@@ -919,9 +959,9 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
             builder.WriteLine($"using TSelf = {info.ClassName};");
             builder.WriteLine(@"
-constexpr static const float2 f2_zero_zero = { 0.0f, 0.0f };
-constexpr static const float2 f2_one_one = { 1.0f, 1.0f };
+
 template<typename T> using func_or_field = std::variant<T(TSelf::*)(), T TSelf::*, std::monostate>;
+
 template<typename T> T const& invoke_func_or_field(func_or_field<T> const& fof)
 {
     if (std::holds_alternative<T(TSelf::*)()>(fof))
@@ -938,34 +978,106 @@ template<typename T> T const& invoke_func_or_field(func_or_field<T> const& fof)
         return empty;
     }
 };
+
+struct SpriteShapeProperties
+{
+    float3x2 Transformation;
+    CompositionStrokeCap StrokeDashCap;
+    float StrokeDashOffset;
+    CompositionStrokeCap StrokeStartCap;
+    CompositionStrokeCap StrokeEndCap;
+    CompositionStrokeLineJoin StrokeLineJoin;
+    float StrokeMiterLimit;
+    float StrokeThickness;
+    bool IsStrokeNonScaling;
+    float2 CenterPoint;
+    float2 Offset;
+    float RotationAngleInDegrees;
+    float2 Scale;
+    float const* dashes;
+    uint32_t dashCount;
+    func_or_field<CompositionGeometry> geometry;
+    func_or_field<CompositionBrush> fillBrush;
+    func_or_field<CompositionBrush> strokeBrush;
+    SpriteFields Fields;
+};
+
+__declspec(noinline) CompositionSpriteShape MakeAndApplyProperties(
+    Compositor const& source,
+    SpriteShapeProperties const& props)
+{
+    CompositionSpriteShape result{ nullptr };
+    if (auto g = invoke_func_or_field(props.geometry))
+    {
+        result = source.CreateSpriteShape(g);
+    }
+    else
+    {
+        result = source.CreateSpriteShape();
+    }
+    result.TransformMatrix(props.Transformation);
+    if (auto b = invoke_func_or_field(props.fillBrush))
+    {
+        result.FillBrush(b);
+    }
+
+    if (auto s = invoke_func_or_field(props.strokeBrush))
+    {
+        result.StrokeBrush(s);
+    }
+            
+    if (HasFlag(props.Fields, SpriteFields::IsStrokeNonScaling))
+    {
+        result.IsStrokeNonScaling(props.IsStrokeNonScaling);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeDashCap))
+    {
+        result.StrokeDashCap(props.StrokeDashCap);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeDashOffset))
+    {
+        result.StrokeDashOffset(props.StrokeDashOffset);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeStartCap))
+    {
+        result.StrokeStartCap(props.StrokeStartCap);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeEndCap))
+    {
+        result.StrokeEndCap(props.StrokeEndCap);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeLineJoin))
+    {
+        result.StrokeLineJoin(props.StrokeLineJoin);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeMiterLimit))
+    {
+        result.StrokeMiterLimit(props.StrokeMiterLimit);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeThickness))
+    {
+        result.StrokeThickness(props.StrokeThickness);
+    }
+
+    if (props.dashCount)
+    {
+        result.StrokeDashArray().ReplaceAll({props.dashes, props.dashCount});
+    }
+
+    return result;
+}
+
 template<typename TValue> struct KeyFrameStep {
-    union {
-        TValue value;
-        const wchar_t* expression;
-    };
     float progressKey;
-    bool isExpression;
+    std::variant<TValue, const wchar_t*> data;
     func_or_field<CompositionEasingFunction> func;
-
-    static constexpr KeyFrameStep Make(float key, TValue value, func_or_field<CompositionEasingFunction> func = {})
-    {
-        KeyFrameStep result{};
-        result.progressKey = key;
-        result.isExpression = false;
-        result.value = value;
-        result.func = func;
-        return result;
-    }
-
-    static constexpr KeyFrameStep Make(float key, const wchar_t* expression, func_or_field<CompositionEasingFunction> func = {})
-    {
-        KeyFrameStep result{};
-        result.progressKey = key;
-        result.isExpression = true;
-        result.expression = expression;
-        result.func = func;
-        return result;
-    }
 };
 
 using Vector2KeyFrameStep = KeyFrameStep<float2>;
@@ -983,13 +1095,13 @@ __declspec(noinline) Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(const 
     for (int i = 0; i < stepCount; ++i)
     {
         auto const& step = steps[i];
-        if (step.isExpression)
+        if (std::holds_alternative<const wchar_t*>(step.data))
         {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, invoke_func_or_field(step.func));
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
         }
         else
         {
-            result.InsertKeyFrame(step.progressKey, step.value, invoke_func_or_field(step.func));
+            result.InsertKeyFrame(step.progressKey, std::get<float2>(step.data), invoke_func_or_field(step.func));
         }
     }
 
@@ -1011,13 +1123,13 @@ __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const Time
     for (int i = 0; i < stepCount; ++i)
     {
         auto const& step = steps[i];
-        if (step.isExpression)
+        if (std::holds_alternative<const wchar_t*>(step.data))
         {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, invoke_func_or_field(step.func));
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
         }
         else
         {
-            result.InsertKeyFrame(step.progressKey, step.value, invoke_func_or_field(step.func));
+            result.InsertKeyFrame(step.progressKey, std::get<float>(step.data), invoke_func_or_field(step.func));
         }
     }
 
@@ -1041,13 +1153,13 @@ __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const Time
     for (int i = 0; i < stepCount; ++i)
     {
         auto const& step = steps[i];
-        if (step.isExpression)
+        if (std::holds_alternative<const wchar_t*>(step.data))
         {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression, invoke_func_or_field(step.func));
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
         }
         else
         {
-            result.InsertKeyFrame(step.progressKey, step.value, invoke_func_or_field(step.func));
+            result.InsertKeyFrame(step.progressKey, std::get<Color>(step.data), invoke_func_or_field(step.func));
         }
     }
 
@@ -1069,13 +1181,13 @@ __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const Time
     for (int i = 0; i < stepCount; ++i)
     {
         auto const& step = steps[i];
-        if (step.isExpression)
+        if (std::holds_alternative<const wchar_t*>(step.data))
         {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, step.expression);
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data));
         }
         else
         {
-            result.InsertKeyFrame(step.progressKey, step.value);
+            result.InsertKeyFrame(step.progressKey, std::get<bool>(step.data));
         }
     }
 
@@ -1111,24 +1223,62 @@ __declspec(noinline) ContainerVisual CreateContainerVisual(const func_or_field<V
     return result;
 }
 
-template<typename TComp, typename TExpr> auto StartProgressBoundAnimation(
+void StartProgressBoundAnimation(
     CompositionObject const& target,
     const wchar_t* animatedPropertyName,
-    func_or_field<TComp> const& animation,
-    func_or_field<TExpr> const& controllerProgressExpression)
+    func_or_field<CompositionAnimation> const& animation,
+    func_or_field<ExpressionAnimation> const& controllerProgressExpression)
 {
-    return StartProgressBoundAnimation(target, animatedPropertyName, invoke_func_or_field(animation), invoke_func_or_field(controllerProgressExpression));
+    target.StartAnimation(animatedPropertyName, invoke_func_or_field(animation));
+    const auto controller = target.TryGetAnimationController(animatedPropertyName);
+    controller.Pause();
+    controller.StartAnimation(L""Progress"", invoke_func_or_field(controllerProgressExpression));
 }
 
-template<typename T> auto BindProperty(
+template<typename T> __declspec(noinline) auto BindProperty(
     CompositionObject const& target,
     const wchar_t* animatedPropertyName,
     const wchar_t* expression,
     const wchar_t* referenceParameterName,
-    func_or_field<T> const& referencedObject)
+    T const& referencedObject)
+{
+    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(func_or_field<CompositionObject>(referencedObject)));
+}
+
+
+template<typename T> __declspec(noinline) auto BindProperty(
+    CompositionObject const& target,
+    const wchar_t* animatedPropertyName,
+    const wchar_t* expression,
+    const wchar_t* referenceParameterName,
+    func_or_field<CompositionObject> const& referencedObject)
 {
     return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(referencedObject));
 }
+
+struct BoundAnimation {
+    const wchar_t* property;
+    func_or_field<CompositionAnimation> animation;
+    func_or_field<ExpressionAnimation> expression;
+};
+
+__declspec(noinline) void StartProgressBoundAnimation(CompositionObject const& target, const BoundAnimation& animation)
+{
+    return StartProgressBoundAnimation(target, animation.property, animation.animation, animation.expression);
+}
+
+template<typename TThing> void AddCompositionShapes(
+    TThing const& container,
+    const func_or_field<CompositionShape>* toAdd,
+    int toAddCount)
+{
+    auto shapes = container.Shapes();
+    for (int i = 0; i < toAddCount; i++)
+    {
+        shapes.Append(invoke_func_or_field(toAdd[i]));
+    }
+}
+
 ");
         }
 
@@ -1308,94 +1458,6 @@ enum class SpriteFields : uint32_t
 DEFINE_ENUM_FLAG_OPERATORS(SpriteFields);
 
 #define HasFlag(x, y) ((x & y) != static_cast<decltype(x)>(0))
-
-struct SpriteShapeProperties
-{
-    float3x2 Transformation;
-    CompositionStrokeCap StrokeDashCap;
-    float StrokeDashOffset;
-    CompositionStrokeCap StrokeStartCap;
-    CompositionStrokeCap StrokeEndCap;
-    CompositionStrokeLineJoin StrokeLineJoin;
-    float StrokeMiterLimit;
-    float StrokeThickness;
-    bool IsStrokeNonScaling;
-    float2 CenterPoint;
-    float2 Offset;
-    float RotationAngleInDegrees;
-    float2 Scale;
-    SpriteFields Fields;
-};
-
-__declspec(noinline) static CompositionSpriteShape MakeAndApplyProperties(
-    Compositor const& source,
-    SpriteShapeProperties const& props,
-    CompositionGeometry const& geometry,
-    CompositionBrush const& fillBrush, 
-    CompositionBrush const& strokeBrush)
-{
-    CompositionSpriteShape result{ nullptr };
-    if (geometry)
-    {
-        result = source.CreateSpriteShape(geometry);
-    }
-    else
-    {
-        result = source.CreateSpriteShape();
-    }
-    result.TransformMatrix(props.Transformation);
-    if (fillBrush)
-    {
-        result.FillBrush(fillBrush);
-    }
-
-    if (strokeBrush)
-    {
-        result.StrokeBrush(strokeBrush);
-    }
-            
-    if (HasFlag(props.Fields, SpriteFields::IsStrokeNonScaling))
-    {
-        result.IsStrokeNonScaling(props.IsStrokeNonScaling);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeDashCap))
-    {
-        result.StrokeDashCap(props.StrokeDashCap);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeDashOffset))
-    {
-        result.StrokeDashOffset(props.StrokeDashOffset);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeStartCap))
-    {
-        result.StrokeStartCap(props.StrokeStartCap);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeEndCap))
-    {
-        result.StrokeEndCap(props.StrokeEndCap);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeLineJoin))
-    {
-        result.StrokeLineJoin(props.StrokeLineJoin);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeMiterLimit))
-    {
-        result.StrokeMiterLimit(props.StrokeMiterLimit);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeThickness))
-    {
-        result.StrokeThickness(props.StrokeThickness);
-    }
-
-    return result;
-}
 ");
 
             builder.WriteLine($"namespace winrt::{_s.Namespace(SourceInfo.Namespace)}::implementation");

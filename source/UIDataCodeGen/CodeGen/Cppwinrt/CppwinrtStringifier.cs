@@ -98,6 +98,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             "PowerEasingFunction" => "CompositionEasingFunction",
             "SineEasingFunction" => "CompositionEasingFunction",
             "StepEasingFunction" => "CompositionEasingFunction",
+            "CompositionPathGeometry" => "CompositionGeometry",
+            "CompositionEllipseGeometry" => "CompositionGeometry",
 
             // "ExpressionAnimation" => "CompositionAnimation",
             "KeyframeAnimation" => "CompositionAnimation",
@@ -110,6 +112,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             "Vector2KeyFrameAnimation" => "CompositionAnimation",
             "Vector3KeyFrameAnimation" => "CompositionAnimation",
             "Vector4KeyFrameAnimation" => "CompositionAnimation",
+            "CompositionColorBrush" => "CompositionBrush",
             _ => value
         };
 
@@ -130,6 +133,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 "CompositionSpriteShape" => "CompositionShape",
                 "CompositionEllipseGeometry" => "CompositionGeometry",
                 "CompositionPathGeometry" => "CompositionGeometry",
+                "CompositionRectangleGeometry" => "CompositionGeometry",
 
                 "CompositionSurfaceBrush" => "CompositionBrush",
                 "CompositionBackdropBrush" => "CompositionBrush",
@@ -139,6 +143,9 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 "CompositionMaskBrush" => "CompositionBrush",
                 "CompositionNineGridBrush" => "CompositionBrush",
 
+                "Vector2KeyFrameAnimation" => "CompositionAnimation",
+                "Vector3KeyFrameAnimation" => "CompositionAnimation",
+                "Vector4KeyFrameAnimation" => "CompositionAnimation",
                 "BooleanKeyFrameAnimation" => "CompositionAnimation",
                 "ScalarKeyFrameAnimation" => "CompositionAnimation",
                 "ColorKeyFrameAnimation" => "CompositionAnimation",
@@ -185,21 +192,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public override string VariableInitialization(string value) => $"{{ {value} }}";
 
-        public override string Vector2(Vector2 value)
-        {
-            if ((value.X == 0) && (value.Y == 0))
-            {
-                return "f2_zero_zero";
-            }
-            else if ((value.X == 1) && (value.Y == 1))
-            {
-                return "f2_one_one";
-            }
-            else
-            {
-                return $"{{ {Vector2Args(value)} }}";
-            }
-        }
+        public override string Vector2(Vector2 value) => $"{{ {Vector2Args(value)} }}";
 
         public string Vector2Args(Vector2 value) => $"{Float(value.X)}, {Float(value.Y)}";
 
