@@ -82,7 +82,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public override string New(string typeName) => typeName switch
         {
-            "CompositionPath" => "MakeCompositionPath",
             _ => typeName
         };
 
@@ -162,7 +161,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             value switch
             {
                 "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry> const&",
-                "CompositionPath" => "CompositionPath",
+                "CompositionPath" => string.Empty,
                 _ => $"{value} const&"
             };
 

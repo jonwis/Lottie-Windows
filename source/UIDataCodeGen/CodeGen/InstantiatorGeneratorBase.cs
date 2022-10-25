@@ -1054,6 +1054,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             protected ObjectData GetObjectData(WinCompData.Wg.IGeometrySource2D source) => _objectGraph[source];
 
+            protected ObjectData ObjectPath(CompositionPath path) => _objectGraph[path];
+
             protected internal AnimatedVisualGenerator(
                 InstantiatorGeneratorBase owner,
                 CompositionObject graphRoot,
@@ -1444,7 +1446,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             }
 
             // Writes a factory that just creates an object but doesn't parameterize it before it is returned.
-            void WriteSimpleObjectFactory(CodeBuilder builder, ObjectData node, string createCallText)
+            protected void WriteSimpleObjectFactory(CodeBuilder builder, ObjectData node, string createCallText)
             {
                 WriteObjectFactoryStart(builder, node);
                 if (node.RequiresStorage)
@@ -2039,7 +2041,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 builder.WriteLine($"StartProgressBoundAnimation({name}, {property}, {animationFactory}, {expressionFactory});");
             }
 
-            void ConfigureAnimationController(CodeBuilder builder, string localName, ref bool controllerVariableAdded, CompositionObject.Animator animator)
+            protected virtual void ConfigureAnimationController(CodeBuilder builder, string localName, ref bool controllerVariableAdded, CompositionObject.Animator animator)
             {
                 // If the animation has a controller, get the controller, optionally pause it, and recurse to start the animations
                 // on the controller.
@@ -2516,14 +2518,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             protected void InitializeCompositionAnimation(CodeBuilder builder, CompositionAnimation obj, ObjectData node)
             {
-                InitializeCompositionAnimationWithParameters(
+                InitializeCompositionAnimation(
                     builder,
                     obj,
                     node,
                     obj.ReferenceParameters.Select(p => new KeyValuePair<string, string>(p.Key, $"{CallFactoryFromFor(node, p.Value)}")));
             }
 
-            void InitializeCompositionAnimationWithParameters(
+            protected virtual void InitializeCompositionAnimation(
                 CodeBuilder builder,
                 CompositionAnimation obj,
                 ObjectData node,
@@ -2943,7 +2945,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionPathGeometryFactory(CodeBuilder builder, CompositionPathGeometry obj, ObjectData node)
+            protected virtual bool GenerateCompositionPathGeometryFactory(CodeBuilder builder, CompositionPathGeometry obj, ObjectData node)
             {
                 var path = obj.Path is null ? null : _objectGraph[obj.Path];
                 var createPathText = path is null ? string.Empty : CallFactoryFromFor(node, path);

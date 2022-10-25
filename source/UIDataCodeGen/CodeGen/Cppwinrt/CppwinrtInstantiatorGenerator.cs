@@ -13,7 +13,6 @@ using CommunityToolkit.WinUI.Lottie.WinCompData.MetaData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
-using static CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg.CanvasPathBuilder;
 using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
 using Sn = System.Numerics;
 using Wui = CommunityToolkit.WinUI.Lottie.WinCompData.Wui;
@@ -148,6 +147,21 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 _generator = generator;
             }
 
+            protected override void InitializeCompositionAnimation(
+                CodeBuilder builder,
+                CompositionAnimation obj,
+                ObjectData node,
+                IEnumerable<KeyValuePair<string, string>> parameters)
+            {
+                InitializeCompositionObject(builder, obj, node);
+                WriteSetPropertyStatementDefaultIsNullOrWhitespace(builder, nameof(obj.Target), obj.Target);
+
+                foreach (var parameter in parameters)
+                {
+                    builder.WriteLine($"result.SetReferenceParameter({String(parameter.Key)}, invoke_func_or_field({parameter.Value}));");
+                }
+            }
+
             protected override void InitializeCompositionObject(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName = "result")
             {
                 if (Owner.SetCommentProperties)
@@ -210,6 +224,20 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 obj is null
                 ? "std::monostate"
                 : ToFuncOrFieldFromFor(base.CallFactoryFromFor(callerNode, NodeFor(obj)));
+
+            protected override bool GenerateCompositionPathGeometryFactory(CodeBuilder builder, CompositionPathGeometry obj, ObjectData node)
+            {
+                var path = obj.Path is null ? null : ObjectPath(obj.Path);
+                var createPathText = path is null ? string.Empty : CallFactoryFromFor(node, path);
+                var createPathGeometryText = $"MakePathGeometry({createPathText})";
+
+                WriteObjectFactoryStart(builder, node);
+                WriteCreateAssignment(builder, node, createPathGeometryText);
+                InitializeCompositionGeometry(builder, obj, node);
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+
+                return true;
+            }
 
             protected override bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
@@ -516,6 +544,23 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                     builder.CloseScopeWithSemicolon();
                     builder.WriteLine($"AddCompositionShapes(result, shapes, _countof(shapes));");
+                }
+            }
+
+            protected override void ConfigureAnimationController(CodeBuilder builder, string localName, ref bool controllerVariableAdded, CompositionObject.Animator animator)
+            {
+                // If the animation has a controller, get the controller, optionally pause it, and recurse to start the animations
+                // on the controller.
+                if (animator.Controller is not null)
+                {
+                    var controller = animator.Controller;
+
+                    builder.OpenScope();
+                    builder.WriteLine($"auto controller = GetAnimationController({localName}, {String(animator.AnimatedProperty)}, {Bool(controller.IsPaused)});");
+
+                    // Recurse to start animations on the controller.
+                    StartAnimations(builder, controller, NodeFor(controller), "controller");
+                    builder.CloseScope();
                 }
             }
 
@@ -979,6 +1024,14 @@ template<typename T> T const& invoke_func_or_field(func_or_field<T> const& fof)
     }
 };
 
+template<typename Q> auto invoke_func_or_field(Q (TSelf::* pfn)()) {
+    return (this->*pfn)();
+}
+
+template<typename Q> auto invoke_func_or_field(Q TSelf::* pmem) {
+    return this->*pmem;
+}
+
 struct SpriteShapeProperties
 {
     float3x2 Transformation;
@@ -1199,9 +1252,19 @@ template<int index> auto CreateCubicBezierEasingFunction()
     return CreateCubicBezierEasingFunction(index);
 }
 
-__declspec(noinline) static CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry>&& src)
+__declspec(noinline) CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry> const& src)
 {
     return CompositionPath { *src };
+}
+
+__declspec(noinline) CompositionPath MakeCompositionPath(CanvasGeometry const& src)
+{
+    return CompositionPath { src };
+}
+
+__declspec(noinline) CompositionPath MakeCompositionPath(func_or_field<winrt::com_ptr<CanvasGeometry>> const& src)
+{
+    return MakeCompositionPath(invoke_func_or_field(src));
 }
 
 __declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)
@@ -1223,6 +1286,16 @@ __declspec(noinline) ContainerVisual CreateContainerVisual(const func_or_field<V
     return result;
 }
 
+__declspec(noinline) auto MakePathGeometry(func_or_field<CompositionPath> const& path)
+{
+    return _c.CreatePathGeometry(invoke_func_or_field(path));
+}
+
+__declspec(noinline) auto MakePathGeometry(func_or_field<winrt::com_ptr<CanvasGeometry>> const& geoMaker)
+{
+    return _c.CreatePathGeometry(CompositionPath { *invoke_func_or_field(geoMaker) });
+}
+
 void StartProgressBoundAnimation(
     CompositionObject const& target,
     const wchar_t* animatedPropertyName,
@@ -1240,12 +1313,12 @@ template<typename T> __declspec(noinline) auto BindProperty(
     const wchar_t* animatedPropertyName,
     const wchar_t* expression,
     const wchar_t* referenceParameterName,
-    T const& referencedObject)
+    T&& referencedObject)
 {
-    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(func_or_field<CompositionObject>(referencedObject)));
+    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(std::forward<T>(referencedObject)));
 }
 
-
+/*
 template<typename T> __declspec(noinline) auto BindProperty(
     CompositionObject const& target,
     const wchar_t* animatedPropertyName,
@@ -1254,6 +1327,22 @@ template<typename T> __declspec(noinline) auto BindProperty(
     func_or_field<CompositionObject> const& referencedObject)
 {
     return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(referencedObject));
+}
+*/
+
+AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
+{
+    auto controller = target.TryGetAnimationController(propertyName);
+    if (pauseFirst)
+    {
+        controller.Pause();
+    }
+    return controller;
+}
+
+AnimationController GetAnimationController(winrt::Windows::Foundation::IInspectable const& target, const wchar_t* propertyName, bool pauseFirst)
+{
+    return GetAnimationController(target.as<CompositionObject>(), propertyName, pauseFirst);
 }
 
 struct BoundAnimation {
