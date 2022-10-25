@@ -564,6 +564,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 }
             }
 
+            protected override void WriteAnimationStart(CodeBuilder builder, string targetName, string propertyName, string animationFactoryCall)
+            {
+                builder.WriteLine($"{targetName}.StartAnimation({propertyName}, invoke_func_or_field({animationFactoryCall}));");
+            }
+
             protected override void WriteProgressBoundAnimationBuild(CodeBuilder builder, string name, string property, string animationFactory, string expressionFactory)
             {
                 builder.OpenScope();

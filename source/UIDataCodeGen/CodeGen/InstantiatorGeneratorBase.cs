@@ -2019,8 +2019,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
                     if (_configuration.ImplementCreateAndDestroyMethods)
                     {
-                        _createAnimationsCodeBuilder
-                                               .WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall});");
+                        WriteAnimationStart(_createAnimationsCodeBuilder, localName, String(animator.AnimatedProperty), animationFactoryCall);
 
                         ConfigureAnimationController(_createAnimationsCodeBuilder, localName, ref controllerVariableAdded, animator);
 
@@ -2030,10 +2029,15 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     }
                     else
                     {
-                        builder.WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall});");
+                        WriteAnimationStart(builder, localName, String(animator.AnimatedProperty), animationFactoryCall);
                         ConfigureAnimationController(builder, localName, ref controllerVariableAdded, animator);
                     }
                 }
+            }
+
+            protected virtual void WriteAnimationStart(CodeBuilder builder, string targetName, string propertyName, string animationFactoryCall)
+            {
+                builder.WriteLine($"{targetName}{Deref}StartAnimation({propertyName}, {animationFactoryCall});");
             }
 
             protected virtual void WriteProgressBoundAnimationBuild(CodeBuilder builder, string name, string property, string animationFactory, string expressionFactory)
@@ -2342,7 +2346,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         builder.WriteLine($"{SingletonExpressionAnimationName}{Deref}SetReferenceParameter({String(rp.Key)}, {referenceParameterName});");
                     }
 
-                    builder.WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {SingletonExpressionAnimationName});");
+                    WriteAnimationStart(builder, localName, String(animator.AnimatedProperty), SingletonExpressionAnimationName);
                 }
             }
 
