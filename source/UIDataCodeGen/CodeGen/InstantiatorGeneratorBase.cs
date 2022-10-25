@@ -2405,7 +2405,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void InitializeCompositionBrush(CodeBuilder builder, CompositionBrush obj, ObjectData node) =>
+            protected void InitializeCompositionBrush(CodeBuilder builder, CompositionBrush obj, ObjectData node) =>
                 InitializeCompositionObject(builder, obj, node);
 
             void InitializeCompositionEasingFunction(CodeBuilder builder, CompositionEasingFunction obj, ObjectData node) =>
@@ -3050,7 +3050,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionEffectBrushFactory( CodeBuilder builder, CompositionEffectBrush obj, ObjectData node)
+            protected virtual bool GenerateCompositionEffectBrushFactory( CodeBuilder builder, CompositionEffectBrush obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 

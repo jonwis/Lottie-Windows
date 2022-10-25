@@ -245,6 +245,38 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 return true;
             }
 
+            protected override bool GenerateCompositionEffectBrushFactory(CodeBuilder builder, CompositionEffectBrush obj, ObjectData node)
+            {
+                var sources = obj.GetEffectFactory().Effect.Sources;
+
+                WriteObjectFactoryStart(builder, node);
+
+                if (sources.Any())
+                {
+                    builder.WriteLine($"constexpr static const CompositionBrushProps::SourceParameter params[] =");
+                    builder.OpenScope();
+
+                    foreach (var source in sources)
+                    {
+                        builder.WriteLine($"{{ {String(source.Name)}, {CallFactoryFromFor(node, obj.GetSourceParameter(source.Name))} }},");
+                    }
+
+                    builder.CloseScopeWithSemicolon();
+                }
+
+                builder.WriteLine($"constexpr static const CompositionBrushProps props =");
+                builder.OpenScope();
+                builder.WriteLine($"{CallFactoryFromFor(node, obj.GetEffectFactory())},");
+                builder.WriteLine(sources.Any() ? "params, _countof(params)," : "nullptr, 0,");
+                builder.CloseScopeWithSemicolon();
+
+                WriteCreateAssignment(builder, node, $"MakeEffectBrush(props)");
+                InitializeCompositionBrush(builder, obj, node);
+
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+                return true;
+            }
+
             protected override bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
@@ -1137,6 +1169,29 @@ __declspec(noinline) CompositionSpriteShape MakeAndApplyProperties(
 
     return result;
 }
+
+struct CompositionBrushProps {
+    struct SourceParameter {
+        const wchar_t* name;
+        func_or_field<CompositionBrush> brush;
+    };
+
+    func_or_field<CompositionEffectFactory> factory;
+    SourceParameter const *sources;
+    int sourceCount;
+};
+
+CompositionBrush MakeEffectBrush(CompositionBrushProps const& props)
+{
+    auto factory = invoke_func_or_field(props.factory);
+    auto result = factory.CreateBrush();
+    for (int i = 0; i < props.sourceCount; ++i)
+    {
+        result.SetSourceParamteter(props.sources[i].name, invoke_func_or_field(props.sources[i]));
+    }
+    reutrn result;
+}
+
 
 template<typename TValue> struct KeyFrameStep {
     float progressKey;
