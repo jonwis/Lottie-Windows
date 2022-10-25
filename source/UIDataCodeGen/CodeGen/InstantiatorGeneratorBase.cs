@@ -1056,6 +1056,12 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             protected ObjectData ObjectPath(CompositionPath path) => _objectGraph[path];
 
+            protected virtual string CallCreateCompositionPath(ObjectData node, Wg.IGeometrySource2D source)
+            {
+                var inlinedFactoryCode = CallFactoryFromFor(node, ((CompositionPath)node.Object).Source);
+                return $"{New("CompositionPath")}({_s.CanvasGeometryFactoryCall(inlinedFactoryCode)})";
+            }
+
             protected internal AnimatedVisualGenerator(
                 InstantiatorGeneratorBase owner,
                 CompositionObject graphRoot,
@@ -1078,11 +1084,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                                         n => n.Type == Graph.NodeType.CompositionPath &&
                                         IsEqualToOne(FilteredInRefs(n))))
                 {
-                    node.ForceInline(() =>
-                    {
-                        var inlinedFactoryCode = CallFactoryFromFor(node, ((CompositionPath)node.Object).Source);
-                        return $"{New("CompositionPath")}({_s.CanvasGeometryFactoryCall(inlinedFactoryCode)})";
-                    });
+                    node.ForceInline(() => CallCreateCompositionPath(node, ((CompositionPath)node.Object).Source));
                 }
 
                 // Force inlining on CubicBezierEasingFunction nodes that are only referenced once, because their factories

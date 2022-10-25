@@ -12,6 +12,7 @@ using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.MetaData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
+using CommunityToolkit.WinUI.Lottie.WinCompData.Wg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
 using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
 using Sn = System.Numerics;
@@ -225,10 +226,15 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 ? "std::monostate"
                 : ToFuncOrFieldFromFor(base.CallFactoryFromFor(callerNode, NodeFor(obj)));
 
+            protected override string CallCreateCompositionPath(ObjectData node, IGeometrySource2D source)
+            {
+                return CallFactoryFromFor(node, ((CompositionPath)node.Object).Source);
+            }
+
             protected override bool GenerateCompositionPathGeometryFactory(CodeBuilder builder, CompositionPathGeometry obj, ObjectData node)
             {
                 var path = obj.Path is null ? null : ObjectPath(obj.Path);
-                var createPathText = path is null ? string.Empty : CallFactoryFromFor(node, path);
+                var createPathText = path is null ? string.Empty : CallFactoryFromFor(node, path).Replace("&TSelf::&TSelf::", "&TSelf::");
                 var createPathGeometryText = $"MakePathGeometry({createPathText})";
 
                 WriteObjectFactoryStart(builder, node);

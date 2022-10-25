@@ -111,6 +111,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             "Vector2KeyFrameAnimation" => "CompositionAnimation",
             "Vector3KeyFrameAnimation" => "CompositionAnimation",
             "Vector4KeyFrameAnimation" => "CompositionAnimation",
+            "CompositionLinearGradientBrush" => "CompositionBrush",
             "CompositionColorBrush" => "CompositionBrush",
             _ => value
         };
@@ -141,6 +142,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 "CompositionGradientBrush" => "CompositionBrush",
                 "CompositionMaskBrush" => "CompositionBrush",
                 "CompositionNineGridBrush" => "CompositionBrush",
+                "CompositionLinearGradientBrush" => "CompositionBrush",
 
                 "Vector2KeyFrameAnimation" => "CompositionAnimation",
                 "Vector3KeyFrameAnimation" => "CompositionAnimation",
