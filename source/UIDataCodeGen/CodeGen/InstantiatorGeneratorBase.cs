@@ -3132,7 +3132,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionSurfaceBrushFactory(CodeBuilder builder, CompositionSurfaceBrush obj, ObjectData node)
+            protected virtual bool GenerateCompositionSurfaceBrushFactory(CodeBuilder builder, CompositionSurfaceBrush obj, ObjectData node)
             {
                 var surfaceNode = obj.Surface switch
                 {

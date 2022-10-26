@@ -16,6 +16,7 @@ using CommunityToolkit.WinUI.Lottie.WinCompData.Wg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
 using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
 using Sn = System.Numerics;
+using Wmd = CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
 using Wui = CommunityToolkit.WinUI.Lottie.WinCompData.Wui;
 
 namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
@@ -209,8 +210,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     }
 
                     builder.CloseScopeWithSemicolon();
-                    builder.WriteLine($"auto propertySet = {localName}.Properties();");
-                    builder.WriteLine($"ApplyProperties(propertySet, props, _countof(props));");
+                    builder.WriteLine($"ApplyProperties({localName}, props, _countof(props));");
                 }
             }
 
@@ -403,7 +403,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("constexpr static const Vector2KeyFrameStep steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<float2> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -445,7 +445,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("constexpr static const ScalarKeyFrameStep steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<float> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -487,7 +487,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("constexpr static const ColorKeyFrameStep steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<Color> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -529,7 +529,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("constexpr static const BooleanKeyFrameStep steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<bool> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -564,6 +564,35 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 var canvasGeometry = GetObjectData((CanvasGeometry)obj.Source);
                 WriteCreateAssignment(builder, node, $"MakeCompositionPath({canvasGeometry.FactoryCall()})");
                 WriteObjectFactoryEnd(builder);
+                return true;
+            }
+
+            protected override bool GenerateCompositionSurfaceBrushFactory(CodeBuilder builder, CompositionSurfaceBrush obj, ObjectData node)
+            {
+                var surfaceNode = obj.Surface switch
+                {
+                    CompositionObject compositionObject => NodeFor(compositionObject),
+                    Wmd.LoadedImageSurface loadedImageSurface => NodeFor(loadedImageSurface),
+                    _ => null,
+                };
+
+                // Create the code that initializes the Surface.
+                var surfaceInitializationText = obj.Surface switch
+                {
+                    CompositionObject compositionObject => CallFactoryFromFor(node, compositionObject),
+                    Wmd.LoadedImageSurface _ => surfaceNode!.FieldName!,
+                    null => string.Empty,
+                    _ => throw new InvalidOperationException(),
+                };
+
+                var isReachableFromSurfaceNode = node.IsReachableFrom(surfaceNode);
+
+                WriteObjectFactoryStart(builder, node);
+                WriteCreateAssignment(builder, node, $"MakeSurfaceBrush({surfaceInitializationText}, {Bool(isReachableFromSurfaceNode)})");
+
+                InitializeCompositionBrush(builder, obj, node);
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+
                 return true;
             }
 
@@ -1187,11 +1216,10 @@ CompositionBrush MakeEffectBrush(CompositionBrushProps const& props)
     auto result = factory.CreateBrush();
     for (int i = 0; i < props.sourceCount; ++i)
     {
-        result.SetSourceParamteter(props.sources[i].name, invoke_func_or_field(props.sources[i]));
+        result.SetSourceParameter(props.sources[i].name, invoke_func_or_field(props.sources[i].brush));
     }
-    reutrn result;
+    return result;
 }
-
 
 template<typename TValue> struct KeyFrameStep {
     float progressKey;
@@ -1199,9 +1227,7 @@ template<typename TValue> struct KeyFrameStep {
     func_or_field<CompositionEasingFunction> func;
 };
 
-using Vector2KeyFrameStep = KeyFrameStep<float2>;
-
-__declspec(noinline) Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const Vector2KeyFrameStep* steps, int stepCount)
+__declspec(noinline) Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float2>* steps, int stepCount)
 {
     auto result = _c.CreateVector2KeyFrameAnimation();
     auto kfAnim = IKeyFrameAnimation{ result };
@@ -1227,9 +1253,7 @@ __declspec(noinline) Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(const 
     return result;
 }
 
-using ScalarKeyFrameStep = KeyFrameStep<float>;
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const ScalarKeyFrameStep* steps, int stepCount)
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float>* steps, int stepCount)
 {
     auto result = _c.CreateScalarKeyFrameAnimation();
     auto kfAnim = IKeyFrameAnimation{ result };
@@ -1256,9 +1280,7 @@ __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const Time
 }
 
 
-using ColorKeyFrameStep = KeyFrameStep<Color>;
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const ColorKeyFrameStep* steps, int stepCount)
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<Color>* steps, int stepCount)
 {
     auto result = _c.CreateColorKeyFrameAnimation();
     result.InterpolationColorSpace(CompositionColorSpace::Rgb);
@@ -1285,9 +1307,7 @@ __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const Time
     return result;
 }
 
-using BooleanKeyFrameStep = KeyFrameStep<bool>;
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const BooleanKeyFrameStep* steps, int stepCount)
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<bool>* steps, int stepCount)
 {
     auto result = _c.CreateBooleanKeyFrameAnimation();
     auto kfAnim = IKeyFrameAnimation{ result };
@@ -1374,6 +1394,7 @@ void StartProgressBoundAnimation(
     controller.StartAnimation(L""Progress"", invoke_func_or_field(controllerProgressExpression));
 }
 
+/*
 template<typename T> __declspec(noinline) auto BindProperty(
     CompositionObject const& target,
     const wchar_t* animatedPropertyName,
@@ -1383,18 +1404,27 @@ template<typename T> __declspec(noinline) auto BindProperty(
 {
     return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(std::forward<T>(referencedObject)));
 }
+*/
 
-/*
-template<typename T> __declspec(noinline) auto BindProperty(
+template<typename Q> __declspec(noinline) auto BindProperty(
     CompositionObject const& target,
     const wchar_t* animatedPropertyName,
     const wchar_t* expression,
     const wchar_t* referenceParameterName,
-    func_or_field<CompositionObject> const& referencedObject)
+    Q (TSelf::*pfn)())
 {
-    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(referencedObject));
+    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, (this->*pfn)());
 }
-*/
+
+template<typename Q> __declspec(noinline) auto BindProperty(
+    CompositionObject const& target,
+    const wchar_t* animatedPropertyName,
+    const wchar_t* expression,
+    const wchar_t* referenceParameterName,
+    Q TSelf::* pmem)
+{
+    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, this->*pmem);
+}
 
 AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
 {
@@ -1432,6 +1462,27 @@ template<typename TThing> void AddCompositionShapes(
     {
         shapes.Append(invoke_func_or_field(toAdd[i]));
     }
+}
+
+__declspec(noinline) CompositionSurfaceBrush MakeSurfaceBrush(func_or_field<CompositionVisualSurface> const& target, bool initAfter)
+{
+    CompositionSurfaceBrush result{nullptr};
+    CompositionVisualSurface targetSurface = invoke_func_or_field(target);
+
+    if (initAfter)
+    {
+        result = _c.CreateSurfaceBrush();
+        if (targetSurface)
+        {
+            result.Surface(targetSurface);
+        }
+    }
+    else
+    {
+        result = _c.CreateSurfaceBrush(targetSurface);
+    }
+
+    return result;
 }
 
 ");
@@ -2433,11 +2484,11 @@ DEFINE_ENUM_FLAG_OPERATORS(SpriteFields);
 
         IEnumerable<string> GetConstructorParameters(IAnimatedVisualInfo info)
         {
-            yield return "Compositor compositor";
+            yield return "Compositor const& compositor";
 
             if (SourceInfo.IsThemed)
             {
-                yield return "CompositionPropertySet themeProperties";
+                yield return "CompositionPropertySet const& themeProperties";
             }
 
             foreach (var loadedImageSurfaceNode in info.LoadedImageSurfaceNodes)
@@ -2523,8 +2574,9 @@ struct propset_value
     std::variant<Color, float, float2, float3, float4> Value;
 };
 
-__declspec(noinline) static void ApplyProperties(CompositionPropertySet const& propSet, const propset_value* props, int propCount)
+__declspec(noinline) static void ApplyProperties(CompositionObject const& target, const propset_value* props, int propCount)
 {
+    auto propSet = target.Properties();
     auto visitor = [&propSet, &props](auto&& prop)
     {
         using T = std::decay_t<decltype(prop)>;
@@ -2560,6 +2612,11 @@ __declspec(noinline) static void ApplyProperties(CompositionPropertySet const& p
         std::visit(visitor, props->Value);
         ++props;
     }
+}
+
+__declspec(noinline) static void ApplyProperties(winrt::Windows::Foundation::IInspectable const& target, const propset_value* props, int propCount)
+{
+    return ApplyProperties(target.as<CompositionObject>(), props, propCount);
 }
 
 class CanvasGeometry : public winrt::implements<CanvasGeometry,
