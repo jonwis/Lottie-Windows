@@ -2414,7 +2414,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             void InitializeCompositionShadow(CodeBuilder builder, CompositionShadow obj, ObjectData node) =>
                 InitializeCompositionObject(builder, obj, node);
 
-            protected void InitializeVisual(CodeBuilder builder, Visual obj, ObjectData node)
+            protected virtual void InitializeVisual(CodeBuilder builder, Visual obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 
@@ -2443,7 +2443,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 WriteSetPropertyStatement(builder, nameof(obj.Scale), obj.Scale);
             }
 
-            void InitializeCompositionGradientBrush(CodeBuilder builder, CompositionGradientBrush obj, ObjectData node)
+            protected virtual void InitializeCompositionGradientBrush(CodeBuilder builder, CompositionGradientBrush obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 
@@ -2513,7 +2513,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            protected void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
+            protected virtual void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 

@@ -134,6 +134,33 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         class CppWinrtVisualGenerator : AnimatedVisualGenerator
         {
+            class FieldWriter
+            {
+                readonly CodeBuilder _builder;
+                readonly CppwinrtStringifier _s = new CppwinrtStringifier();
+                readonly List<string> _fields = new List<string>();
+
+                internal FieldWriter(CodeBuilder builder)
+                {
+                    _builder = builder;
+                }
+
+                internal void Write(object? o, string name)
+                {
+                    if (o is not null)
+                    {
+                        _builder.WriteLine($"{_s.Stringify((dynamic)o)}, // {name}");
+                        _fields.Add(name);
+                    }
+                    else
+                    {
+                        _builder.WriteLine($"{{ /* unset */ }}, // {name}");
+                    }
+                }
+
+                internal string Fields { get => string.Join(" | ", _fields); }
+            }
+
             readonly CppwinrtStringifier _s = new CppwinrtStringifier();
             readonly CppwinrtInstantiatorGenerator _generator;
 
@@ -212,6 +239,115 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     builder.CloseScopeWithSemicolon();
                     builder.WriteLine($"ApplyProperties({localName}, props, _countof(props));");
                 }
+            }
+
+            /*
+             * public class CompositionGradientBrush : CompositionBrush
+            {
+                public Vector2 AnchorPoint { get;  set; }
+                public Vector2 CenterPoint { get;  set; }
+                public CompositionColorGradientStopCollection ColorStops { get; }
+                public CompositionGradientExtendMode ExtendMode { get;  set; }
+                public CompositionColorSpace InterpolationSpace { get;  set; }
+                public CompositionMappingMode MappingMode { get;  set; }
+                public Vector2 Offset { get;  set; }
+                public float RotationAngle { get;  set; }
+                public float RotationAngleInDegrees { get;  set; }
+                public Vector2 Scale { get;  set; }
+                public Matrix3x2 TransformMatrix { get;  set; }
+            }
+
+            https://docs.microsoft.com/uwp/api/Windows.UI.Composition.CompositionGradientBrush
+
+             */
+
+            internal static string GetInitializeCompositionGradientBrush() => @"
+struct GradientBrushConfig {
+    enum class ConfigFlags {
+        AnchorPoint = (1 << 0),
+        CenterPoint = (1 << 1),
+        ColorStops = (1 << 2),
+        ExtendMode = (1 << 3),
+        InterpolationSpace = (1 << 4),
+        MappingMode = (1 << 5),
+        Offset = (1 << 6),
+        RotationAngleInDegrees = (1 << 8),
+        Scale = (1 << 9),
+        TransformMatrix = (1 << 10),
+    };
+    float2 AnchorPoint;
+    float2 CenterPoint;
+    CompositionGradientExtendMode ExtendMode;
+    CompositionColorSpace InterpolationSpace;
+    CompositionMappingMode MappingMode;
+    float2 Offset;
+    float RotationAngleInDegrees;
+    float2 Scale;
+    float3x2 TransformMatrix;
+    func_or_field<CompositionColorGradientStop> const* ColorStops;
+    uint32_t ColorStopCount;
+    ConfigFlags Flags;
+};
+__declspec(noinline) void ApplyCompositionGradientProperties(CompositionGradientBrush const& target, GradientBrushConfig const& props)
+{
+    TEST_FLAG_AND_SET(AnchorPoint);
+    TEST_FLAG_AND_SET(CenterPoint);
+    TEST_FLAG_AND_SET(ExtendMode);
+    TEST_FLAG_AND_SET(InterpolationSpace);
+    TEST_FLAG_AND_SET(MappingMode);
+    TEST_FLAG_AND_SET(Offset);
+    TEST_FLAG_AND_SET(RotationAngleInDegrees);
+    TEST_FLAG_AND_SET(Scale);
+    TEST_FLAG_AND_SET(TransformMatrix);
+    if (props.ColorStopCount)
+    {
+        auto stops = target.ColorStops();
+        for (uint32_t i = 0; i < props.ColorStopCount; ++i)
+        {
+            stops.Append(invoke_func_or_field(props.ColorStops[i]));
+        }
+    }
+}
+";
+
+            protected override void InitializeCompositionGradientBrush(CodeBuilder builder, CompositionGradientBrush obj, ObjectData node)
+            {
+                InitializeCompositionObject(builder, obj, node);
+
+                if (obj.ColorStops.Any())
+                {
+                    builder.WriteLine("constexpr static const func_or_field<CompositionColorGradientStop> colorStops[] =");
+                    builder.OpenScope();
+                    foreach (var colorStop in obj.ColorStops)
+                    {
+                        builder.WriteLine($"{CallFactoryFromFor(node, colorStop)},");
+                    }
+
+                    builder.CloseScopeWithSemicolon();
+                    builder.WriteLine("constexpr static const uint32_t colorStopCount = _countof(colorStops);");
+                }
+                else
+                {
+                    builder.WriteLine("constexpr static const func_or_field<CompositionColorGradientStop> *colorStops = nullptr;");
+                    builder.WriteLine("constexpr static const uint32_t colorStopCount = 0;");
+                }
+
+                builder.WriteLine("constexpr static const GradientBrushConfig config =");
+                builder.OpenScope();
+                var writer = new FieldWriter(builder);
+                writer.Write(obj.AnchorPoint, "GradientBrushConfig::ConfigFlags::AnchorPoint");
+                writer.Write(obj.CenterPoint, "GradientBrushConfig::ConfigFlags::CenterPoint");
+                writer.Write(obj.ExtendMode, "GradientBrushConfig::ConfigFlags::ExtendMode");
+                writer.Write(obj.InterpolationSpace, "GradientBrushConfig::ConfigFlags::InterpolationSpace");
+                writer.Write(obj.MappingMode, "GradientBrushConfig::ConfigFlags::MappingMode");
+                writer.Write(obj.Offset, "GradientBrushConfig::ConfigFlags::Offset");
+                writer.Write(obj.RotationAngleInDegrees, "GradientBrushConfig::ConfigFlags::RotationAngleInDegrees");
+                writer.Write(obj.Scale, "GradientBrushConfig::ConfigFlags::Scale");
+                writer.Write(obj.TransformMatrix, "GradientBrushConfig::ConfigFlags::TransformMatrix");
+                builder.WriteLine("colorStops, colorStopCount,");
+                builder.WriteLine(writer.Fields);
+                builder.CloseScopeWithSemicolon();
+                builder.WriteLine("ApplyCompositionGradientProperties(result, config);");
             }
 
             protected string ToFuncOrFieldFromFor(string s) => "&TSelf::" + s.Replace("()", string.Empty);
@@ -306,14 +442,157 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 return true;
             }
 
+            internal static string GetInitVisualHelper() => @"
+enum class VisualPropertiesFlags : uint32_t {
+    BorderMode = (1 << 0),
+    CenterPoint = (1 << 2),
+    IsVisible = (1 << 3),
+    Offset = (1 << 4),
+    Opacity = (1 << 5),
+    RotationAngleInDegrees = (1 << 6),
+    RotationAxis = (1 << 7),
+    Scale = (1 << 8),
+    Size = (1 << 9)    
+};
+
+struct VisualProperties {
+    CompositionBorderMode BorderMode;
+    float3 CenterPoint;
+    func_or_field<CompositionClip> Clip;
+    bool IsVisible;
+    float3 Offset;
+    float Opacity;
+    float RotationAngleInDegrees;
+    float3 RotationAxis;
+    float3 Scale;
+    float2 Size;
+    float4x4 const* TransformMatrix;
+    VisualPropertiesFlags Flags;
+};
+
+#define TEST_FLAG_AND_SET(pn) if (HasFlag(props.Flags, decltype(props.Flags)::##pn)) target.##pn(props.##pn)
+
+void ApplyVisualProperties(Visual const& target, const VisualProperties& props) {
+    TEST_FLAG_AND_SET(BorderMode);
+    TEST_FLAG_AND_SET(CenterPoint);
+    if (auto clip = invoke_func_or_field(props.Clip)) {
+        target.Clip(clip);
+    }
+    TEST_FLAG_AND_SET(IsVisible);
+    TEST_FLAG_AND_SET(Offset);
+    TEST_FLAG_AND_SET(Opacity);
+    TEST_FLAG_AND_SET(RotationAngleInDegrees);
+    TEST_FLAG_AND_SET(RotationAxis);
+    TEST_FLAG_AND_SET(Scale);
+    TEST_FLAG_AND_SET(Size);
+    if (props.TransformMatrix) {
+        target.TransformMatrix(*props.TransformMatrix);
+    }
+}
+
+void ApplyVisualProperties(winrt::Windows::Foundation::IInspectable const& target, const VisualProperties& props) {
+    return ApplyVisualProperties(target.as<Visual>(), props);
+}
+";
+
+            protected override void InitializeVisual(CodeBuilder builder, Visual obj, ObjectData node)
+            {
+                InitializeCompositionObject(builder, obj, node);
+
+                string nameOfTransform = "nullptr";
+                if (obj.TransformMatrix.HasValue)
+                {
+                    builder.WriteLine($"constexpr static const float4x4 transform = {Matrix4x4(obj.TransformMatrix.Value)};");
+                    nameOfTransform = "&transform";
+                }
+
+                builder.WriteLine("constexpr static const VisualProperties visProps =");
+                builder.OpenScope();
+
+                var writer = new FieldWriter(builder);
+
+                if (obj.BorderMode.HasValue && obj.BorderMode != CompositionBorderMode.Inherit)
+                {
+                    writer.Write(obj.BorderMode, "VisualPropertiesFlags::BorderMode");
+                }
+                else
+                {
+                    builder.WriteLine("{ /* unset */ }, /* BorderMode */");
+                }
+
+                writer.Write(obj.CenterPoint, "VisualPropertiesFlags::CenterPoint");
+                builder.WriteLine(obj.Clip != null ? $"{CallFactoryFromFor(node, obj.Clip)}," : "{ /* clip unset */ },");
+                writer.Write(obj.IsVisible, "VisualPropertiesFlags::IsVisible");
+                writer.Write(obj.Offset, "VisualPropertiesFlags::Offset");
+                writer.Write(obj.Opacity, "VisualPropertiesFlags::Opacity");
+                writer.Write(obj.RotationAngleInDegrees, "VisualPropertiesFlags::RotationAngleInDegrees");
+                writer.Write(obj.RotationAxis, "VisualPropertiesFlags::RotationAxis");
+                writer.Write(obj.Scale, "VisualPropertiesFlags::Scale");
+                writer.Write(obj.Size, "VisualPropertiesFlags::Size");
+                builder.WriteLine($"{nameOfTransform},");
+                builder.WriteLine(writer.Fields);
+                builder.CloseScopeWithSemicolon();
+
+                builder.WriteLine("ApplyVisualProperties(result, visProps);");
+            }
+
+            internal static string GetGeometryConfigGenerator() => @"
+struct GeometryConfig {
+    enum class ConfigFlags : uint32_t {
+        TrimEnd = (1 << 0),
+        TrimStart = (1 << 1),
+        TrimOffset = (1 << 2),
+    };
+    float TrimEnd;
+    float TrimStart;
+    float TrimOffset;
+    ConfigFlags Flags;
+};
+void ApplyGeometryProps(CompositionGeometry const& target, GeometryConfig const& props) {
+    TEST_FLAG_AND_SET(TrimEnd);
+    TEST_FLAG_AND_SET(TrimStart);
+    TEST_FLAG_AND_SET(TrimOffset);
+}
+__declspec(noinline) void ApplyGeometryProps(winrt::Windows::Foundation::IInspectable const& target, GeometryConfig const& props) {
+    return ApplyGeometryProps(target.as<CompositionGeometry>(), props);
+}
+";
+
+            protected override void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
+            {
+                InitializeCompositionObject(builder, obj, node);
+
+                builder.WriteLine("constexpr static const GeometryConfig geometryConfig =");
+                builder.OpenScope();
+                var writer = new FieldWriter(builder);
+                writer.Write(obj.TrimEnd, "GeometryConfig::ConfigFlags::TrimEnd");
+                writer.Write(obj.TrimStart, "GeometryConfig::ConfigFlags::TrimStart");
+                writer.Write(obj.TrimOffset, "GeometryConfig::ConfigFlags::TrimOffset");
+                builder.WriteLine(writer.Fields);
+                builder.CloseScopeWithSemicolon();
+                builder.WriteLine("ApplyGeometryProps(result, geometryConfig);");
+            }
+
+            internal static string GetEllipseGeometryGenerator() => @"
+struct EllipseConfig {
+    float2 Center;
+    float2 Radius;
+};
+CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
+    auto target = _c.CreateEllipseGeometry();
+    target.Center(props.Center);
+    target.Radius(props.Radius);
+    return target;
+}
+";
+
             protected override bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
-                builder.WriteLine($"constexpr static const std::pair<float2, float2> center_radius = {{ {_s.Vector2(obj.Center)}, {_s.Vector2(obj.Radius)} }};");
+                builder.WriteLine($"constexpr static const EllipseConfig center_radius = {{ {_s.Vector2(obj.Center)}, {_s.Vector2(obj.Radius)} }};");
                 WriteCreateAssignment(builder, node, $"CreateEllipseGeometry(center_radius)");
                 InitializeCompositionGeometry(builder, obj, node);
-
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
                 return true;
             }
@@ -333,34 +612,21 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 // Write all the constant properties
                 builder.WriteLine("constexpr static const SpriteShapeProperties props =");
                 builder.OpenScope();
-                List<string> fields = new List<string>();
+                var writer = new FieldWriter(builder);
 
-                void FieldWriter(object? o, string name)
-                {
-                    if (o is not null)
-                    {
-                        builder.WriteLine($"{_s.Stringify((dynamic)o)}, // {name}");
-                        fields.Add(name);
-                    }
-                    else
-                    {
-                        builder.WriteLine($"{{ /* unset */ }}, // {name}");
-                    }
-                }
-
-                FieldWriter(obj.TransformMatrix, "SpriteFields::Transformation");
-                FieldWriter(obj.StrokeDashCap, "SpriteFields::StrokeDashCap");
-                FieldWriter(obj.StrokeDashOffset, "SpriteFields::StrokeDashOffset");
-                FieldWriter(obj.StrokeStartCap, "SpriteFields::StrokeStartCap");
-                FieldWriter(obj.StrokeEndCap, "SpriteFields::StrokeEndCap");
-                FieldWriter(obj.StrokeLineJoin, "SpriteFields::StrokeLineJoin");
-                FieldWriter(obj.StrokeMiterLimit, "SpriteFields::StrokeMiterLimit");
-                FieldWriter(obj.StrokeThickness, "SpriteFields::StrokeThickness");
-                FieldWriter(obj.IsStrokeNonScaling, "SpriteFields::IsStrokeNonScaling");
-                FieldWriter(obj.CenterPoint, "SpriteFields::CenterPoint");
-                FieldWriter(obj.Offset, "SpriteFields::Offset");
-                FieldWriter(obj.RotationAngleInDegrees, "SpriteFields::RotationInDegrees");
-                FieldWriter(obj.Scale, "SpriteFields::Scale");
+                writer.Write(obj.TransformMatrix, "SpriteFields::Transformation");
+                writer.Write(obj.StrokeDashCap, "SpriteFields::StrokeDashCap");
+                writer.Write(obj.StrokeDashOffset, "SpriteFields::StrokeDashOffset");
+                writer.Write(obj.StrokeStartCap, "SpriteFields::StrokeStartCap");
+                writer.Write(obj.StrokeEndCap, "SpriteFields::StrokeEndCap");
+                writer.Write(obj.StrokeLineJoin, "SpriteFields::StrokeLineJoin");
+                writer.Write(obj.StrokeMiterLimit, "SpriteFields::StrokeMiterLimit");
+                writer.Write(obj.StrokeThickness, "SpriteFields::StrokeThickness");
+                writer.Write(obj.IsStrokeNonScaling, "SpriteFields::IsStrokeNonScaling");
+                writer.Write(obj.CenterPoint, "SpriteFields::CenterPoint");
+                writer.Write(obj.Offset, "SpriteFields::Offset");
+                writer.Write(obj.RotationAngleInDegrees, "SpriteFields::RotationInDegrees");
+                writer.Write(obj.Scale, "SpriteFields::Scale");
 
                 if (obj.StrokeDashArray.Any())
                 {
@@ -375,7 +641,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine((obj.FillBrush != null) ? $"{CallFactoryFromFor(node, obj.FillBrush)}," : "{ /* no fill */ },");
                 builder.WriteLine((obj.StrokeBrush != null) ? $"{CallFactoryFromFor(node, obj.StrokeBrush)}," : "{ /* no stroke */ },");
 
-                builder.WriteLine(string.Join(" | ", fields));
+                builder.WriteLine(writer.Fields);
                 builder.CloseScopeWithSemicolon();
 
                 // Write the call to the maker method
@@ -589,7 +855,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"MakeSurfaceBrush({surfaceInitializationText}, {Bool(isReachableFromSurfaceNode)})");
-
                 InitializeCompositionBrush(builder, obj, node);
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
 
@@ -1486,6 +1751,10 @@ __declspec(noinline) CompositionSurfaceBrush MakeSurfaceBrush(func_or_field<Comp
 }
 
 ");
+            builder.WriteLine(CppWinrtVisualGenerator.GetInitVisualHelper());
+            builder.WriteLine(CppWinrtVisualGenerator.GetGeometryConfigGenerator());
+            builder.WriteLine(CppWinrtVisualGenerator.GetEllipseGeometryGenerator());
+            builder.WriteLine(CppWinrtVisualGenerator.GetInitializeCompositionGradientBrush());
         }
 
         void AddUsingsForTypeAliases(CodeBuilder builder)
@@ -1510,13 +1779,13 @@ __declspec(noinline) CompositionSurfaceBrush MakeSurfaceBrush(func_or_field<Comp
                 switch (c.Type)
                 {
                     case ConstantType.Color:
-                        builder.WriteLine($"static inline const winrt::Windows::UI::Color {c.Name}{_s.Color((WinCompData.Wui.Color)c.Value)};");
+                        builder.WriteLine($"constexpr static const winrt::Windows::UI::Color {c.Name}{_s.Color((WinCompData.Wui.Color)c.Value)};");
                         break;
                     case ConstantType.Int64:
-                        builder.WriteLine($"static constexpr int64_t {c.Name}{{ {_s.Int64((long)c.Value)} }};");
+                        builder.WriteLine($"constexpr static const int64_t {c.Name}{{ {_s.Int64((long)c.Value)} }};");
                         break;
                     case ConstantType.Float:
-                        builder.WriteLine($"static constexpr float {c.Name}{{ {_s.Float((float)c.Value)} }};");
+                        builder.WriteLine($"constexpr static const float {c.Name}{{ {_s.Float((float)c.Value)} }};");
                         break;
                     default:
                         throw new InvalidOperationException();
@@ -1663,7 +1932,17 @@ enum class SpriteFields : uint32_t
 };
 DEFINE_ENUM_FLAG_OPERATORS(SpriteFields);
 
-#define HasFlag(x, y) ((x & y) != static_cast<decltype(x)>(0))
+template<typename T> constexpr inline bool HasFlag(T const& flagset, T const& value) {
+    return (static_cast<uint32_t>(flagset) & static_cast<uint32_t>(value)) != 0;
+}
+
+template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr auto operator|(T const& a, T const& b) {
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(a) | static_cast<std::underlying_type_t<T>>(b));
+}
+
+template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr auto operator&(T const& a, T const& b) {
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(a) & static_cast<std::underlying_type_t<T>>(b));
+}
 ");
 
             builder.WriteLine($"namespace winrt::{_s.Namespace(SourceInfo.Namespace)}::implementation");

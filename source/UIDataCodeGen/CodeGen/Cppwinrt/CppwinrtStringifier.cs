@@ -99,6 +99,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             "StepEasingFunction" => "CompositionEasingFunction",
             "CompositionPathGeometry" => "CompositionGeometry",
             "CompositionEllipseGeometry" => "CompositionGeometry",
+            "InsetClip" => "CompositionClip",
 
             // "ExpressionAnimation" => "CompositionAnimation",
             "KeyframeAnimation" => "CompositionAnimation",
@@ -143,6 +144,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 "CompositionMaskBrush" => "CompositionBrush",
                 "CompositionNineGridBrush" => "CompositionBrush",
                 "CompositionLinearGradientBrush" => "CompositionBrush",
+
+                "InsetClip" => "CompositionClip",
 
                 "Vector2KeyFrameAnimation" => "CompositionAnimation",
                 "Vector3KeyFrameAnimation" => "CompositionAnimation",
@@ -205,30 +208,32 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public string Vector4Args(Vector4 value) => $"{Float(value.X)}, {Float(value.Y)}, {Float(value.Z)}, {Float(value.W)}";
 
-        public string Stringify(bool? value) => value.GetValueOrDefault().ToString();
+        public string Stringify(bool? value) => value.GetValueOrDefault() ? "true" : "false";
+
+        public string Stringify(CompositionBorderMode? value) => BorderMode(value.GetValueOrDefault());
+
+        public string Stringify(CompositionColorSpace? value) => ColorSpace(value.GetValueOrDefault());
+
+        public string Stringify(CompositionDropShadowSourcePolicy? value) => DropShadowSourcePolicy(value.GetValueOrDefault());
+
+        public string Stringify(CompositionGradientExtendMode? value) => ExtendMode(value.GetValueOrDefault());
+
+        public string Stringify(CompositionMappingMode? value) => MappingMode(value.GetValueOrDefault());
+
+        public string Stringify(CompositionStrokeCap? value) => StrokeCap(value.GetValueOrDefault());
+
+        public string Stringify(CompositionStrokeLineJoin? value) => StrokeLineJoin(value.GetValueOrDefault());
 
         public string Stringify(float? value) => Float(value.GetValueOrDefault());
+
+        public string Stringify(Matrix3x2? value) => Matrix3x2(value.GetValueOrDefault());
+
+        public string Stringify(Matrix4x4? value) => Matrix4x4(value.GetValueOrDefault());
 
         public string Stringify(Vector2? value) => Vector2(value.GetValueOrDefault());
 
         public string Stringify(Vector3? value) => Vector3(value.GetValueOrDefault());
 
         public string Stringify(Vector4? value) => Vector4(value.GetValueOrDefault());
-
-        public string Stringify(CompositionStrokeLineJoin? value) => StrokeLineJoin(value.GetValueOrDefault());
-
-        public string Stringify(CompositionStrokeCap? value) => StrokeCap(value.GetValueOrDefault());
-
-        public string Stringify(Matrix3x2? value) => Matrix3x2(value.GetValueOrDefault());
-
-        public string Stringify(Matrix4x4? value) => Matrix4x4(value.GetValueOrDefault());
-
-        public string Stringify(CompositionMappingMode? value) => MappingMode(value.GetValueOrDefault());
-
-        public string Stringify(CompositionGradientExtendMode? value) => ExtendMode(value.GetValueOrDefault());
-
-        public string Stringify(CompositionDropShadowSourcePolicy? value) => DropShadowSourcePolicy(value.GetValueOrDefault());
-
-        public string Stringify(CompositionColorSpace? value) => ColorSpace(value.GetValueOrDefault());
     }
 }
