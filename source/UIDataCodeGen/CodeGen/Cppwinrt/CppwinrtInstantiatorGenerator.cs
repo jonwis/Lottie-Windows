@@ -2278,22 +2278,38 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
         /// </summary>
         void WriteMarkersPropertyImpl(CodeBuilder builder)
         {
+            builder.WriteLine("winrt::Windows::Foundation::Collections::IMapView<hstring, double> _markers { nullptr };");
+            builder.WriteLine();
             builder.WriteLine($"winrt::Windows::Foundation::Collections::IMapView<hstring, double> {_sourceClassName}::Markers()");
             builder.OpenScope();
-            builder.WriteLine("return winrt::single_threaded_map<winrt::hstring, double>(");
-            builder.Indent();
-            builder.WriteLine("std::map<winrt::hstring, double>");
 
-            builder.OpenScope();
-            foreach (var marker in SourceInfo.Markers)
+            if (SourceInfo.Markers.Any())
             {
-                builder.WriteLine($"{{ {_s.String(marker.Name)}, {_s.Double(marker.StartProgress)} }},");
+                builder.WriteLine("constexpr static const std::pair<const wchar_t*, double> marks[] =");
+
+                builder.OpenScope();
+                foreach (var marker in SourceInfo.Markers)
+                {
+                    builder.WriteLine($"{{ {_s.String(marker.Name)}, {_s.Double(marker.StartProgress)} }},");
+                }
+
+                builder.CloseScopeWithSemicolon();
+                builder.WriteLine();
+                builder.WriteLine("if (!_markers)");
+                builder.OpenScope();
+                builder.WriteLine("_markers = winrt::single_threaded_map<winrt::hstring, double>(std::map<winrt::hstring, double>(std::begin(marks), std::end(marks))).GetView();");
+                builder.CloseScope();
+            }
+            else
+            {
+                builder.WriteLine("if (!_markers)");
+                builder.OpenScope();
+                builder.WriteLine("_markers = winrt::single_threaded_map<winrt::hstring, double>().GetView();");
+                builder.CloseScope();
             }
 
-            builder.CloseScope();
-
-            builder.UnIndent();
-            builder.WriteLine(").GetView();");
+            builder.WriteLine();
+            builder.WriteLine("return _markers;");
             builder.CloseScope();
         }
 
