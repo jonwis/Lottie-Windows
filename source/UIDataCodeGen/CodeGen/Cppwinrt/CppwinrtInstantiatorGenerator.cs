@@ -381,6 +381,48 @@ __declspec(noinline) void ApplyCompositionGradientProperties(CompositionGradient
                 return true;
             }
 
+            internal static string GetCompositionVisualFactory() => @"
+struct VisualSurfaceProps {
+    enum class PropsFlags : uint32_t {
+        SourceVisual = (1 << 0),
+        SourceSize = (1 << 1),
+        SourceOffset = (1 << 2),
+    };
+    func_or_field<Visual> SourceVisual;
+    float2 SourceSize;
+    float2 SourceOffset;
+    PropsFlags Flags;
+};
+__declspec(noinline) void ApplyVisualSurfaceProps(CompositionVisualSurface const& target, VisualSurfaceProps const& props) {
+    if (auto visual = invoke_func_or_field(props.SourceVisual)) {
+        target.SourceVisual(visual);
+    }
+    TEST_FLAG_AND_SET(SourceSize);
+    TEST_FLAG_AND_SET(SourceOffset);
+}
+";
+
+            protected override bool GenerateCompositionVisualSurfaceFactory(CodeBuilder builder, CompositionVisualSurface obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+                WriteCreateAssignment(builder, node, $"_c.CreateVisualSurface()");
+                InitializeCompositionObject(builder, obj, node);
+
+                var writer = new FieldWriter(builder);
+                builder.WriteLine("constexpr static const VisualSurfaceProps props = ");
+                builder.OpenScope();
+                builder.WriteLine($"{CallFactoryFromFor(node, obj.SourceVisual)},");
+                writer.Write(obj.SourceSize, "VisualSurfaceProps::PropsFlags::SourceSize");
+                writer.Write(obj.SourceOffset, "VisualSurfaceProps::PropsFlags::SourceOffset");
+                builder.WriteLine(writer.Fields);
+                builder.CloseScopeWithSemicolon();
+
+                builder.WriteLine("ApplyVisualSurfaceProps(result, props);");
+
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+                return true;
+            }
+
             protected override bool GenerateCompositionEffectBrushFactory(CodeBuilder builder, CompositionEffectBrush obj, ObjectData node)
             {
                 var sources = obj.GetEffectFactory().Effect.Sources;
@@ -408,8 +450,8 @@ __declspec(noinline) void ApplyCompositionGradientProperties(CompositionGradient
 
                 WriteCreateAssignment(builder, node, $"MakeEffectBrush(props)");
                 InitializeCompositionBrush(builder, obj, node);
-
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
+
                 return true;
             }
 
@@ -1755,6 +1797,7 @@ __declspec(noinline) CompositionSurfaceBrush MakeSurfaceBrush(func_or_field<Comp
             builder.WriteLine(CppWinrtVisualGenerator.GetGeometryConfigGenerator());
             builder.WriteLine(CppWinrtVisualGenerator.GetEllipseGeometryGenerator());
             builder.WriteLine(CppWinrtVisualGenerator.GetInitializeCompositionGradientBrush());
+            builder.WriteLine(CppWinrtVisualGenerator.GetCompositionVisualFactory());
         }
 
         void AddUsingsForTypeAliases(CodeBuilder builder)

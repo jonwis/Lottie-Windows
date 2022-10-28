@@ -3193,7 +3193,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionVisualSurfaceFactory(CodeBuilder builder, CompositionVisualSurface obj, ObjectData node)
+            protected virtual bool GenerateCompositionVisualSurfaceFactory(CodeBuilder builder, CompositionVisualSurface obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"_c{Deref}CreateVisualSurface()");
