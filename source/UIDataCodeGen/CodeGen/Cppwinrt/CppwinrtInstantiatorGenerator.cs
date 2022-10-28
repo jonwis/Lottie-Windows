@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Numerics;
@@ -241,26 +242,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 }
             }
 
-            /*
-             * public class CompositionGradientBrush : CompositionBrush
-            {
-                public Vector2 AnchorPoint { get;  set; }
-                public Vector2 CenterPoint { get;  set; }
-                public CompositionColorGradientStopCollection ColorStops { get; }
-                public CompositionGradientExtendMode ExtendMode { get;  set; }
-                public CompositionColorSpace InterpolationSpace { get;  set; }
-                public CompositionMappingMode MappingMode { get;  set; }
-                public Vector2 Offset { get;  set; }
-                public float RotationAngle { get;  set; }
-                public float RotationAngleInDegrees { get;  set; }
-                public Vector2 Scale { get;  set; }
-                public Matrix3x2 TransformMatrix { get;  set; }
-            }
-
-            https://docs.microsoft.com/uwp/api/Windows.UI.Composition.CompositionGradientBrush
-
-             */
-
             internal static string GetInitializeCompositionGradientBrush() => @"
 struct GradientBrushConfig {
     enum class ConfigFlags {
@@ -359,7 +340,7 @@ __declspec(noinline) void ApplyCompositionGradientProperties(CompositionGradient
 
             protected override string CallFactoryFromFor(ObjectData callerNode, CompositionObject? obj) =>
                 obj is null
-                ? "std::monostate"
+                ? "{ /* unset */ }"
                 : ToFuncOrFieldFromFor(base.CallFactoryFromFor(callerNode, NodeFor(obj)));
 
             protected override string CallCreateCompositionPath(ObjectData node, IGeometrySource2D source)
@@ -455,10 +436,24 @@ __declspec(noinline) void ApplyVisualSurfaceProps(CompositionVisualSurface const
                 return true;
             }
 
-            protected override bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
-            {
-                WriteObjectFactoryStart(builder, node);
+            internal static string GetInitVisualContainerHelper() => @"
+__declspec(noinline) void ApplyContainerVisuals(ContainerVisual const& target, const func_or_field<Visual>* visuals, size_t visualCount)
+{
+    auto children = target.Children();
+    for (size_t i = 0; i < visualCount; ++i)
+    {
+        children.InsertAtTop(invoke_func_or_field(visuals[i]));
+    }
+}
 
+__declspec(noinline) void ApplyContainerVisuals(winrt::Windows::Foundation::IInspectable const& target, const func_or_field<Visual>* visuals, size_t visualCount)
+{
+    return ApplyContainerVisuals(target.as<ContainerVisual>(), visuals, visualCount);
+}
+";
+
+            protected override void InitializeContainerVisual(CodeBuilder builder, ContainerVisual obj, ObjectData node)
+            {
                 if (obj.Children.Any())
                 {
                     builder.WriteLine("constexpr static const func_or_field<Visual> visuals[] =");
@@ -470,18 +465,8 @@ __declspec(noinline) void ApplyVisualSurfaceProps(CompositionVisualSurface const
                     }
 
                     builder.CloseScopeWithSemicolon();
-                    builder.WriteLine("const size_t visualCount = _countof(visuals);");
+                    builder.WriteLine($"ApplyContainerVisuals(result, visuals, _countof(visuals));");
                 }
-                else
-                {
-                    builder.WriteLine("constexpr static const const func_or_field<Visual>* visuals = nullptr;");
-                    builder.WriteLine("constexpr const size_t visualCount = 0;");
-                }
-
-                WriteCreateAssignment(builder, node, $"CreateContainerVisual(visuals, visualCount)");
-                InitializeVisual(builder, obj, node);
-                WriteCompositionObjectFactoryEnd(builder, obj, node);
-                return true;
             }
 
             internal static string GetInitVisualHelper() => @"
@@ -695,6 +680,40 @@ CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
                 builder.CloseScope();
                 builder.WriteLine();
 
+                return true;
+            }
+
+            internal static string GetCreateSpriteVisualBuilder() => @"
+struct SpriteVisualProps {
+    func_or_field<CompositionBrush> Brush;
+    func_or_field<CompositionShadow> Shadow;
+};
+__declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& props) {
+    auto result = _c.CreateSpriteVisual();
+    if (auto b = invoke_func_or_field(props.Brush)) {
+        result.Brush(b);
+    }
+    if (auto s = invoke_func_or_field(props.Shadow)) {
+        result.Shadow(s);
+    }
+    return result;
+}
+";
+
+            protected override bool GenerateSpriteVisualFactory(CodeBuilder builder, SpriteVisual obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+
+                builder.WriteLine("constexpr static const SpriteVisualProps props =");
+                builder.OpenScope();
+                builder.WriteLine($"{CallFactoryFromFor(node, obj.Brush)},");
+                builder.WriteLine($"{CallFactoryFromFor(node, obj.Shadow)},");
+                builder.CloseScopeWithSemicolon();
+                WriteCreateAssignment(builder, node, "CreateSpriteVisual(props)");
+
+                InitializeContainerVisual(builder, obj, node);
+
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
                 return true;
             }
 
@@ -1382,11 +1401,11 @@ CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
             }
 
             builder.WriteLine($"using TSelf = {info.ClassName};");
-            builder.WriteLine(@"
+            builder.WriteManyLines(@"
 
 template<typename T> using func_or_field = std::variant<T(TSelf::*)(), T TSelf::*, std::monostate>;
 
-template<typename T> T const& invoke_func_or_field(func_or_field<T> const& fof)
+template<typename T> __declspec(noinline) T invoke_func_or_field(func_or_field<T> const& fof)
 {
     if (std::holds_alternative<T(TSelf::*)()>(fof))
     {
@@ -1398,8 +1417,7 @@ template<typename T> T const& invoke_func_or_field(func_or_field<T> const& fof)
     }
     else
     {
-        static const T empty{nullptr};
-        return empty;
+        return { nullptr };
     }
 };
 
@@ -1668,17 +1686,6 @@ __declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(std::pair<
     return result;
 }
 
-__declspec(noinline) ContainerVisual CreateContainerVisual(const func_or_field<Visual>* visuals, size_t visualCount)
-{
-    auto result = _c.CreateContainerVisual();
-    auto children = result.Children();
-    for (size_t i = 0; i < visualCount; ++i)
-    {
-        children.InsertAtTop(invoke_func_or_field(visuals[i]));
-    }
-    return result;
-}
-
 __declspec(noinline) auto MakePathGeometry(func_or_field<CompositionPath> const& path)
 {
     return _c.CreatePathGeometry(invoke_func_or_field(path));
@@ -1689,7 +1696,7 @@ __declspec(noinline) auto MakePathGeometry(func_or_field<winrt::com_ptr<CanvasGe
     return _c.CreatePathGeometry(CompositionPath { *invoke_func_or_field(geoMaker) });
 }
 
-void StartProgressBoundAnimation(
+__declspec(noinline) void StartProgressBoundAnimation(
     CompositionObject const& target,
     const wchar_t* animatedPropertyName,
     func_or_field<CompositionAnimation> const& animation,
@@ -1701,17 +1708,14 @@ void StartProgressBoundAnimation(
     controller.StartAnimation(L""Progress"", invoke_func_or_field(controllerProgressExpression));
 }
 
-/*
-template<typename T> __declspec(noinline) auto BindProperty(
-    CompositionObject const& target,
+__declspec(noinline) void StartProgressBoundAnimation(
+    winrt::Windows::Foundation::IInspectable const& target,
     const wchar_t* animatedPropertyName,
-    const wchar_t* expression,
-    const wchar_t* referenceParameterName,
-    T&& referencedObject)
+    func_or_field<CompositionAnimation> const& animation,
+    func_or_field<ExpressionAnimation> const& controllerProgressExpression)
 {
-    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(std::forward<T>(referencedObject)));
+    StartProgressBoundAnimation(target.as<CompositionObject>(), animatedPropertyName, animation, controllerProgressExpression);
 }
-*/
 
 template<typename Q> __declspec(noinline) auto BindProperty(
     CompositionObject const& target,
@@ -1731,6 +1735,26 @@ template<typename Q> __declspec(noinline) auto BindProperty(
     Q TSelf::* pmem)
 {
     return BindProperty(target, animatedPropertyName, expression, referenceParameterName, this->*pmem);
+}
+
+template<typename Q> __declspec(noinline) auto BindProperty(
+    winrt::Windows::Foundation::IInspectable const& target,
+    const wchar_t* animatedPropertyName,
+    const wchar_t* expression,
+    const wchar_t* referenceParameterName,
+    Q (TSelf::*pfn)())
+{
+    return BindProperty(target.as<CompositionObject>(), animatedPropertyName, expression, referenceParameterName, pfn);
+}
+
+template<typename Q> __declspec(noinline) auto BindProperty(
+    winrt::Windows::Foundation::IInspectable const& target,
+    const wchar_t* animatedPropertyName,
+    const wchar_t* expression,
+    const wchar_t* referenceParameterName,
+    Q TSelf::* pmem)
+{
+    return BindProperty(target.as<CompositionObject>(), animatedPropertyName, expression, referenceParameterName, pmem);
 }
 
 AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
@@ -1759,6 +1783,11 @@ __declspec(noinline) void StartProgressBoundAnimation(CompositionObject const& t
     return StartProgressBoundAnimation(target, animation.property, animation.animation, animation.expression);
 }
 
+__declspec(noinline) void StartProgressBoundAnimation(winrt::Windows::Foundation::IInspectable const& target, const BoundAnimation& animation)
+{
+    return StartProgressBoundAnimation(target.as<CompositionObject>(), animation.property, animation.animation, animation.expression);
+}
+
 template<typename TThing> void AddCompositionShapes(
     TThing const& container,
     const func_or_field<CompositionShape>* toAdd,
@@ -1771,7 +1800,7 @@ template<typename TThing> void AddCompositionShapes(
     }
 }
 
-__declspec(noinline) CompositionSurfaceBrush MakeSurfaceBrush(func_or_field<CompositionVisualSurface> const& target, bool initAfter)
+__declspec(noinline) CompositionBrush MakeSurfaceBrush(func_or_field<CompositionVisualSurface> const& target, bool initAfter)
 {
     CompositionSurfaceBrush result{nullptr};
     CompositionVisualSurface targetSurface = invoke_func_or_field(target);
@@ -1791,13 +1820,14 @@ __declspec(noinline) CompositionSurfaceBrush MakeSurfaceBrush(func_or_field<Comp
 
     return result;
 }
-
 ");
-            builder.WriteLine(CppWinrtVisualGenerator.GetInitVisualHelper());
-            builder.WriteLine(CppWinrtVisualGenerator.GetGeometryConfigGenerator());
-            builder.WriteLine(CppWinrtVisualGenerator.GetEllipseGeometryGenerator());
-            builder.WriteLine(CppWinrtVisualGenerator.GetInitializeCompositionGradientBrush());
-            builder.WriteLine(CppWinrtVisualGenerator.GetCompositionVisualFactory());
+            builder.WriteManyLines(CppWinrtVisualGenerator.GetCreateSpriteVisualBuilder());
+            builder.WriteManyLines(CppWinrtVisualGenerator.GetInitVisualContainerHelper());
+            builder.WriteManyLines(CppWinrtVisualGenerator.GetInitVisualHelper());
+            builder.WriteManyLines(CppWinrtVisualGenerator.GetGeometryConfigGenerator());
+            builder.WriteManyLines(CppWinrtVisualGenerator.GetEllipseGeometryGenerator());
+            builder.WriteManyLines(CppWinrtVisualGenerator.GetInitializeCompositionGradientBrush());
+            builder.WriteManyLines(CppWinrtVisualGenerator.GetCompositionVisualFactory());
         }
 
         void AddUsingsForTypeAliases(CodeBuilder builder)
@@ -2270,6 +2300,7 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
         void WriteMarkersPropertyDecl(CodeBuilder builder)
         {
             builder.WriteComment("Returns a map from marker names to corresponding progress values.");
+            builder.WriteLine("winrt::Windows::Foundation::Collections::IMapView<hstring, double> _markers {nullptr};");
             builder.WriteLine("winrt::Windows::Foundation::Collections::IMapView<hstring, double> Markers();");
         }
 
@@ -2278,8 +2309,6 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
         /// </summary>
         void WriteMarkersPropertyImpl(CodeBuilder builder)
         {
-            builder.WriteLine("winrt::Windows::Foundation::Collections::IMapView<hstring, double> _markers { nullptr };");
-            builder.WriteLine();
             builder.WriteLine($"winrt::Windows::Foundation::Collections::IMapView<hstring, double> {_sourceClassName}::Markers()");
             builder.OpenScope();
 

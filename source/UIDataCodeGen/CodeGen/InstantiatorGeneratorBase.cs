@@ -2279,7 +2279,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             // This reparameterizes the singleton each time it is called, and therefore avoids the
             // cost of creating a new ExpressionAnimation. However, because it gets reparameterized
             // for each use, it cannot be used if the ExpressionAnimation is shared by multiple nodes.
-            void StartSingletonExpressionAnimation(
+            protected virtual void StartSingletonExpressionAnimation(
                     CodeBuilder builder,
                     CompositionObject obj,
                     string localName,
@@ -2479,7 +2479,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 WriteSetPropertyStatement(builder, nameof(obj.TransformMatrix), obj.TransformMatrix);
             }
 
-            void InitializeContainerVisual(CodeBuilder builder, ContainerVisual obj, ObjectData node)
+            protected virtual void InitializeContainerVisual(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
                 InitializeVisual(builder, obj, node);
 
@@ -3027,7 +3027,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateSpriteVisualFactory(CodeBuilder builder, SpriteVisual obj, ObjectData node)
+            protected virtual bool GenerateSpriteVisualFactory(CodeBuilder builder, SpriteVisual obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"_c{Deref}CreateSpriteVisual()");
