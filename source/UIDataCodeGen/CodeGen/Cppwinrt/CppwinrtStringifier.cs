@@ -40,9 +40,9 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public string ColorArgs(Color value) => $"{Hex(value.A)}, {Hex(value.R)}, {Hex(value.G)}, {Hex(value.B)}";
 
-        public override string ConstExprField(string type, string name, string value) => $"static constexpr {type} {name}{{ {value} }};";
+        public override string ConstExprField(string type, string name, string value) => $"static const constexpr {type} {name}{{ {value} }};";
 
-        public override string ConstVar => "const auto";
+        public override string ConstVar => "auto";
 
         public override string DefaultInitialize => "{ nullptr }";
 
@@ -97,8 +97,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             "PowerEasingFunction" => "CompositionEasingFunction",
             "SineEasingFunction" => "CompositionEasingFunction",
             "StepEasingFunction" => "CompositionEasingFunction",
-            "CompositionPathGeometry" => "CompositionGeometry",
+
             "CompositionEllipseGeometry" => "CompositionGeometry",
+            "CompositionPathGeometry" => "CompositionGeometry",
+            "CompositionRectangleGeometry" => "CompositionGeometry",
+            "CompositionLineGeometry" => "CompositionGeometry",
+            "CompositionRoundedRectangleGeometry" => "CompositionGeometry",
+
             "InsetClip" => "CompositionClip",
 
             // "ExpressionAnimation" => "CompositionAnimation",
@@ -128,15 +133,21 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             value switch
             {
                 "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry>",
+
                 "StepEasingFunction" => "CompositionEasingFunction",
                 "CubicBezierEasingFunction" => "CompositionEasingFunction",
+
                 "CompositionContainerShape" => "CompositionShape",
                 "CompositionSpriteShape" => "CompositionShape",
+
                 "CompositionEllipseGeometry" => "CompositionGeometry",
                 "CompositionPathGeometry" => "CompositionGeometry",
                 "CompositionRectangleGeometry" => "CompositionGeometry",
+                "CompositionLineGeometry" => "CompositionGeometry",
+                "CompositionRoundedRectangleGeometry" => "CompositionGeometry",
 
                 "CompositionSurfaceBrush" => "CompositionBrush",
+                "CompositionRadialGradientBrush" => "CompositionBrush",
                 "CompositionBackdropBrush" => "CompositionBrush",
                 "CompositionColorBrush" => "CompositionBrush",
                 "CompositionEffectBrush" => "CompositionBrush",
@@ -153,6 +164,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 "BooleanKeyFrameAnimation" => "CompositionAnimation",
                 "ScalarKeyFrameAnimation" => "CompositionAnimation",
                 "ColorKeyFrameAnimation" => "CompositionAnimation",
+                "PathKeyFrameAnimation" => "CompositionAnimation",
 
                 "SpriteVisual" => "Visual",
                 "ShapeVisual" => "Visual",

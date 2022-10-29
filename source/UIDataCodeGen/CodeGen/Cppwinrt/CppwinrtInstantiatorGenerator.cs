@@ -759,6 +759,90 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                 return true;
             }
 
+            protected override bool GenerateVector3KeyFrameAnimationFactory(CodeBuilder builder, Vector3KeyFrameAnimation obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+                var keyFrames = obj.KeyFrames;
+                var firstKeyFrame = keyFrames.First();
+                string durationAmount = "nullptr";
+
+                if (obj.Duration == Owner.CompositionDuration)
+                {
+                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
+                    durationAmount = "&duration";
+                }
+
+                builder.WriteLine("constexpr static const KeyFrameStep<float3> steps[] =");
+                builder.OpenScope();
+                foreach (var kf in keyFrames)
+                {
+                    WriteFrameNumberComment(builder, kf.Progress);
+
+                    switch (kf.Type)
+                    {
+                        case KeyFrameType.Expression:
+                            var expressionKeyFrame = (KeyFrameAnimation<Vector3, Expr.Vector3>.ExpressionKeyFrame)kf;
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {CallFactoryFromFor(node, kf.Easing)} }},");
+                            break;
+                        case KeyFrameType.Value:
+                            var valueKeyFrame = (KeyFrameAnimation<Vector3, Expr.Vector3>.ValueKeyFrame)kf;
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, float3 {Vector3(valueKeyFrame.Value)}, {CallFactoryFromFor(node, kf.Easing)} }},");
+                            break;
+                        default:
+                            throw new InvalidOperationException();
+                    }
+                }
+
+                builder.CloseScopeWithSemicolon();
+
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames({durationAmount}, steps, _countof(steps))");
+                InitializeCompositionAnimation(builder, obj, node);
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+                return true;
+            }
+
+            protected override bool GenerateVector4KeyFrameAnimationFactory(CodeBuilder builder, Vector4KeyFrameAnimation obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+                var keyFrames = obj.KeyFrames;
+                var firstKeyFrame = keyFrames.First();
+                string durationAmount = "nullptr";
+
+                if (obj.Duration == Owner.CompositionDuration)
+                {
+                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
+                    durationAmount = "&duration";
+                }
+
+                builder.WriteLine("constexpr static const KeyFrameStep<float4> steps[] =");
+                builder.OpenScope();
+                foreach (var kf in keyFrames)
+                {
+                    WriteFrameNumberComment(builder, kf.Progress);
+
+                    switch (kf.Type)
+                    {
+                        case KeyFrameType.Expression:
+                            var expressionKeyFrame = (KeyFrameAnimation<Vector4, Expr.Vector4>.ExpressionKeyFrame)kf;
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {CallFactoryFromFor(node, kf.Easing)} }},");
+                            break;
+                        case KeyFrameType.Value:
+                            var valueKeyFrame = (KeyFrameAnimation<Vector4, Expr.Vector4>.ValueKeyFrame)kf;
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, float4 {Vector4(valueKeyFrame.Value)}, {CallFactoryFromFor(node, kf.Easing)} }},");
+                            break;
+                        default:
+                            throw new InvalidOperationException();
+                    }
+                }
+
+                builder.CloseScopeWithSemicolon();
+
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames({durationAmount}, steps, _countof(steps))");
+                InitializeCompositionAnimation(builder, obj, node);
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+                return true;
+            }
+
             protected override bool GenerateScalarKeyFrameAnimationFactory(CodeBuilder builder, ScalarKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
@@ -829,6 +913,48 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                         case KeyFrameType.Value:
                             var valueKeyFrame = (KeyFrameAnimation<Wui.Color, Expr.Color>.ValueKeyFrame)kf;
                             builder.WriteLine($"{{ {Float(kf.Progress)}, Color {Color(valueKeyFrame.Value)}, {CallFactoryFromFor(node, kf.Easing)} }},");
+                            break;
+                        default:
+                            throw new InvalidOperationException();
+                    }
+                }
+
+                builder.CloseScopeWithSemicolon();
+
+                WriteCreateAssignment(builder, node, $"ConfigureAnimationKeyFrames({durationAmount}, steps, _countof(steps))");
+                InitializeCompositionAnimation(builder, obj, node);
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+                return true;
+            }
+
+            protected override bool GeneratePathKeyFrameAnimationFactory(CodeBuilder builder, PathKeyFrameAnimation obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+                var keyFrames = obj.KeyFrames;
+                var firstKeyFrame = keyFrames.First();
+                string durationAmount = "nullptr";
+
+                if (obj.Duration == Owner.CompositionDuration)
+                {
+                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
+                    durationAmount = "&duration";
+                }
+
+                builder.WriteLine("constexpr static const KeyFrameStep<func_or_field<CompositionPath>> steps[] =");
+                builder.OpenScope();
+                foreach (var kf in keyFrames)
+                {
+                    WriteFrameNumberComment(builder, kf.Progress);
+                    var valueKeyFrame = (PathKeyFrameAnimation.ValueKeyFrame)kf;
+                    builder.WriteLine($"{{ {Float(kf.Progress)}, func_or_field<CompositionPath> {{ {CallFactoryFromFor(node, valueKeyFrame.Value)} }}, {CallFactoryFromFor(node, kf.Easing)} }},");
+
+                    switch (kf.Type)
+                    {
+                        case KeyFrameType.Expression:
+                            var expressionKeyFrame = (KeyFrameAnimation<Wui.Color, Expr.Color>.ExpressionKeyFrame)kf;
+                            builder.WriteLine($"{{ {Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {CallFactoryFromFor(node, kf.Easing)} }},");
+                            break;
+                        case KeyFrameType.Value:
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -1578,6 +1704,32 @@ __declspec(noinline) Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(const 
     return result;
 }
 
+__declspec(noinline) Vector3KeyFrameAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float3>* steps, int stepCount)
+{
+    auto result = _c.CreateVector3KeyFrameAnimation();
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (std::holds_alternative<const wchar_t*>(step.data))
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, std::get<float3>(step.data), invoke_func_or_field(step.func));
+        }
+    }
+
+    return result;
+}
+
 __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float>* steps, int stepCount)
 {
     auto result = _c.CreateScalarKeyFrameAnimation();
@@ -1626,6 +1778,59 @@ __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const Time
         else
         {
             result.InsertKeyFrame(step.progressKey, std::get<Color>(step.data), invoke_func_or_field(step.func));
+        }
+    }
+
+    return result;
+}
+
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<func_or_field<CompositionPath>>* steps, int stepCount)
+{
+    auto result = _c.CreatePathKeyFrameAnimation();
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (std::holds_alternative<const wchar_t*>(step.data))
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, invoke_func_or_field(std::get<func_or_field<CompositionPath>>(step.data)), invoke_func_or_field(step.func));
+        }
+    }
+
+    return result;
+}
+
+
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float4>* steps, int stepCount)
+{
+    auto result = _c.CreateVector4KeyFrameAnimation();
+    auto kfAnim = IKeyFrameAnimation{ result };
+
+    if (duration)
+    {
+        kfAnim.Duration(*duration);
+    }
+
+    for (int i = 0; i < stepCount; ++i)
+    {
+        auto const& step = steps[i];
+        if (std::holds_alternative<const wchar_t*>(step.data))
+        {
+            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+        }
+        else
+        {
+            result.InsertKeyFrame(step.progressKey, std::get<float4>(step.data), invoke_func_or_field(step.func));
         }
     }
 
@@ -1696,6 +1901,11 @@ __declspec(noinline) auto MakePathGeometry(func_or_field<winrt::com_ptr<CanvasGe
     return _c.CreatePathGeometry(CompositionPath { *invoke_func_or_field(geoMaker) });
 }
 
+__declspec(noinline) auto MakePathGeometry()
+{
+    return _c.CreatePathGeometry();
+}
+
 __declspec(noinline) void StartProgressBoundAnimation(
     CompositionObject const& target,
     const wchar_t* animatedPropertyName,
@@ -1717,8 +1927,18 @@ __declspec(noinline) void StartProgressBoundAnimation(
     StartProgressBoundAnimation(target.as<CompositionObject>(), animatedPropertyName, animation, controllerProgressExpression);
 }
 
-template<typename Q> __declspec(noinline) auto BindProperty(
-    CompositionObject const& target,
+void BindProperty(
+    winrt::Windows::Foundation::IInspectable const& target,
+    const wchar_t* animatedPropertyName,
+    const wchar_t* expression,
+    const wchar_t* referenceParameterName,
+    winrt::Windows::Foundation::IInspectable const& referencedObject)
+{
+    return BindProperty(target.as<CompositionObject>(), animatedPropertyName, expression, referenceParameterName, referencedObject.as<CompositionObject>());
+}
+
+template<typename Q> __declspec(noinline) void BindProperty(
+    winrt::Windows::Foundation::IInspectable const& target,
     const wchar_t* animatedPropertyName,
     const wchar_t* expression,
     const wchar_t* referenceParameterName,
@@ -1727,34 +1947,14 @@ template<typename Q> __declspec(noinline) auto BindProperty(
     return BindProperty(target, animatedPropertyName, expression, referenceParameterName, (this->*pfn)());
 }
 
-template<typename Q> __declspec(noinline) auto BindProperty(
-    CompositionObject const& target,
+template<typename Q> __declspec(noinline) void BindProperty(
+    winrt::Windows::Foundation::IInspectable const& target,
     const wchar_t* animatedPropertyName,
     const wchar_t* expression,
     const wchar_t* referenceParameterName,
     Q TSelf::* pmem)
 {
     return BindProperty(target, animatedPropertyName, expression, referenceParameterName, this->*pmem);
-}
-
-template<typename Q> __declspec(noinline) auto BindProperty(
-    winrt::Windows::Foundation::IInspectable const& target,
-    const wchar_t* animatedPropertyName,
-    const wchar_t* expression,
-    const wchar_t* referenceParameterName,
-    Q (TSelf::*pfn)())
-{
-    return BindProperty(target.as<CompositionObject>(), animatedPropertyName, expression, referenceParameterName, pfn);
-}
-
-template<typename Q> __declspec(noinline) auto BindProperty(
-    winrt::Windows::Foundation::IInspectable const& target,
-    const wchar_t* animatedPropertyName,
-    const wchar_t* expression,
-    const wchar_t* referenceParameterName,
-    Q TSelf::* pmem)
-{
-    return BindProperty(target.as<CompositionObject>(), animatedPropertyName, expression, referenceParameterName, pmem);
 }
 
 AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)

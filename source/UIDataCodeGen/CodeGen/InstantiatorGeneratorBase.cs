@@ -1249,9 +1249,9 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             protected string Vector2(Sn.Vector2 value) => _s.Vector2(value);
 
-            string Vector3(Sn.Vector3 value) => _s.Vector3(value);
+            protected string Vector3(Sn.Vector3 value) => _s.Vector3(value);
 
-            string Vector4(Sn.Vector4 value) => _s.Vector4(value);
+            protected string Vector4(Sn.Vector4 value) => _s.Vector4(value);
 
             string BorderMode(CompositionBorderMode value) => _s.BorderMode(value);
 
@@ -2710,7 +2710,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateVector3KeyFrameAnimationFactory(CodeBuilder builder, Vector3KeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateVector3KeyFrameAnimationFactory(CodeBuilder builder, Vector3KeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var keyFrames = obj.KeyFrames;
@@ -2758,7 +2758,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateVector4KeyFrameAnimationFactory(CodeBuilder builder, Vector4KeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateVector4KeyFrameAnimationFactory(CodeBuilder builder, Vector4KeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var keyFrames = obj.KeyFrames;
@@ -2824,7 +2824,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GeneratePathKeyFrameAnimationFactory(CodeBuilder builder, PathKeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GeneratePathKeyFrameAnimationFactory(CodeBuilder builder, PathKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var keyFrames = obj.KeyFrames;
