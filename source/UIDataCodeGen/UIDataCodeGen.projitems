@@ -14,6 +14,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)CodeGen\Cppwinrt\CppwinrtCodegenResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CodeGen\Cppwinrt\CppwinrtInstantiatorGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CodeGen\Cppwinrt\CppwinrtStringifier.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CodeGen\Cppwinrt\CppWinrtVisualGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CodeGen\CSharp\CSharpCodegenResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CodeGen\CSharp\CSharpInstantiatorGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CodeGen\CSharp\CSharpStringifier.cs" />
