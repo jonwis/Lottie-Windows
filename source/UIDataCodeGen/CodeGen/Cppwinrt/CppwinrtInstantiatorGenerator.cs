@@ -704,7 +704,7 @@ template<typename TValue> struct KeyFrameStep {
     func_or_field<CompositionEasingFunction> func;
 };
 
-__declspec(noinline) Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float2>* steps, int stepCount)
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float2>* steps, int stepCount)
 {
     auto result = _c.CreateVector2KeyFrameAnimation();
     auto kfAnim = IKeyFrameAnimation{ result };
@@ -730,7 +730,7 @@ __declspec(noinline) Vector2KeyFrameAnimation ConfigureAnimationKeyFrames(const 
     return result;
 }
 
-__declspec(noinline) Vector3KeyFrameAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float3>* steps, int stepCount)
+__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float3>* steps, int stepCount)
 {
     auto result = _c.CreateVector3KeyFrameAnimation();
     auto kfAnim = IKeyFrameAnimation{ result };
@@ -909,7 +909,7 @@ __declspec(noinline) CompositionPath MakeCompositionPath(func_or_field<winrt::co
     return MakeCompositionPath(invoke_func_or_field(src));
 }
 
-__declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)
+__declspec(noinline) CompositionGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)
 {
     auto result = _c.CreateEllipseGeometry();
     result.Center(center_point.first);
@@ -917,17 +917,17 @@ __declspec(noinline) CompositionEllipseGeometry CreateEllipseGeometry(std::pair<
     return result;
 }
 
-__declspec(noinline) auto MakePathGeometry(func_or_field<CompositionPath> const& path)
+__declspec(noinline) CompositionGeometry MakePathGeometry(func_or_field<CompositionPath> const& path)
 {
     return _c.CreatePathGeometry(invoke_func_or_field(path));
 }
 
-__declspec(noinline) auto MakePathGeometry(func_or_field<winrt::com_ptr<CanvasGeometry>> const& geoMaker)
+__declspec(noinline) CompositionGeometry MakePathGeometry(func_or_field<winrt::com_ptr<CanvasGeometry>> const& geoMaker)
 {
     return _c.CreatePathGeometry(CompositionPath { *invoke_func_or_field(geoMaker) });
 }
 
-__declspec(noinline) auto MakePathGeometry()
+__declspec(noinline) CompositionGeometry MakePathGeometry()
 {
     return _c.CreatePathGeometry();
 }
