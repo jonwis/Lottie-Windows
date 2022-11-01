@@ -2806,7 +2806,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionEffectFactory(CodeBuilder builder, CompositionEffectFactory obj, ObjectData node)
+            protected virtual bool GenerateCompositionEffectFactory(CodeBuilder builder, CompositionEffectFactory obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 

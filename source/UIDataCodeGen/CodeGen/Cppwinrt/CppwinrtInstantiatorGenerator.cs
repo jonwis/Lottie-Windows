@@ -1327,29 +1327,9 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
         }
 
         /// <inheritdoc/>
-        protected override string WriteCompositeEffectFactory(CodeBuilder builder, CompositeEffect effect)
-        {
-            var effectVariable = "compositeEffect";
-            builder.WriteLine($"auto {effectVariable} = winrt::make_self<CompositeEffect>();");
-            builder.WriteLine($"{effectVariable}->Mode({_s.CanvasCompositeMode(effect.Mode)});");
-            foreach (var source in effect.Sources)
-            {
-                builder.WriteLine($"{effectVariable}->AddSource(CompositionEffectSourceParameter(L\"{source.Name}\"));");
-            }
+        protected override string WriteCompositeEffectFactory(CodeBuilder builder, CompositeEffect effect) => throw new InvalidOperationException("should no longer be used");
 
-            return $"*{effectVariable}";
-        }
-
-        protected override string WriteGaussianBlurEffectFactory(CodeBuilder builder, GaussianBlurEffect effect)
-        {
-            var effectVariable = "gaussianBlurEffect";
-            builder.WriteLine($"auto {effectVariable} = winrt::make_self<GaussianBlurEffect>();");
-            builder.WriteLine($"{effectVariable}->BlurAmount({_s.Float(effect.BlurAmount)});");
-
-            builder.WriteLine($"{effectVariable}->Source(CompositionEffectSourceParameter(L\"{effect.Sources.First().Name}\"));");
-
-            return $"*{effectVariable}";
-        }
+        protected override string WriteGaussianBlurEffectFactory(CodeBuilder builder, GaussianBlurEffect effect) => throw new InvalidOperationException("should no longer be used");
 
         /// <inheritdoc/>
         protected override void WriteByteArrayField(CodeBuilder builder, string fieldName, IReadOnlyList<byte> bytes)
@@ -2326,13 +2306,20 @@ class CanvasGeometry : public winrt::implements<CanvasGeometry,
         std::vector<winrt::Windows::Graphics::Effects::IGraphicsEffectSource> m_sources{};
 
     public:
+
+        __declspec(noinline) static CompositionEffectFactory Make(Compositor const& c, CanvasComposite mode, const wchar_t* const* sources, int sourceCount)
+        {
+            auto self = winrt::make_self<CompositeEffect>();
+            self->m_mode = mode;
+            for (int i = 0; i < sourceCount; ++i)
+            {
+                self->m_sources.emplace_back(CompositionEffectSourceParameter{ sources[i] });
+            }
+            return c.CreateEffectFactory(*self);
+        }
+
         void Mode(CanvasComposite mode) { m_mode = mode; }
         CanvasComposite Mode(){ return m_mode; }
-
-        void AddSource(winrt::Windows::Graphics::Effects::IGraphicsEffectSource source)
-        {
-            m_sources.emplace_back(source);
-        }
 
         // IGraphicsEffect.
         void Name(winrt::hstring name) { m_name = name; }
@@ -2366,8 +2353,7 @@ class CanvasGeometry : public winrt::implements<CanvasGeometry,
             UINT index,
             ::ABI::Windows::Graphics::Effects::IGraphicsEffectSource** source) override
         {
-            if (index >= m_sources.size() ||
-                source == nullptr)
+            if ((index >= m_sources.size() || source == nullptr))
             {
                 return E_INVALIDARG;
             }
@@ -2423,6 +2409,13 @@ class CanvasGeometry : public winrt::implements<CanvasGeometry,
         winrt::Windows::Graphics::Effects::IGraphicsEffectSource m_source{};
 
     public:
+        __declspec(noinline) static CompositionEffectFactory Make(Compositor const& c, float amount, const wchar_t* name)
+        {
+            auto self = winrt::make_self<GaussianBlurEffect>(amount);
+            self->m_source = CompositionEffectSourceParameter{name};
+            return _c.CreateEffectFactory(*self);
+        }
+
         void BlurAmount(float amount) { m_blurAmount = amount; }
 
         void Source(winrt::Windows::Graphics::Effects::IGraphicsEffectSource source) { m_source = source; }

@@ -7,14 +7,17 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Numerics;
+using CommunityToolkit.WinUI.Lottie.LottieData;
 using CommunityToolkit.WinUI.Lottie.UIData.CodeGen;
 using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.MetaData;
+using CommunityToolkit.WinUI.Lottie.WinCompData.Mgc;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Wg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
 using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
+using Mgce = CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using Sn = System.Numerics;
 using Wmd = CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
 using Wui = CommunityToolkit.WinUI.Lottie.WinCompData.Wui;
@@ -186,6 +189,10 @@ __declspec(noinline) void ApplyCompositionGradientProperties(CompositionGradient
             stops.Append(invoke_func_or_field(props.ColorStops[i]));
         }
     }
+}
+__declspec(noinline) void ApplyCompositionGradientProperties(winrt::Windows::Foundation::IInspectable const& target, GradientBrushConfig const& props)
+{
+    return ApplyCompositionGradientProperties(target.as<CompositionGradientBrush>(), props);
 }
 ";
 
@@ -1002,6 +1009,50 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
             protected override string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
             {
                 return $"CreateCubicBezierEasingFunction<{_generator.GetCubicBezierId(obj.ControlPoint1, obj.ControlPoint2)}>()";
+            }
+
+            protected override bool GenerateCompositionEffectFactory(CodeBuilder builder, CompositionEffectFactory obj, ObjectData node)
+            {
+                WriteObjectFactoryStart(builder, node);
+
+                if (obj.Effect.Type == GraphicsEffectType.CompositeEffect)
+                {
+                    var effect = (CompositeEffect)obj.Effect;
+
+                    if (effect.Sources.Any())
+                    {
+                        builder.WriteLine("constexpr static const wchar_t* effects[] =");
+                        builder.OpenScope();
+
+                        foreach (var source in effect.Sources)
+                        {
+                            builder.WriteLine($"L\"{source.Name}\",");
+                        }
+
+                        builder.CloseScopeWithSemicolon();
+                        builder.WriteLine("constexpr static const int effectCount = _countof(effects);");
+                    }
+                    else
+                    {
+                        builder.WriteLine("constexpr static const wchar_t* effects = nullptr;");
+                        builder.WriteLine("constexpr static const int effectCount = 0;");
+                    }
+
+                    WriteCreateAssignment(builder, node, $"CompositeEffect::Make(_c, {_s.CanvasCompositeMode(effect.Mode)}, effects, effectCount)");
+                }
+                else if (obj.Effect.Type == GraphicsEffectType.GaussianBlurEffect)
+                {
+                    var effect = (Mgce.GaussianBlurEffect)obj.Effect;
+                    WriteCreateAssignment(builder, node, $"GaussianBlurEffect::Make(_c, {Float(effect.BlurAmount)}, L\"{effect.Sources.First().Name}\")");
+                }
+                else
+                {
+                    throw new InvalidOperationException();
+                }
+
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+
+                return true;
             }
         }
     }
