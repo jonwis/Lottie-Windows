@@ -2352,6 +2352,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
+            protected virtual string ReferencePropertySetName() => "propertySet";
+
             string GetReferenceParameterName(
                 CompositionObject obj,
                 string localName,
@@ -2370,7 +2372,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     if (propSetOwner == obj)
                     {
                         // Use the name of the local that is holding the property set.
-                        return "propertySet";
+                        return ReferencePropertySetName();
                     }
 
                     if (propSetOwner is null)

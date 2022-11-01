@@ -1011,6 +1011,8 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                 return $"CreateCubicBezierEasingFunction<{_generator.GetCubicBezierId(obj.ControlPoint1, obj.ControlPoint2)}>()";
             }
 
+            protected override string ReferencePropertySetName() => "result.Properties()";
+
             protected override bool GenerateCompositionEffectFactory(CodeBuilder builder, CompositionEffectFactory obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);

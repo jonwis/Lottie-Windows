@@ -1914,6 +1914,26 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
                 WritePropertyImpl(builder, "float2", "Size", propertyImplBuilder);
             }
 
+            if (SourceInfo.UsesCanvasEffects || SourceInfo.UsesCanvasGeometry)
+            {
+                builder.WriteManyLines(@"
+winrt::com_ptr<CanvasGeometry> MakeGeometry(D2D1_FILL_MODE fill, const func_or_field<winrt::com_ptr<CanvasGeometry>>* canvases, uint32_t canvasCount)
+{
+    std::vector<winrt::com_ptr<ID2D1Geometry>> geometries;
+
+    for (uint32_t i = 0; i < canvasCount; ++i)
+    {
+        geometries.emplace_back(invoke_func_or_field(canvases[i])->Geometry());
+    }
+
+    winrt::com_ptr<ID2D1GeometryGroup> group{ nullptr };
+    winrt::check_hresult(_d2dFactory->CreateGeometryGroup(fill, reinterpret_cast<ID2D1Geometry**>(geometries.data()), canvasCount, group.put()));
+
+    return winrt::make_self<CanvasGeometry>(group);
+}
+");
+            }
+
             if (info.ImplementCreateAndDestroyMethods)
             {
                 builder.WriteLine($"void {CreateAnimationsMethod}()");
@@ -2006,24 +2026,15 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
         /// <inheritdoc/>
         protected override void WriteCanvasGeometryGroupFactory(CodeBuilder builder, CanvasGeometry.Group obj, string typeName, string fieldName)
         {
-            builder.WriteLine($"winrt::com_ptr<ID2D1Geometry> geometries[{obj.Geometries.Length}]");
+            builder.WriteLine("constexpr static const func_or_field<winrt::com_ptr<CanvasGeometry>> geometries[] =");
             builder.OpenScope();
             for (var i = 0; i < obj.Geometries.Length; i++)
             {
-                var geometry = obj.Geometries[i];
-                builder.WriteLine($"{CallFactoryFor(geometry)}.get()->Geometry(),");
+                builder.WriteLine($"{CallFactoryFor(obj.Geometries[i])},");
             }
 
             builder.CloseScopeWithSemicolon();
-            builder.WriteLine("winrt::com_ptr<ID2D1GeometryGroup> group{ nullptr };");
-            builder.WriteLine("winrt::check_hresult(_d2dFactory->CreateGeometryGroup(");
-            builder.Indent();
-            builder.WriteLine($"{_s.FilledRegionDetermination(obj.FilledRegionDetermination)},");
-            builder.WriteLine("(ID2D1Geometry**)(&geometries),");
-            builder.WriteLine($"{obj.Geometries.Length},");
-            builder.WriteLine("group.put()));");
-            builder.UnIndent();
-            builder.WriteLine($"auto result = {FieldAssignment(fieldName)}winrt::make_self<CanvasGeometry>(group);");
+            builder.WriteLine($"auto result = {FieldAssignment(fieldName)} MakeGeometry({_s.FilledRegionDetermination(obj.FilledRegionDetermination)}, geometries, _countof(geometries));");
         }
 
         // Writes code that is only included if the given file exists.
