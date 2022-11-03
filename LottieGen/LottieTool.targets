@@ -3,6 +3,7 @@
     <PropertyGroup>
         <LottieGenExe Condition="'$(LottieGenExe)'==''">$(SolutionDir)win-x64\bin\AnyCPU\$(Configuration)\net5.0\win-x64\LottieGen.exe</LottieGenExe>
         <LottieArgs>-MinimumUapVersion 12 -lang CppWinRT</LottieArgs>
+        <LottieArgs Condition="'$(LottieNamespace)'!=''">$(LottieArgs) -Namespace $(LottieNamespace) -RootNamespace $(LottieNamespace)</LottieArgs>
         <LottieOutputDir>$(GeneratedFilesDir)\lotties</LottieOutputDir>
     </PropertyGroup>
     <Target Name="BuildLottieSource" BeforeTargets="PrepareForBuild" Inputs="@(LottieJsonFile);$(LottieGenExe)" Outputs="$(LottieOutputDir)\*.*">

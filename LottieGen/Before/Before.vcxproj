@@ -160,6 +160,7 @@
   </Target>
   <PropertyGroup>
     <LottieGenExe Condition="$(LottieGenExe)==''">"$(SolutionDir)packages\LottieGen.MsBuild.7.1.1\bin\LottieGen.exe"</LottieGenExe>
+    <LottieNamespace>Before</LottieNamespace>
   </PropertyGroup>
   <ItemGroup>
     <LottieJsonFile Include="$(SolutionDir)..\LottieSamples\assets\LottieLogo1.json" />

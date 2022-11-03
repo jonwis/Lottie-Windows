@@ -561,16 +561,20 @@ template<typename T> __declspec(noinline) T invoke_func_or_field(func_or_field<T
 {
     if (std::holds_alternative<T(TSelf::*)()>(fof))
     {
-        return (this->*std::get<T(TSelf::*)()>(fof))();
+        if (auto v = std::get<T(TSelf::*)()>(fof))
+        {
+            return (this->*v)();
+        }        
     }
     else if (std::holds_alternative<T(TSelf::*)>(fof))
     {
-        return (this->*std::get<T(TSelf::*)>(fof));
+        if (auto v = std::get<T(TSelf::*)>(fof))
+        {
+            return this->*v;
+        }
     }
-    else
-    {
-        return { nullptr };
-    }
+
+    return { nullptr };
 };
 
 template<typename Q> auto invoke_func_or_field(Q (TSelf::* pfn)()) {
