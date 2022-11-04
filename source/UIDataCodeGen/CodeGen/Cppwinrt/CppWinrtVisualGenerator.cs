@@ -440,7 +440,7 @@ void ApplyVisualProperties(winrt::Windows::Foundation::IInspectable const& targe
                     nameOfTransform = "&transform";
                 }
 
-                builder.WriteLine("constexpr static const VisualProperties visProps =");
+                builder.WriteLine("static const VisualProperties visProps =");
                 builder.OpenScope();
 
                 var writer = new FieldWriter(builder);
