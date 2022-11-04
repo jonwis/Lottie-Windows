@@ -359,6 +359,8 @@ __declspec(noinline) void ApplyContainerVisuals(winrt::Windows::Foundation::IIns
 
             protected override void InitializeContainerVisual(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
+                InitializeVisual(builder, obj, node);
+
                 if (obj.Children.Any())
                 {
                     builder.WriteLine("constexpr static const func_or_field<Visual> visuals[] =");
@@ -569,9 +571,9 @@ CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
                     builder.WriteLine("nullptr, 0,");
                 }
 
-                builder.WriteLine((obj.Geometry != null) ? $"{CallFactoryFromFor(node, obj.Geometry)}," : "{ /* no geometry */ },");
-                builder.WriteLine((obj.FillBrush != null) ? $"{CallFactoryFromFor(node, obj.FillBrush)}," : "{ /* no fill */ },");
-                builder.WriteLine((obj.StrokeBrush != null) ? $"{CallFactoryFromFor(node, obj.StrokeBrush)}," : "{ /* no stroke */ },");
+                builder.WriteLine((obj.Geometry != null) ? $"{CallFactoryFromFor(node, obj.Geometry)}," : "std::monostate { /* no geometry */ },");
+                builder.WriteLine((obj.FillBrush != null) ? $"{CallFactoryFromFor(node, obj.FillBrush)}," : "std::monostate { /* no fill */ },");
+                builder.WriteLine((obj.StrokeBrush != null) ? $"{CallFactoryFromFor(node, obj.StrokeBrush)}," : "std::monostate { /* no stroke */ },");
 
                 builder.WriteLine(writer.Fields);
                 builder.CloseScopeWithSemicolon();
