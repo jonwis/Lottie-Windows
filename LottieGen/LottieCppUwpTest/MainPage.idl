@@ -5,5 +5,8 @@ namespace LottieCppUwpTest
     {
         MainPage();
         Int32 MyProperty;
+
+        Windows.Foundation.Collections.IVector<Object> BeforeList{ get; };
+        Windows.Foundation.Collections.IVector<Object> AfterList{ get; };
     }
 }

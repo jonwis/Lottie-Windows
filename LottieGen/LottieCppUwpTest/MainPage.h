@@ -16,6 +16,9 @@ namespace winrt::LottieCppUwpTest::implementation
         void MyProperty(int32_t value);
 
         void ClickHandler(Windows::Foundation::IInspectable const& sender, Windows::UI::Xaml::RoutedEventArgs const& args);
+
+        Windows::Foundation::Collections::IVector<Windows::Foundation::IInspectable> BeforeList();
+        Windows::Foundation::Collections::IVector<Windows::Foundation::IInspectable> AfterList();
     };
 }
 

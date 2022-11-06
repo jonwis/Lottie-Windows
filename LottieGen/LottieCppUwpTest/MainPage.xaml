@@ -18,12 +18,26 @@
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <winui:AnimatedVisualPlayer Grid.Column="0">
-                <animbefore:LottieLogo1/>
-            </winui:AnimatedVisualPlayer>
-            <winui:AnimatedVisualPlayer Grid.Column="1">
-                <animafter:LottieLogo1/>
-            </winui:AnimatedVisualPlayer>
+            <winui:ItemsRepeater Grid.Column="0" ItemsSource="{x:Bind BeforeList}">
+                <winui:ItemsRepeater.Layout>
+                    <winui:StackLayout Orientation="Vertical" Spacing="8"/>
+                </winui:ItemsRepeater.Layout>
+                <winui:ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="winui:IAnimatedVisualSource">
+                        <winui:AnimatedVisualPlayer Source="{x:Bind}" Width="70" Height="70"/>
+                    </DataTemplate>
+                </winui:ItemsRepeater.ItemTemplate>
+            </winui:ItemsRepeater>
+            <winui:ItemsRepeater Grid.Column="1" ItemsSource="{x:Bind AfterList}">
+                <winui:ItemsRepeater.Layout>
+                    <winui:StackLayout Orientation="Vertical" Spacing="8"/>
+                </winui:ItemsRepeater.Layout>
+                <winui:ItemsRepeater.ItemTemplate>
+                    <DataTemplate x:DataType="winui:IAnimatedVisualSource">
+                        <winui:AnimatedVisualPlayer Source="{x:Bind}" Width="70" Height="70"/>
+                    </DataTemplate>
+                </winui:ItemsRepeater.ItemTemplate>
+            </winui:ItemsRepeater>
         </Grid>
     </StackPanel>
 </Page>

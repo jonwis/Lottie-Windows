@@ -21,4 +21,19 @@ namespace winrt::LottieCppUwpTest::implementation
     {
         myButton().Content(box_value(L"Clicked"));
     }
+
+    Windows::Foundation::Collections::IVector<Windows::Foundation::IInspectable> MainPage::BeforeList()
+    {
+        return winrt::multi_threaded_vector( std::vector<Windows::Foundation::IInspectable>{
+            Before::LottieLogo1(),
+        });
+    }
+
+    Windows::Foundation::Collections::IVector<Windows::Foundation::IInspectable> MainPage::AfterList()
+    {
+        return winrt::multi_threaded_vector(std::vector<Windows::Foundation::IInspectable>{
+            After::LottieLogo1(),
+        });
+    }
+
 }
