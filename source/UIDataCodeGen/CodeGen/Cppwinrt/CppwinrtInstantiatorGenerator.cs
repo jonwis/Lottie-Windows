@@ -2030,7 +2030,7 @@ winrt::com_ptr<CanvasGeometry> MakeGeometry(D2D1_FILL_MODE fill, const func_or_f
         /// <inheritdoc/>
         protected override void WriteCanvasGeometryGroupFactory(CodeBuilder builder, CanvasGeometry.Group obj, string typeName, string fieldName)
         {
-            builder.WriteLine("constexpr static const func_or_field<winrt::com_ptr<CanvasGeometry>> geometries[] =");
+            builder.WriteLine("/*constexpr*/ static const func_or_field<winrt::com_ptr<CanvasGeometry>> geometries[] =");
             builder.OpenScope();
             for (var i = 0; i < obj.Geometries.Length; i++)
             {
