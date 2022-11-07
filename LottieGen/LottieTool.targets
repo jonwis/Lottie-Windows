@@ -6,7 +6,8 @@
         <LottieArgs Condition="'$(LottieNamespace)'!=''">$(LottieArgs) -Namespace $(LottieNamespace) -RootNamespace $(LottieNamespace)</LottieArgs>
         <LottieOutputDir>$(GeneratedFilesDir)\lotties</LottieOutputDir>
     </PropertyGroup>
-    <Target Name="BuildLottieSource" BeforeTargets="PrepareForBuild" Inputs="@(LottieJsonFile);$(LottieGenExe)" Outputs="$(LottieOutputDir)\*.*">
+    <Target Name="BuildLottieSource" BeforeTargets="PrepareForBuild" Inputs="@(LottieJsonFile);$(LottieGenExe)"
+        Outputs="@(LottieJsonFile->'$(LottieOutputDir)\%(Filename).cpp'->Replace('+', '_'))">
         <MakeDir Directories="$(LottieOutputDir)"/>
         <Exec Command="$(LottieGenExe) -inputFile %(LottieJsonFile.FullPath) $(LottieArgs) -o &quot;$(LottieOutputDir)&quot;"/>
         <ItemGroup>
