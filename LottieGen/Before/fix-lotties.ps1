@@ -1,5 +1,8 @@
+Write-Host "Running Fix-Lotties.ps1"
 gci *.cpp | %{ 
     $old = (get-content $_)
     $new = $old -replace '.Properties,','.Properties(),'
-    if ($old.Length -ne $new.Length) { $new | Set-Content -FilePath $_  }
+
+    #Write-Host $_ "$old".Length "$new".Length
+    if ("$old".Length -ne "$new".Length) { Write-Host "Fixing $_" ; Set-Content $_ -Value $new }
 }
