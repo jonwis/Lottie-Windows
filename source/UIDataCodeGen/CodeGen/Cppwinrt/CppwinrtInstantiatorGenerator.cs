@@ -621,7 +621,7 @@ __declspec(noinline) CompositionSpriteShape MakeAndApplyProperties(
     {
         result = source.CreateSpriteShape();
     }
-    result.TransformMatrix(props.Transformation);
+
     if (auto b = invoke_func_or_field(props.fillBrush))
     {
         result.FillBrush(b);
@@ -632,9 +632,9 @@ __declspec(noinline) CompositionSpriteShape MakeAndApplyProperties(
         result.StrokeBrush(s);
     }
             
-    if (HasFlag(props.Fields, SpriteFields::IsStrokeNonScaling))
+    if (HasFlag(props.Fields, SpriteFields::Transformation))
     {
-        result.IsStrokeNonScaling(props.IsStrokeNonScaling);
+        result.TransformMatrix(props.Transformation);
     }
 
     if (HasFlag(props.Fields, SpriteFields::StrokeDashCap))
@@ -657,11 +657,6 @@ __declspec(noinline) CompositionSpriteShape MakeAndApplyProperties(
         result.StrokeEndCap(props.StrokeEndCap);
     }
 
-    if (HasFlag(props.Fields, SpriteFields::StrokeLineJoin))
-    {
-        result.StrokeLineJoin(props.StrokeLineJoin);
-    }
-
     if (HasFlag(props.Fields, SpriteFields::StrokeMiterLimit))
     {
         result.StrokeMiterLimit(props.StrokeMiterLimit);
@@ -670,6 +665,36 @@ __declspec(noinline) CompositionSpriteShape MakeAndApplyProperties(
     if (HasFlag(props.Fields, SpriteFields::StrokeThickness))
     {
         result.StrokeThickness(props.StrokeThickness);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::IsStrokeNonScaling))
+    {
+        result.IsStrokeNonScaling(props.IsStrokeNonScaling);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::StrokeLineJoin))
+    {
+        result.StrokeLineJoin(props.StrokeLineJoin);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::CenterPoint))
+    {
+        result.CenterPoint(props.CenterPoint);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::Offset))
+    {
+        result.Offset(props.Offset);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::RotationInDegrees))
+    {
+        result.RotationAngleInDegrees(props.RotationAngleInDegrees);
+    }
+
+    if (HasFlag(props.Fields, SpriteFields::Scale))
+    {
+        result.Offset(props.Scale);
     }
 
     if (props.dashCount)
@@ -1224,10 +1249,10 @@ enum class SpriteFields : uint32_t
     StrokeDashOffset = (1 << 2),
     StrokeStartCap = (1 << 3),
     StrokeEndCap = (1 << 4),
-    StrokeMiterLimit = (1 << 5),
-    StrokeThickness = (1 << 6),
-    IsStrokeNonScaling = (1 << 7),
-    StrokeLineJoin = (1 << 8),
+    StrokeLineJoin = (1 << 5),
+    StrokeMiterLimit = (1 << 6),
+    StrokeThickness = (1 << 7),
+    IsStrokeNonScaling = (1 << 8),
     CenterPoint = (1 << 9),
     Offset = (1 << 10),
     RotationInDegrees = (1 << 11),
