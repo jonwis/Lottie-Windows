@@ -44,7 +44,12 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
         internal void WriteManyLines(string line)
         {
-            foreach (var s in line.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+            WriteManyLines(line.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        internal void WriteManyLines(IEnumerable<string> lines)
+        {
+            foreach (var s in lines)
             {
                 WriteLine(s);
             }

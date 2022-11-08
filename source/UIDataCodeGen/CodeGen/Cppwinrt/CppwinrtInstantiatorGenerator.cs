@@ -529,7 +529,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             IAnimatedVisualInfo info)
         {
             // Start writing the instantiator.
-            builder.WriteLine($"class {info.ClassName} : public winrt::implements<{info.ClassName},");
+            builder.WriteLine($"class {info.ClassName} : public AnimationBaseType, public winrt::implements<{info.ClassName},");
             builder.Indent();
             builder.Indent();
 
@@ -553,496 +553,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 // D2D factory field.
                 builder.WriteLine("winrt::com_ptr<ID2D1Factory> _d2dFactory{ nullptr };");
             }
-
-            builder.WriteManyLines(@"
-
-template<typename T> struct func_or_field {
-    uint16_t id;
-};
-
-struct SpriteShapeProperties
-{
-    float3x2 Transformation;
-    CompositionStrokeCap StrokeDashCap;
-    float StrokeDashOffset;
-    CompositionStrokeCap StrokeStartCap;
-    CompositionStrokeCap StrokeEndCap;
-    CompositionStrokeLineJoin StrokeLineJoin;
-    float StrokeMiterLimit;
-    float StrokeThickness;
-    bool IsStrokeNonScaling;
-    float2 CenterPoint;
-    float2 Offset;
-    float RotationAngleInDegrees;
-    float2 Scale;
-    float const* dashes;
-    uint32_t dashCount;
-    func_or_field<CompositionGeometry> geometry;
-    func_or_field<CompositionBrush> fillBrush;
-    func_or_field<CompositionBrush> strokeBrush;
-    SpriteFields Fields;
-};
-
-__declspec(noinline) CompositionShape MakeAndApplyProperties(
-    Compositor const& source,
-    SpriteShapeProperties const& props)
-{
-    CompositionSpriteShape result{ nullptr };
-    if (auto g = invoke_func_or_field(props.geometry))
-    {
-        result = source.CreateSpriteShape(g);
-    }
-    else
-    {
-        result = source.CreateSpriteShape();
-    }
-
-    if (auto b = invoke_func_or_field(props.fillBrush))
-    {
-        result.FillBrush(b);
-    }
-
-    if (auto s = invoke_func_or_field(props.strokeBrush))
-    {
-        result.StrokeBrush(s);
-    }
-            
-    if (HasFlag(props.Fields, SpriteFields::Transformation))
-    {
-        result.TransformMatrix(props.Transformation);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeDashCap))
-    {
-        result.StrokeDashCap(props.StrokeDashCap);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeDashOffset))
-    {
-        result.StrokeDashOffset(props.StrokeDashOffset);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeStartCap))
-    {
-        result.StrokeStartCap(props.StrokeStartCap);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeEndCap))
-    {
-        result.StrokeEndCap(props.StrokeEndCap);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeMiterLimit))
-    {
-        result.StrokeMiterLimit(props.StrokeMiterLimit);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeThickness))
-    {
-        result.StrokeThickness(props.StrokeThickness);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::IsStrokeNonScaling))
-    {
-        result.IsStrokeNonScaling(props.IsStrokeNonScaling);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::StrokeLineJoin))
-    {
-        result.StrokeLineJoin(props.StrokeLineJoin);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::CenterPoint))
-    {
-        result.CenterPoint(props.CenterPoint);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::Offset))
-    {
-        result.Offset(props.Offset);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::RotationInDegrees))
-    {
-        result.RotationAngleInDegrees(props.RotationAngleInDegrees);
-    }
-
-    if (HasFlag(props.Fields, SpriteFields::Scale))
-    {
-        result.Offset(props.Scale);
-    }
-
-    if (props.dashCount)
-    {
-        result.StrokeDashArray().ReplaceAll({props.dashes, props.dashCount});
-    }
-
-    return result;
-}
-
-struct CompositionBrushProps {
-    struct SourceParameter {
-        const wchar_t* name;
-        func_or_field<CompositionBrush> brush;
-    };
-
-    func_or_field<CompositionEffectFactory> factory;
-    SourceParameter const *sources;
-    int sourceCount;
-};
-
-CompositionBrush MakeEffectBrush(CompositionBrushProps const& props)
-{
-    auto factory = invoke_func_or_field(props.factory);
-    auto result = factory.CreateBrush();
-    for (int i = 0; i < props.sourceCount; ++i)
-    {
-        result.SetSourceParameter(props.sources[i].name, invoke_func_or_field(props.sources[i].brush));
-    }
-    return result;
-}
-
-template<typename TValue> struct KeyFrameStep {
-    float progressKey;
-    std::variant<TValue, const wchar_t*> data;
-    func_or_field<CompositionEasingFunction> func;
-};
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float2>* steps, int stepCount)
-{
-    auto result = _c.CreateVector2KeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (std::holds_alternative<const wchar_t*>(step.data))
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, std::get<float2>(step.data), invoke_func_or_field(step.func));
-        }
-    }
-
-    return result;
-}
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float3>* steps, int stepCount)
-{
-    auto result = _c.CreateVector3KeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (std::holds_alternative<const wchar_t*>(step.data))
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, std::get<float3>(step.data), invoke_func_or_field(step.func));
-        }
-    }
-
-    return result;
-}
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float>* steps, int stepCount)
-{
-    auto result = _c.CreateScalarKeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (std::holds_alternative<const wchar_t*>(step.data))
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, std::get<float>(step.data), invoke_func_or_field(step.func));
-        }
-    }
-
-    return result;
-}
-
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<Color>* steps, int stepCount)
-{
-    auto result = _c.CreateColorKeyFrameAnimation();
-    result.InterpolationColorSpace(CompositionColorSpace::Rgb);
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (std::holds_alternative<const wchar_t*>(step.data))
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, std::get<Color>(step.data), invoke_func_or_field(step.func));
-        }
-    }
-
-    return result;
-}
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<func_or_field<CompositionPath>>* steps, int stepCount)
-{
-    auto result = _c.CreatePathKeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (std::holds_alternative<const wchar_t*>(step.data))
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, invoke_func_or_field(std::get<func_or_field<CompositionPath>>(step.data)), invoke_func_or_field(step.func));
-        }
-    }
-
-    return result;
-}
-
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float4>* steps, int stepCount)
-{
-    auto result = _c.CreateVector4KeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (std::holds_alternative<const wchar_t*>(step.data))
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, std::get<float4>(step.data), invoke_func_or_field(step.func));
-        }
-    }
-
-    return result;
-}
-
-__declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<bool>* steps, int stepCount)
-{
-    auto result = _c.CreateBooleanKeyFrameAnimation();
-    auto kfAnim = IKeyFrameAnimation{ result };
-
-    if (duration)
-    {
-        kfAnim.Duration(*duration);
-    }
-
-    for (int i = 0; i < stepCount; ++i)
-    {
-        auto const& step = steps[i];
-        if (std::holds_alternative<const wchar_t*>(step.data))
-        {
-            kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data));
-        }
-        else
-        {
-            result.InsertKeyFrame(step.progressKey, std::get<bool>(step.data));
-        }
-    }
-
-    return result;
-}
-
-__declspec(noinline) CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry> const& src)
-{
-    return CompositionPath { *src };
-}
-
-__declspec(noinline) CompositionPath MakeCompositionPath(CanvasGeometry const& src)
-{
-    return CompositionPath { src };
-}
-
-__declspec(noinline) CompositionPath MakeCompositionPath(func_or_field<winrt::com_ptr<CanvasGeometry>> const& src)
-{
-    return MakeCompositionPath(invoke_func_or_field(src));
-}
-
-__declspec(noinline) CompositionGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)
-{
-    auto result = _c.CreateEllipseGeometry();
-    result.Center(center_point.first);
-    result.Radius(center_point.second);
-    return result;
-}
-
-__declspec(noinline) CompositionGeometry MakePathGeometry(func_or_field<CompositionPath> const& path)
-{
-    return _c.CreatePathGeometry(invoke_func_or_field(path));
-}
-
-__declspec(noinline) CompositionGeometry MakePathGeometry(func_or_field<winrt::com_ptr<CanvasGeometry>> const& geoMaker)
-{
-    return _c.CreatePathGeometry(CompositionPath { *invoke_func_or_field(geoMaker) });
-}
-
-__declspec(noinline) CompositionGeometry MakePathGeometry()
-{
-    return _c.CreatePathGeometry();
-}
-
-__declspec(noinline) void StartProgressBoundAnimation(
-    CompositionObject const& target,
-    const wchar_t* animatedPropertyName,
-    func_or_field<CompositionAnimation> const& animation,
-    func_or_field<ExpressionAnimation> const& controllerProgressExpression)
-{
-    target.StartAnimation(animatedPropertyName, invoke_func_or_field(animation));
-    const auto controller = target.TryGetAnimationController(animatedPropertyName);
-    controller.Pause();
-    controller.StartAnimation(L""Progress"", invoke_func_or_field(controllerProgressExpression));
-}
-
-__declspec(noinline) void StartProgressBoundAnimation(
-    winrt::Windows::Foundation::IInspectable const& target,
-    const wchar_t* animatedPropertyName,
-    func_or_field<CompositionAnimation> const& animation,
-    func_or_field<ExpressionAnimation> const& controllerProgressExpression)
-{
-    StartProgressBoundAnimation(target.as<CompositionObject>(), animatedPropertyName, animation, controllerProgressExpression);
-}
-
-void BindProperty(
-    winrt::Windows::Foundation::IInspectable const& target,
-    const wchar_t* animatedPropertyName,
-    const wchar_t* expression,
-    const wchar_t* referenceParameterName,
-    winrt::Windows::Foundation::IInspectable const& referencedObject)
-{
-    return BindProperty(target.as<CompositionObject>(), animatedPropertyName, expression, referenceParameterName, referencedObject.as<CompositionObject>());
-}
-
-template<typename Q> __declspec(noinline) void BindProperty(
-    winrt::Windows::Foundation::IInspectable const& target,
-    const wchar_t* animatedPropertyName,
-    const wchar_t* expression,
-    const wchar_t* referenceParameterName,
-    func_or_field<Q> const& src)
-{
-    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(src));
-}
-
-AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
-{
-    auto controller = target.TryGetAnimationController(propertyName);
-    if (pauseFirst)
-    {
-        controller.Pause();
-    }
-    return controller;
-}
-
-AnimationController GetAnimationController(winrt::Windows::Foundation::IInspectable const& target, const wchar_t* propertyName, bool pauseFirst)
-{
-    return GetAnimationController(target.as<CompositionObject>(), propertyName, pauseFirst);
-}
-
-struct BoundAnimation {
-    const wchar_t* property;
-    func_or_field<CompositionAnimation> animation;
-    func_or_field<ExpressionAnimation> expression;
-};
-
-__declspec(noinline) void StartProgressBoundAnimation(CompositionObject const& target, const BoundAnimation& animation)
-{
-    return StartProgressBoundAnimation(target, animation.property, animation.animation, animation.expression);
-}
-
-__declspec(noinline) void StartProgressBoundAnimation(winrt::Windows::Foundation::IInspectable const& target, const BoundAnimation& animation)
-{
-    return StartProgressBoundAnimation(target.as<CompositionObject>(), animation.property, animation.animation, animation.expression);
-}
-
-template<typename TThing> void AddCompositionShapes(
-    TThing const& container,
-    const func_or_field<CompositionShape>* toAdd,
-    int toAddCount)
-{
-    auto shapes = container.Shapes();
-    for (int i = 0; i < toAddCount; i++)
-    {
-        shapes.Append(invoke_func_or_field(toAdd[i]));
-    }
-}
-
-__declspec(noinline) CompositionBrush MakeSurfaceBrush(func_or_field<CompositionVisualSurface> const& target, bool initAfter)
-{
-    CompositionSurfaceBrush result{nullptr};
-    CompositionVisualSurface targetSurface = invoke_func_or_field(target);
-
-    if (initAfter)
-    {
-        result = _c.CreateSurfaceBrush();
-        if (targetSurface)
-        {
-            result.Surface(targetSurface);
-        }
-    }
-    else
-    {
-        result = _c.CreateSurfaceBrush(targetSurface);
-    }
-
-    return result;
-}
-");
-            builder.WriteManyLines(CppWinrtVisualGenerator.GetCreateSpriteVisualBuilder());
-            builder.WriteManyLines(CppWinrtVisualGenerator.GetInitVisualContainerHelper());
-            builder.WriteManyLines(CppWinrtVisualGenerator.GetInitVisualHelper());
-            builder.WriteManyLines(CppWinrtVisualGenerator.GetGeometryConfigGenerator());
-            builder.WriteManyLines(CppWinrtVisualGenerator.GetEllipseGeometryGenerator());
-            builder.WriteManyLines(CppWinrtVisualGenerator.GetInitializeCompositionGradientBrush());
-            builder.WriteManyLines(CppWinrtVisualGenerator.GetCompositionVisualFactory());
         }
 
         void AddUsingsForTypeAliases(CodeBuilder builder)
@@ -1082,6 +592,909 @@ __declspec(noinline) CompositionBrush MakeSurfaceBrush(func_or_field<Composition
                 builder.WriteLine();
             }
         }
+
+        protected string AnimationBaseTypeClass => @"
+enum class SpriteFields : uint32_t
+{
+    Transformation = (1 << 0),
+    StrokeDashCap = (1 << 1),
+    StrokeDashOffset = (1 << 2),
+    StrokeStartCap = (1 << 3),
+    StrokeEndCap = (1 << 4),
+    StrokeLineJoin = (1 << 5),
+    StrokeMiterLimit = (1 << 6),
+    StrokeThickness = (1 << 7),
+    IsStrokeNonScaling = (1 << 8),
+    CenterPoint = (1 << 9),
+    Offset = (1 << 10),
+    RotationInDegrees = (1 << 11),
+    Scale = (1 << 12),
+};
+DEFINE_ENUM_FLAG_OPERATORS(SpriteFields);
+
+template<typename T> constexpr inline bool HasFlag(T const& flagset, T const& value) {
+    return (static_cast<uint32_t>(flagset) & static_cast<uint32_t>(value)) != 0;
+}
+
+template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr auto operator|(T const& a, T const& b) {
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(a) | static_cast<std::underlying_type_t<T>>(b));
+}
+
+template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr auto operator&(T const& a, T const& b) {
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(a) & static_cast<std::underlying_type_t<T>>(b));
+}
+
+struct AnimationBaseType
+{
+    AnimationBaseType(Compositor const& c) : _c(c), _reusableExpressionAnimation{c.CreateExpressionAnimation()} { }
+
+    ExpressionAnimation _reusableExpressionAnimation {nullptr};
+    Compositor _c{ nullptr };
+
+    struct propset_value
+    {
+        const wchar_t* Name;
+        std::variant<Color, float, float2, float3, float4> Value;
+    };
+
+    __declspec(noinline) void ApplyProperties(CompositionObject const& target, const propset_value* props, int propCount)
+    {
+        auto propSet = target.Properties();
+        auto visitor = [&propSet, &props](auto&& prop)
+        {
+            using T = std::decay_t<decltype(prop)>;
+            if constexpr (std::is_same_v<T, Color>)
+            {
+                propSet.InsertColor(props->Name, prop);
+            }
+            else if constexpr (std::is_same_v<T, float>)
+            {
+                propSet.InsertScalar(props->Name, prop);
+            }
+            else if constexpr (std::is_same_v<T, float2>)
+            {
+                propSet.InsertVector2(props->Name, prop);
+            }
+            else if constexpr (std::is_same_v<T, float3>)
+            {
+                propSet.InsertVector3(props->Name, prop);
+            }
+            else if constexpr (std::is_same_v<T, float4>)
+            {
+                propSet.InsertVector4(props->Name, prop);
+            }
+            else
+            {
+                static_assert(""incomplete"");
+            }
+        };
+
+        auto end = props + propCount;
+        while (props != end)
+        {
+            std::visit(visitor, props->Value);
+            ++props;
+        }
+    }
+
+    __declspec(noinline) void ApplyProperties(winrt::Windows::Foundation::IInspectable const& target, const propset_value* props, int propCount)
+    {
+        return ApplyProperties(target.as<CompositionObject>(), props, propCount);
+    }
+
+    template<typename T> struct func_or_field {
+        uint16_t id;
+    };
+
+    template<typename T> T common_invoke(func_or_field<T> const& id, std::vector<T>& storage)
+    {
+        auto realId = id.id - 1;
+        if (id.id == 0) {
+            return { nullptr };
+        } else if (realId < storage.size()) {
+            return storage[realId];
+        } else {
+            return call_method(id);
+        }
+    }
+
+    std::vector<CompositionShape> m_CompositionShapeStorage;
+    virtual CompositionShape call_method(func_or_field<CompositionShape> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionShape> const& id, CompositionShape const& value) {
+        return m_CompositionShapeStorage[id.id - 1] = value;
+    }
+    CompositionShape invoke_func_or_field(func_or_field<CompositionShape> const& id)
+    {
+        return common_invoke(id, m_CompositionShapeStorage);
+    }
+
+    std::vector<CompositionGeometry> m_CompositionGeometryStorage;
+    virtual CompositionGeometry call_method(func_or_field<CompositionGeometry> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionGeometry> const& id, CompositionGeometry const& value) {
+        return m_CompositionGeometryStorage[id.id - 1] = value;
+    }
+    CompositionGeometry invoke_func_or_field(func_or_field<CompositionGeometry> const& id)
+    {
+        return common_invoke(id, m_CompositionGeometryStorage);
+    }
+
+    std::vector<CompositionPath> m_CompositionPathStorage;
+    virtual CompositionPath call_method(func_or_field<CompositionPath> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionPath> const& id, CompositionPath const& value) {
+        return m_CompositionPathStorage[id.id - 1] = value;
+    }
+    CompositionPath invoke_func_or_field(func_or_field<CompositionPath> const& id)
+    {
+        return common_invoke(id, m_CompositionPathStorage);
+    }
+   
+    std::vector<Visual> m_VisualStorage;
+    virtual Visual call_method(func_or_field<Visual> const&) { return nullptr; }
+    auto const& store_field(func_or_field<Visual> const& id, Visual const& value) {
+        return m_VisualStorage[id.id - 1] = value;
+    }
+    Visual invoke_func_or_field(func_or_field<Visual> const& id)
+    {
+        return common_invoke(id, m_VisualStorage);
+    }
+
+    std::vector<CompositionEasingFunction> m_CompositionEasingFunctionStorage;
+    virtual CompositionEasingFunction call_method(func_or_field<CompositionEasingFunction> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionEasingFunction> const& id, CompositionEasingFunction const& value) {
+        return m_CompositionEasingFunctionStorage[id.id - 1] = value;
+    }
+    CompositionEasingFunction invoke_func_or_field(func_or_field<CompositionEasingFunction> const& id)
+    {
+        return common_invoke(id, m_CompositionEasingFunctionStorage);
+    }
+
+    std::vector<CompositionAnimation> m_CompositionAnimationStorage;
+    virtual CompositionAnimation call_method(func_or_field<CompositionAnimation> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionAnimation> const& id, CompositionAnimation const& value) {
+        return m_CompositionAnimationStorage[id.id - 1] = value;
+    }
+    CompositionAnimation invoke_func_or_field(func_or_field<CompositionAnimation> const& id)
+    {
+        return common_invoke(id, m_CompositionAnimationStorage);
+    }
+
+    std::vector<CompositionBrush> m_CompositionBrushStorage;
+    virtual CompositionBrush call_method(func_or_field<CompositionBrush> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionBrush> const& id, CompositionBrush const& value) {
+        return m_CompositionBrushStorage[id.id - 1] = value;
+    }
+    CompositionBrush invoke_func_or_field(func_or_field<CompositionBrush> const& id)
+    {
+        return common_invoke(id, m_CompositionBrushStorage);
+    }
+
+    std::vector<ExpressionAnimation> m_ExpressionAnimationStorage;
+    virtual ExpressionAnimation call_method(func_or_field<ExpressionAnimation> const&) { return nullptr; }
+    auto const& store_field(func_or_field<ExpressionAnimation> const& id, ExpressionAnimation const& value) {
+        return m_ExpressionAnimationStorage[id.id - 1] = value;
+    }
+    ExpressionAnimation invoke_func_or_field(func_or_field<ExpressionAnimation> const& id)
+    {
+        return common_invoke(id, m_ExpressionAnimationStorage);
+    }
+
+    std::vector<CompositionEffectFactory> m_CompositionEffectFactoryStorage;
+    virtual CompositionEffectFactory call_method(func_or_field<CompositionEffectFactory> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionEffectFactory> const& id, CompositionEffectFactory const& value) {
+        return m_CompositionEffectFactoryStorage[id.id - 1] = value;
+    }
+    CompositionEffectFactory invoke_func_or_field(func_or_field<CompositionEffectFactory> const& id)
+    {
+        return common_invoke(id, m_CompositionEffectFactoryStorage);
+    }
+
+    std::vector<CompositionVisualSurface> m_CompositionVisualSurfaceStorage;
+    virtual CompositionVisualSurface call_method(func_or_field<CompositionVisualSurface> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionVisualSurface> const& id, CompositionVisualSurface const& value) {
+        return m_CompositionVisualSurfaceStorage[id.id - 1] = value;
+    }
+    CompositionVisualSurface invoke_func_or_field(func_or_field<CompositionVisualSurface> const& id)
+    {
+        return common_invoke(id, m_CompositionVisualSurfaceStorage);
+    }
+
+    std::vector<CompositionShadow> m_CompositionShadowStorage;
+    virtual CompositionShadow call_method(func_or_field<CompositionShadow> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionShadow> const& id, CompositionShadow const& value) {
+        return m_CompositionShadowStorage[id.id - 1] = value;
+    }
+    CompositionShadow invoke_func_or_field(func_or_field<CompositionShadow> const& id)
+    {
+        return common_invoke(id, m_CompositionShadowStorage);
+    }
+
+
+    std::vector<CompositionClip> m_CompositionClipStorage;
+    virtual CompositionClip call_method(func_or_field<CompositionClip> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionClip> const& id, CompositionClip const& value) {
+        return m_CompositionClipStorage[id.id - 1] = value;
+    }
+    CompositionClip invoke_func_or_field(func_or_field<CompositionClip> const& id)
+    {
+        return common_invoke(id, m_CompositionClipStorage);
+    }
+
+    std::vector<winrt::com_ptr<CanvasGeometry>> m_CanvasGeometryStorage;
+    virtual winrt::com_ptr<CanvasGeometry> call_method(func_or_field<winrt::com_ptr<CanvasGeometry>> const&) { return nullptr; }
+    auto const& store_field(func_or_field<winrt::com_ptr<CanvasGeometry>> const& id, winrt::com_ptr<CanvasGeometry> const& value) {
+        return m_CanvasGeometryStorage[id.id - 1] = value;
+    }
+    winrt::com_ptr<CanvasGeometry> invoke_func_or_field(func_or_field<winrt::com_ptr<CanvasGeometry>> const& id)
+    {
+        return common_invoke(id, m_CanvasGeometryStorage);
+    }
+
+    std::vector<CompositionColorGradientStop> m_CompositionColorGradientStopStorage;
+    virtual CompositionColorGradientStop call_method(func_or_field<CompositionColorGradientStop> const&) { return nullptr; }
+    auto const& store_field(func_or_field<CompositionColorGradientStop> const& id, CompositionColorGradientStop const& value) {
+        return m_CompositionColorGradientStopStorage[id.id - 1] = value;
+    }
+    CompositionColorGradientStop invoke_func_or_field(func_or_field<CompositionColorGradientStop> const& id)
+    {
+        return common_invoke(id, m_CompositionColorGradientStopStorage);
+    }
+
+    struct SpriteShapeProperties
+    {
+        float3x2 Transformation;
+        CompositionStrokeCap StrokeDashCap;
+        float StrokeDashOffset;
+        CompositionStrokeCap StrokeStartCap;
+        CompositionStrokeCap StrokeEndCap;
+        CompositionStrokeLineJoin StrokeLineJoin;
+        float StrokeMiterLimit;
+        float StrokeThickness;
+        bool IsStrokeNonScaling;
+        float2 CenterPoint;
+        float2 Offset;
+        float RotationAngleInDegrees;
+        float2 Scale;
+        float const* dashes;
+        uint32_t dashCount;
+        func_or_field<CompositionGeometry> geometry;
+        func_or_field<CompositionBrush> fillBrush;
+        func_or_field<CompositionBrush> strokeBrush;
+        SpriteFields Fields;
+    };
+
+    __declspec(noinline) CompositionShape MakeAndApplyProperties(
+        Compositor const& source,
+        SpriteShapeProperties const& props)
+    {
+        CompositionSpriteShape result{ nullptr };
+        if (auto g = invoke_func_or_field(props.geometry))
+        {
+            result = source.CreateSpriteShape(g);
+        }
+        else
+        {
+            result = source.CreateSpriteShape();
+        }
+
+        if (auto b = invoke_func_or_field(props.fillBrush))
+        {
+            result.FillBrush(b);
+        }
+
+        if (auto s = invoke_func_or_field(props.strokeBrush))
+        {
+            result.StrokeBrush(s);
+        }
+            
+        if (HasFlag(props.Fields, SpriteFields::Transformation))
+        {
+            result.TransformMatrix(props.Transformation);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeDashCap))
+        {
+            result.StrokeDashCap(props.StrokeDashCap);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeDashOffset))
+        {
+            result.StrokeDashOffset(props.StrokeDashOffset);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeStartCap))
+        {
+            result.StrokeStartCap(props.StrokeStartCap);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeEndCap))
+        {
+            result.StrokeEndCap(props.StrokeEndCap);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeMiterLimit))
+        {
+            result.StrokeMiterLimit(props.StrokeMiterLimit);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeThickness))
+        {
+            result.StrokeThickness(props.StrokeThickness);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::IsStrokeNonScaling))
+        {
+            result.IsStrokeNonScaling(props.IsStrokeNonScaling);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeLineJoin))
+        {
+            result.StrokeLineJoin(props.StrokeLineJoin);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::CenterPoint))
+        {
+            result.CenterPoint(props.CenterPoint);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::Offset))
+        {
+            result.Offset(props.Offset);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::RotationInDegrees))
+        {
+            result.RotationAngleInDegrees(props.RotationAngleInDegrees);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::Scale))
+        {
+            result.Offset(props.Scale);
+        }
+
+        if (props.dashCount)
+        {
+            result.StrokeDashArray().ReplaceAll({props.dashes, props.dashCount});
+        }
+
+        return result;
+    }
+
+    struct CompositionBrushProps {
+        struct SourceParameter {
+            const wchar_t* name;
+            func_or_field<CompositionBrush> brush;
+        };
+
+        func_or_field<CompositionEffectFactory> factory;
+        SourceParameter const *sources;
+        int sourceCount;
+    };
+
+    CompositionBrush MakeEffectBrush(CompositionBrushProps const& props)
+    {
+        auto factory = invoke_func_or_field(props.factory);
+        auto result = factory.CreateBrush();
+        for (int i = 0; i < props.sourceCount; ++i)
+        {
+            result.SetSourceParameter(props.sources[i].name, invoke_func_or_field(props.sources[i].brush));
+        }
+        return result;
+    }
+
+    template<typename TValue> struct KeyFrameStep {
+        float progressKey;
+        std::variant<TValue, const wchar_t*> data;
+        func_or_field<CompositionEasingFunction> func;
+    };
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float2>* steps, int stepCount)
+    {
+        auto result = _c.CreateVector2KeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<float2>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float3>* steps, int stepCount)
+    {
+        auto result = _c.CreateVector3KeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<float3>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float>* steps, int stepCount)
+    {
+        auto result = _c.CreateScalarKeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<float>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<Color>* steps, int stepCount)
+    {
+        auto result = _c.CreateColorKeyFrameAnimation();
+        result.InterpolationColorSpace(CompositionColorSpace::Rgb);
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<Color>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<func_or_field<CompositionPath>>* steps, int stepCount)
+    {
+        auto result = _c.CreatePathKeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, invoke_func_or_field(std::get<func_or_field<CompositionPath>>(step.data)), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float4>* steps, int stepCount)
+    {
+        auto result = _c.CreateVector4KeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<float4>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<bool>* steps, int stepCount)
+    {
+        auto result = _c.CreateBooleanKeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<bool>(step.data));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry> const& src)
+    {
+        return CompositionPath { *src };
+    }
+
+    __declspec(noinline) CompositionPath MakeCompositionPath(CanvasGeometry const& src)
+    {
+        return CompositionPath { src };
+    }
+
+    __declspec(noinline) CompositionPath MakeCompositionPath(func_or_field<winrt::com_ptr<CanvasGeometry>> const& src)
+    {
+        return MakeCompositionPath(invoke_func_or_field(src));
+    }
+
+    __declspec(noinline) CompositionGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)
+    {
+        auto result = _c.CreateEllipseGeometry();
+        result.Center(center_point.first);
+        result.Radius(center_point.second);
+        return result;
+    }
+
+    __declspec(noinline) CompositionGeometry MakePathGeometry(func_or_field<CompositionPath> const& path)
+    {
+        return _c.CreatePathGeometry(invoke_func_or_field(path));
+    }
+
+    __declspec(noinline) CompositionGeometry MakePathGeometry(func_or_field<winrt::com_ptr<CanvasGeometry>> const& geoMaker)
+    {
+        return _c.CreatePathGeometry(CompositionPath { *invoke_func_or_field(geoMaker) });
+    }
+
+    __declspec(noinline) CompositionGeometry MakePathGeometry()
+    {
+        return _c.CreatePathGeometry();
+    }
+
+    __declspec(noinline) void StartProgressBoundAnimation(
+        CompositionObject const& target,
+        const wchar_t* animatedPropertyName,
+        func_or_field<CompositionAnimation> const& animation,
+        func_or_field<ExpressionAnimation> const& controllerProgressExpression)
+    {
+        target.StartAnimation(animatedPropertyName, invoke_func_or_field(animation));
+        const auto controller = target.TryGetAnimationController(animatedPropertyName);
+        controller.Pause();
+        controller.StartAnimation(L""Progress"", invoke_func_or_field(controllerProgressExpression));
+    }
+
+    __declspec(noinline) void StartProgressBoundAnimation(
+        winrt::Windows::Foundation::IInspectable const& target,
+        const wchar_t* animatedPropertyName,
+        func_or_field<CompositionAnimation> const& animation,
+        func_or_field<ExpressionAnimation> const& controllerProgressExpression)
+    {
+        StartProgressBoundAnimation(target.as<CompositionObject>(), animatedPropertyName, animation, controllerProgressExpression);
+    }
+
+    __declspec(noinline) void BindProperty(CompositionObject const& target, const wchar_t* animatedPropertyName, const wchar_t* expression, const wchar_t* referenceParameterName, CompositionObject const& referencedObject)
+    {
+        _reusableExpressionAnimation.ClearAllParameters();
+        _reusableExpressionAnimation.Expression(expression);
+        _reusableExpressionAnimation.SetReferenceParameter(referenceParameterName, referencedObject);
+        target.StartAnimation(animatedPropertyName, _reusableExpressionAnimation);
+    }
+
+    __declspec(noinline) void BindProperty(
+        winrt::Windows::Foundation::IInspectable const& target,
+        const wchar_t* animatedPropertyName,
+        const wchar_t* expression,
+        const wchar_t* referenceParameterName,
+        winrt::Windows::Foundation::IInspectable const& referencedObject)
+    {
+        return BindProperty(target.as<CompositionObject>(), animatedPropertyName, expression, referenceParameterName, referencedObject.as<CompositionObject>());
+    }
+
+    template<typename Q> __declspec(noinline) void BindProperty(
+        winrt::Windows::Foundation::IInspectable const& target,
+        const wchar_t* animatedPropertyName,
+        const wchar_t* expression,
+        const wchar_t* referenceParameterName,
+        func_or_field<Q> const& src)
+    {
+        return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(src));
+    }
+
+    AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
+    {
+        auto controller = target.TryGetAnimationController(propertyName);
+        if (pauseFirst)
+        {
+            controller.Pause();
+        }
+        return controller;
+    }
+
+    AnimationController GetAnimationController(winrt::Windows::Foundation::IInspectable const& target, const wchar_t* propertyName, bool pauseFirst)
+    {
+        return GetAnimationController(target.as<CompositionObject>(), propertyName, pauseFirst);
+    }
+
+    struct BoundAnimation {
+        const wchar_t* property;
+        func_or_field<CompositionAnimation> animation;
+        func_or_field<ExpressionAnimation> expression;
+    };
+
+    __declspec(noinline) void StartProgressBoundAnimation(CompositionObject const& target, const BoundAnimation& animation)
+    {
+        return StartProgressBoundAnimation(target, animation.property, animation.animation, animation.expression);
+    }
+
+    __declspec(noinline) void StartProgressBoundAnimation(winrt::Windows::Foundation::IInspectable const& target, const BoundAnimation& animation)
+    {
+        return StartProgressBoundAnimation(target.as<CompositionObject>(), animation.property, animation.animation, animation.expression);
+    }
+
+    template<typename TThing> void AddCompositionShapes(
+        TThing const& container,
+        const func_or_field<CompositionShape>* toAdd,
+        int toAddCount)
+    {
+        auto shapes = container.Shapes();
+        for (int i = 0; i < toAddCount; i++)
+        {
+            shapes.Append(invoke_func_or_field(toAdd[i]));
+        }
+    }
+
+    __declspec(noinline) CompositionBrush MakeSurfaceBrush(func_or_field<CompositionVisualSurface> const& target, bool initAfter)
+    {
+        CompositionSurfaceBrush result{nullptr};
+        CompositionVisualSurface targetSurface = invoke_func_or_field(target);
+
+        if (initAfter)
+        {
+            result = _c.CreateSurfaceBrush();
+            if (targetSurface)
+            {
+                result.Surface(targetSurface);
+            }
+        }
+        else
+        {
+            result = _c.CreateSurfaceBrush(targetSurface);
+        }
+
+        return result;
+    }
+
+    struct SpriteVisualConfig {
+        func_or_field<CompositionBrush> Brush;
+        func_or_field<CompositionShadow> Shadow;
+    };
+    __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualConfig const& props) {
+        auto result = _c.CreateSpriteVisual();
+        if (auto b = invoke_func_or_field(props.Brush)) {
+            result.Brush(b);
+        }
+        if (auto s = invoke_func_or_field(props.Shadow)) {
+            result.Shadow(s);
+        }
+        return result;
+    }
+    __declspec(noinline) void ApplyContainerVisuals(ContainerVisual const& target, const func_or_field<Visual>* visuals, size_t visualCount)
+    {
+        auto children = target.Children();
+        for (size_t i = 0; i < visualCount; ++i)
+        {
+            children.InsertAtTop(invoke_func_or_field(visuals[i]));
+        }
+    }
+
+    __declspec(noinline) void ApplyContainerVisuals(winrt::Windows::Foundation::IInspectable const& target, const func_or_field<Visual>* visuals, size_t visualCount)
+    {
+        return ApplyContainerVisuals(target.as<ContainerVisual>(), visuals, visualCount);
+    }
+
+    enum class VisualConfigFlags : uint32_t {
+        BorderMode = (1 << 0),
+        CenterPoint = (1 << 2),
+        IsVisible = (1 << 3),
+        Offset = (1 << 4),
+        Opacity = (1 << 5),
+        RotationAngleInDegrees = (1 << 6),
+        RotationAxis = (1 << 7),
+        Scale = (1 << 8),
+        Size = (1 << 9)    
+    };
+    struct VisualConfig {
+        CompositionBorderMode BorderMode;
+        float3 CenterPoint;
+        func_or_field<CompositionClip> Clip;
+        bool IsVisible;
+        float3 Offset;
+        float Opacity;
+        float RotationAngleInDegrees;
+        float3 RotationAxis;
+        float3 Scale;
+        float2 Size;
+        float4x4 const* TransformMatrix;
+        VisualConfigFlags Flags;
+    };
+    #define TEST_FLAG_AND_SET(pn) if (HasFlag(props.Flags, decltype(props.Flags)::##pn)) target.##pn(props.##pn)
+    void ApplyVisualConfig(Visual const& target, const VisualConfig& props) {
+        TEST_FLAG_AND_SET(BorderMode);
+        TEST_FLAG_AND_SET(CenterPoint);
+        if (auto clip = invoke_func_or_field(props.Clip)) {
+            target.Clip(clip);
+        }
+        TEST_FLAG_AND_SET(IsVisible);
+        TEST_FLAG_AND_SET(Offset);
+        TEST_FLAG_AND_SET(Opacity);
+        TEST_FLAG_AND_SET(RotationAngleInDegrees);
+        TEST_FLAG_AND_SET(RotationAxis);
+        TEST_FLAG_AND_SET(Scale);
+        TEST_FLAG_AND_SET(Size);
+        if (props.TransformMatrix) {
+            target.TransformMatrix(*props.TransformMatrix);
+        }
+    }
+    void ApplyVisualConfig(winrt::Windows::Foundation::IInspectable const& target, const VisualConfig& props) {
+        return ApplyVisualConfig(target.as<Visual>(), props);
+    }
+    struct GeometryConfig {
+        enum class ConfigFlags : uint32_t {
+            TrimEnd = (1 << 0),
+            TrimStart = (1 << 1),
+            TrimOffset = (1 << 2),
+        };
+        float TrimEnd;
+        float TrimStart;
+        float TrimOffset;
+        ConfigFlags Flags;
+    };
+    void ApplyGeometryConfig(CompositionGeometry const& target, GeometryConfig const& props) {
+        TEST_FLAG_AND_SET(TrimEnd);
+        TEST_FLAG_AND_SET(TrimStart);
+        TEST_FLAG_AND_SET(TrimOffset);
+    }
+    __declspec(noinline) void ApplyGeometryConfig(winrt::Windows::Foundation::IInspectable const& target, GeometryConfig const& props) {
+        return ApplyGeometryConfig(target.as<CompositionGeometry>(), props);
+            }
+    struct EllipseConfig {
+        float2 Center;
+        float2 Radius;
+        };
+    CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
+        auto target = _c.CreateEllipseGeometry();
+        target.Center(props.Center);
+        target.Radius(props.Radius);
+        return target;
+        }
+    struct GradientBrushConfig {
+        enum class ConfigFlags {
+            AnchorPoint = (1 << 0),
+            CenterPoint = (1 << 1),
+            ColorStops = (1 << 2),
+            ExtendMode = (1 << 3),
+            InterpolationSpace = (1 << 4),
+            MappingMode = (1 << 5),
+            Offset = (1 << 6),
+            RotationAngleInDegrees = (1 << 8),
+            Scale = (1 << 9),
+            TransformMatrix = (1 << 10),
+        };
+        float2 AnchorPoint;
+        float2 CenterPoint;
+        CompositionGradientExtendMode ExtendMode;
+        CompositionColorSpace InterpolationSpace;
+        CompositionMappingMode MappingMode;
+        float2 Offset;
+        float RotationAngleInDegrees;
+        float2 Scale;
+        float3x2 TransformMatrix;
+        func_or_field<CompositionColorGradientStop> const* ColorStops;
+        uint32_t ColorStopCount;
+        ConfigFlags Flags;
+    };
+    __declspec(noinline) void ApplyGradientBrushConfig(CompositionGradientBrush const& target, GradientBrushConfig const& props)
+    {
+        TEST_FLAG_AND_SET(AnchorPoint);
+        TEST_FLAG_AND_SET(CenterPoint);
+        TEST_FLAG_AND_SET(ExtendMode);
+        TEST_FLAG_AND_SET(InterpolationSpace);
+        TEST_FLAG_AND_SET(MappingMode);
+        TEST_FLAG_AND_SET(Offset);
+        TEST_FLAG_AND_SET(RotationAngleInDegrees);
+        TEST_FLAG_AND_SET(Scale);
+        TEST_FLAG_AND_SET(TransformMatrix);
+        if (props.ColorStopCount)
+        {
+            auto stops = target.ColorStops();
+            for (uint32_t i = 0; i < props.ColorStopCount; ++i)
+            {
+                stops.Append(invoke_func_or_field(props.ColorStops[i]));
+            }
+        }
+    }
+    __declspec(noinline) void ApplyGradientBrushConfig(winrt::Windows::Foundation::IInspectable const& target, GradientBrushConfig const& props)
+                {
+        return ApplyGradientBrushConfig(target.as<CompositionGradientBrush>(), props);
+                }
+    struct VisualSurfaceConfig {
+        enum class ConfigFlags : uint32_t {
+            SourceVisual = (1 << 0),
+            SourceSize = (1 << 1),
+            SourceOffset = (1 << 2),
+        };
+        func_or_field<Visual> SourceVisual;
+        float2 SourceSize;
+        float2 SourceOffset;
+        ConfigFlags Flags;
+    };
+    __declspec(noinline) void ApplyVisualSurfaceConfig(CompositionVisualSurface const& target, VisualSurfaceConfig const& props) {
+        if (auto visual = invoke_func_or_field(props.SourceVisual)) {
+            target.SourceVisual(visual);
+        }
+        TEST_FLAG_AND_SET(SourceSize);
+        TEST_FLAG_AND_SET(SourceOffset);
+    }
+};
+";
 
         /// <inheritdoc/>
         // Called by the base class to write the start of the cpp file (i.e. everything up to the body of the Instantiator class).
@@ -1201,61 +1614,21 @@ __declspec(noinline) CompositionBrush MakeSurfaceBrush(func_or_field<Composition
 
             builder.WriteLine();
 
-            builder.WriteLine(@"
-enum class SpriteFields : uint32_t
-{
-    Transformation = (1 << 0),
-    StrokeDashCap = (1 << 1),
-    StrokeDashOffset = (1 << 2),
-    StrokeStartCap = (1 << 3),
-    StrokeEndCap = (1 << 4),
-    StrokeLineJoin = (1 << 5),
-    StrokeMiterLimit = (1 << 6),
-    StrokeThickness = (1 << 7),
-    IsStrokeNonScaling = (1 << 8),
-    CenterPoint = (1 << 9),
-    Offset = (1 << 10),
-    RotationInDegrees = (1 << 11),
-    Scale = (1 << 12),
-};
-DEFINE_ENUM_FLAG_OPERATORS(SpriteFields);
-
-template<typename T> constexpr inline bool HasFlag(T const& flagset, T const& value) {
-    return (static_cast<uint32_t>(flagset) & static_cast<uint32_t>(value)) != 0;
-}
-
-template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr auto operator|(T const& a, T const& b) {
-    return static_cast<T>(static_cast<std::underlying_type_t<T>>(a) | static_cast<std::underlying_type_t<T>>(b));
-}
-
-template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr auto operator&(T const& a, T const& b) {
-    return static_cast<T>(static_cast<std::underlying_type_t<T>>(a) & static_cast<std::underlying_type_t<T>>(b));
-}
-");
-
             builder.WriteLine($"namespace winrt::{_s.Namespace(SourceInfo.Namespace)}::implementation");
             builder.OpenScope();
 
-            if (SourceInfo.UsesCanvasEffects ||
-                SourceInfo.UsesCanvasGeometry)
-            {
                 // Write CanvasGeometry to allow it's use in function definitions.
-                builder.WriteLine(CanvasGeometryClass);
-            }
+            builder.WriteManyLines(CanvasGeometryClass);
 
-            if (SourceInfo.UsesCompositeEffect)
-            {
                 // Write the composite effect class that will allow the use
                 // of this effect without win2d.
-                builder.WriteLine(CompositeEffectClass);
-            }
+            builder.WriteManyLines(CompositeEffectClass);
 
-            if (SourceInfo.UsesGaussianBlurEffect)
-            {
                 // Write the Gaussian blur effect class that will allow the use
                 // of this effect without win2d.
-                builder.WriteLine(GaussianBlurEffectClass);
-            }
+            builder.WriteManyLines(GaussianBlurEffectClass);
+
+            builder.WriteManyLines(AnimationBaseTypeClass);
         }
 
         /// <inheritdoc/>
@@ -1828,6 +2201,10 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
             }
         }
 
+        private List<string> _constructorLines = new List<string>();
+
+        internal void AddConstructorLine(string s) => _constructorLines.Add(s);
+
         /// <inheritdoc/>
         // Called by the base class to write the end of the AnimatedVisual class.
         protected override void WriteAnimatedVisualEnd(
@@ -1846,7 +2223,7 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
             builder.Indent();
 
             // Initializer list.
-            builder.WriteLine(": _c{compositor}");
+            builder.WriteLine(": AnimationBaseType{compositor}");
             if (SourceInfo.IsThemed)
             {
                 builder.WriteLine($", {SourceInfo.ThemePropertiesFieldName}{{themeProperties}}");
@@ -1858,9 +2235,6 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
                 builder.WriteLine($", {n.FieldName}({_s.CamelCase(n.Name)})");
             }
 
-            // Instantiate the reusable ExpressionAnimation.
-            builder.WriteLine($", {SourceInfo.ReusableExpressionAnimationFieldName}(compositor.CreateExpressionAnimation())");
-
             builder.UnIndent();
 
             builder.OpenScope();
@@ -1869,6 +2243,8 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
             {
                 builder.WriteLine("winrt::check_hresult(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, _d2dFactory.put()));");
             }
+
+            builder.WriteManyLines(_constructorLines);
 
             // Instantiate the root. This will cause the whole Visual tree to be built and animations started.
             builder.WriteLine("const auto _ = Root();");
@@ -2141,58 +2517,7 @@ struct sink_figure_end {
 
 using geometry_step = std::variant<sink_figure_begin, sink_figure_end, sink_line_segment, sink_bezier_segment>;
 
-struct propset_value
-{
-    const wchar_t* Name;
-    std::variant<Color, float, float2, float3, float4> Value;
-};
-
-__declspec(noinline) static void ApplyProperties(CompositionObject const& target, const propset_value* props, int propCount)
-{
-    auto propSet = target.Properties();
-    auto visitor = [&propSet, &props](auto&& prop)
-    {
-        using T = std::decay_t<decltype(prop)>;
-        if constexpr (std::is_same_v<T, Color>)
-        {
-            propSet.InsertColor(props->Name, prop);
-        }
-        else if constexpr (std::is_same_v<T, float>)
-        {
-            propSet.InsertScalar(props->Name, prop);
-        }
-        else if constexpr (std::is_same_v<T, float2>)
-        {
-            propSet.InsertVector2(props->Name, prop);
-        }
-        else if constexpr (std::is_same_v<T, float3>)
-        {
-            propSet.InsertVector3(props->Name, prop);
-        }
-        else if constexpr (std::is_same_v<T, float4>)
-        {
-            propSet.InsertVector4(props->Name, prop);
-        }
-        else
-        {
-            static_assert(""incomplete"");
-        }
-    };
-
-    auto end = props + propCount;
-    while (props != end)
-    {
-        std::visit(visitor, props->Value);
-        ++props;
-    }
-}
-
-__declspec(noinline) static void ApplyProperties(winrt::Windows::Foundation::IInspectable const& target, const propset_value* props, int propCount)
-{
-    return ApplyProperties(target.as<CompositionObject>(), props, propCount);
-}
-
-class CanvasGeometry : public winrt::implements<CanvasGeometry,
+    class CanvasGeometry : public winrt::implements<CanvasGeometry,
         IGeometrySource2D,
         ::ABI::Windows::Graphics::IGeometrySource2DInterop>
     {
@@ -2411,9 +2736,10 @@ class CanvasGeometry : public winrt::implements<CanvasGeometry,
     public:
         __declspec(noinline) static CompositionEffectFactory Make(Compositor const& c, float amount, const wchar_t* name)
         {
-            auto self = winrt::make_self<GaussianBlurEffect>(amount);
+            auto self = winrt::make_self<GaussianBlurEffect>();
+            self->m_blurAmount = amount;
             self->m_source = CompositionEffectSourceParameter{name};
-            return _c.CreateEffectFactory(*self);
+            return c.CreateEffectFactory(*self);
         }
 
         void BlurAmount(float amount) { m_blurAmount = amount; }

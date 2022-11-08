@@ -34,10 +34,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
     abstract class InstantiatorGeneratorBase : IAnimatedVisualSourceInfo
     {
         // The name of the field holding the singleton reusable ExpressionAnimation.
-        const string SingletonExpressionAnimationName = "_reusableExpressionAnimation";
+        protected const string SingletonExpressionAnimationName = "_reusableExpressionAnimation";
 
         // The name of the field holding the theme properties.
-        const string ThemePropertiesFieldName = "_themeProperties";
+        protected const string ThemePropertiesFieldName = "_themeProperties";
 
         // The name of the constant holding the duration of the animation in ticks.
         const string DurationTicksFieldName = "c_durationTicks";
@@ -636,7 +636,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         protected void WriteInitializedField(CodeBuilder builder, string typeName, string fieldName, string initialization)
             => builder.WriteLine($"{typeName} {fieldName}{initialization};");
 
-        void WriteDefaultInitializedField(CodeBuilder builder, string typeName, string fieldName)
+        internal void WriteDefaultInitializedField(CodeBuilder builder, string typeName, string fieldName)
             => WriteInitializedField(builder, typeName, fieldName, _s.DefaultInitialize);
 
         // Returns true iff the given sequence has exactly one item in it.
@@ -1255,7 +1255,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             protected string Matrix4x4(Matrix4x4 value) => _s.Matrix4x4(value);
 
             // readonly on C#, const on C++.
-            string Readonly(string value) => _s.Readonly(value);
+            protected string Readonly(string value) => _s.Readonly(value);
 
             protected string String(WinCompData.Expressions.Expression value) => String(value.ToText());
 
@@ -1612,6 +1612,17 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 builder.WriteComment($"Frame {_owner._sourceMetadata.ProgressToFrameNumber(progress):0.##}.");
             }
 
+            protected virtual void WriteDefaultFields(CodeBuilder builder, bool themed)
+            {
+                _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("Compositor")), "_c");
+                _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("ExpressionAnimation")), SingletonExpressionAnimationName);
+
+                if (themed)
+                {
+                    _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("CompositionPropertySet")), ThemePropertiesFieldName);
+                }
+            }
+
             internal void WriteAnimatedVisualCode(CodeBuilder builder)
             {
                 _owner._currentAnimatedVisualGenerator = this;
@@ -1626,13 +1637,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
                 // Write fields for each object that needs storage (i.e. objects that are referenced more than once).
                 // Write read-only fields first.
-                _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("Compositor")), "_c");
-                _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("ExpressionAnimation")), SingletonExpressionAnimationName);
-
-                if (_owner._isThemed)
-                {
-                    _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("CompositionPropertySet")), ThemePropertiesFieldName);
-                }
+                WriteDefaultFields(builder, _owner._isThemed);
 
                 WriteFields(builder);
 

@@ -144,59 +144,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 }
             }
 
-            internal static string GetInitializeCompositionGradientBrush() => @"
-struct GradientBrushConfig {
-    enum class ConfigFlags {
-        AnchorPoint = (1 << 0),
-        CenterPoint = (1 << 1),
-        ColorStops = (1 << 2),
-        ExtendMode = (1 << 3),
-        InterpolationSpace = (1 << 4),
-        MappingMode = (1 << 5),
-        Offset = (1 << 6),
-        RotationAngleInDegrees = (1 << 8),
-        Scale = (1 << 9),
-        TransformMatrix = (1 << 10),
-    };
-    float2 AnchorPoint;
-    float2 CenterPoint;
-    CompositionGradientExtendMode ExtendMode;
-    CompositionColorSpace InterpolationSpace;
-    CompositionMappingMode MappingMode;
-    float2 Offset;
-    float RotationAngleInDegrees;
-    float2 Scale;
-    float3x2 TransformMatrix;
-    func_or_field<CompositionColorGradientStop> const* ColorStops;
-    uint32_t ColorStopCount;
-    ConfigFlags Flags;
-};
-__declspec(noinline) void ApplyGradientBrushConfig(CompositionGradientBrush const& target, GradientBrushConfig const& props)
-{
-    TEST_FLAG_AND_SET(AnchorPoint);
-    TEST_FLAG_AND_SET(CenterPoint);
-    TEST_FLAG_AND_SET(ExtendMode);
-    TEST_FLAG_AND_SET(InterpolationSpace);
-    TEST_FLAG_AND_SET(MappingMode);
-    TEST_FLAG_AND_SET(Offset);
-    TEST_FLAG_AND_SET(RotationAngleInDegrees);
-    TEST_FLAG_AND_SET(Scale);
-    TEST_FLAG_AND_SET(TransformMatrix);
-    if (props.ColorStopCount)
-    {
-        auto stops = target.ColorStops();
-        for (uint32_t i = 0; i < props.ColorStopCount; ++i)
-        {
-            stops.Append(invoke_func_or_field(props.ColorStops[i]));
-        }
-    }
-}
-__declspec(noinline) void ApplyGradientBrushConfig(winrt::Windows::Foundation::IInspectable const& target, GradientBrushConfig const& props)
-{
-    return ApplyGradientBrushConfig(target.as<CompositionGradientBrush>(), props);
-}
-";
-
             protected override void InitializeCompositionGradientBrush(CodeBuilder builder, CompositionGradientBrush obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
@@ -268,27 +215,6 @@ __declspec(noinline) void ApplyGradientBrushConfig(winrt::Windows::Foundation::I
                 return true;
             }
 
-            internal static string GetCompositionVisualFactory() => @"
-struct VisualSurfaceConfig {
-    enum class ConfigFlags : uint32_t {
-        SourceVisual = (1 << 0),
-        SourceSize = (1 << 1),
-        SourceOffset = (1 << 2),
-    };
-    func_or_field<Visual> SourceVisual;
-    float2 SourceSize;
-    float2 SourceOffset;
-    ConfigFlags Flags;
-};
-__declspec(noinline) void ApplyVisualSurfaceConfig(CompositionVisualSurface const& target, VisualSurfaceConfig const& props) {
-    if (auto visual = invoke_func_or_field(props.SourceVisual)) {
-        target.SourceVisual(visual);
-    }
-    TEST_FLAG_AND_SET(SourceSize);
-    TEST_FLAG_AND_SET(SourceOffset);
-}
-";
-
             protected override bool GenerateCompositionVisualSurfaceFactory(CodeBuilder builder, CompositionVisualSurface obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
@@ -342,22 +268,6 @@ __declspec(noinline) void ApplyVisualSurfaceConfig(CompositionVisualSurface cons
                 return true;
             }
 
-            internal static string GetInitVisualContainerHelper() => @"
-__declspec(noinline) void ApplyContainerVisuals(ContainerVisual const& target, const func_or_field<Visual>* visuals, size_t visualCount)
-{
-    auto children = target.Children();
-    for (size_t i = 0; i < visualCount; ++i)
-    {
-        children.InsertAtTop(invoke_func_or_field(visuals[i]));
-    }
-}
-
-__declspec(noinline) void ApplyContainerVisuals(winrt::Windows::Foundation::IInspectable const& target, const func_or_field<Visual>* visuals, size_t visualCount)
-{
-    return ApplyContainerVisuals(target.as<ContainerVisual>(), visuals, visualCount);
-}
-";
-
             protected override void InitializeContainerVisual(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
                 InitializeVisual(builder, obj, node);
@@ -376,59 +286,6 @@ __declspec(noinline) void ApplyContainerVisuals(winrt::Windows::Foundation::IIns
                     builder.WriteLine($"ApplyContainerVisuals(result, visuals, _countof(visuals));");
                 }
             }
-
-            internal static string GetInitVisualHelper() => @"
-enum class VisualConfigFlags : uint32_t {
-    BorderMode = (1 << 0),
-    CenterPoint = (1 << 2),
-    IsVisible = (1 << 3),
-    Offset = (1 << 4),
-    Opacity = (1 << 5),
-    RotationAngleInDegrees = (1 << 6),
-    RotationAxis = (1 << 7),
-    Scale = (1 << 8),
-    Size = (1 << 9)    
-};
-
-struct VisualConfig {
-    CompositionBorderMode BorderMode;
-    float3 CenterPoint;
-    func_or_field<CompositionClip> Clip;
-    bool IsVisible;
-    float3 Offset;
-    float Opacity;
-    float RotationAngleInDegrees;
-    float3 RotationAxis;
-    float3 Scale;
-    float2 Size;
-    float4x4 const* TransformMatrix;
-    VisualConfigFlags Flags;
-};
-
-#define TEST_FLAG_AND_SET(pn) if (HasFlag(props.Flags, decltype(props.Flags)::##pn)) target.##pn(props.##pn)
-
-void ApplyVisualConfig(Visual const& target, const VisualConfig& props) {
-    TEST_FLAG_AND_SET(BorderMode);
-    TEST_FLAG_AND_SET(CenterPoint);
-    if (auto clip = invoke_func_or_field(props.Clip)) {
-        target.Clip(clip);
-    }
-    TEST_FLAG_AND_SET(IsVisible);
-    TEST_FLAG_AND_SET(Offset);
-    TEST_FLAG_AND_SET(Opacity);
-    TEST_FLAG_AND_SET(RotationAngleInDegrees);
-    TEST_FLAG_AND_SET(RotationAxis);
-    TEST_FLAG_AND_SET(Scale);
-    TEST_FLAG_AND_SET(Size);
-    if (props.TransformMatrix) {
-        target.TransformMatrix(*props.TransformMatrix);
-    }
-}
-
-void ApplyVisualConfig(winrt::Windows::Foundation::IInspectable const& target, const VisualConfig& props) {
-    return ApplyVisualConfig(target.as<Visual>(), props);
-}
-";
 
             protected override void InitializeVisual(CodeBuilder builder, Visual obj, ObjectData node)
             {
@@ -471,28 +328,6 @@ void ApplyVisualConfig(winrt::Windows::Foundation::IInspectable const& target, c
                 builder.WriteLine("ApplyVisualConfig(result, visProps);");
             }
 
-            internal static string GetGeometryConfigGenerator() => @"
-struct GeometryConfig {
-    enum class ConfigFlags : uint32_t {
-        TrimEnd = (1 << 0),
-        TrimStart = (1 << 1),
-        TrimOffset = (1 << 2),
-    };
-    float TrimEnd;
-    float TrimStart;
-    float TrimOffset;
-    ConfigFlags Flags;
-};
-void ApplyGeometryConfig(CompositionGeometry const& target, GeometryConfig const& props) {
-    TEST_FLAG_AND_SET(TrimEnd);
-    TEST_FLAG_AND_SET(TrimStart);
-    TEST_FLAG_AND_SET(TrimOffset);
-}
-__declspec(noinline) void ApplyGeometryConfig(winrt::Windows::Foundation::IInspectable const& target, GeometryConfig const& props) {
-    return ApplyGeometryConfig(target.as<CompositionGeometry>(), props);
-}
-";
-
             protected override void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
@@ -507,19 +342,6 @@ __declspec(noinline) void ApplyGeometryConfig(winrt::Windows::Foundation::IInspe
                 builder.CloseScopeWithSemicolon();
                 builder.WriteLine("ApplyGeometryConfig(result, geometryConfig);");
             }
-
-            internal static string GetEllipseGeometryGenerator() => @"
-struct EllipseConfig {
-    float2 Center;
-    float2 Radius;
-    };
-CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
-    auto target = _c.CreateEllipseGeometry();
-    target.Center(props.Center);
-    target.Radius(props.Radius);
-    return target;
-}
-";
 
             protected override bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
             {
@@ -590,23 +412,6 @@ CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
 
                 return true;
             }
-
-            internal static string GetCreateSpriteVisualBuilder() => @"
-struct SpriteVisualConfig {
-    func_or_field<CompositionBrush> Brush;
-    func_or_field<CompositionShadow> Shadow;
-};
-__declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualConfig const& props) {
-    auto result = _c.CreateSpriteVisual();
-    if (auto b = invoke_func_or_field(props.Brush)) {
-        result.Brush(b);
-    }
-    if (auto s = invoke_func_or_field(props.Shadow)) {
-        result.Shadow(s);
-    }
-    return result;
-}
-";
 
             protected override bool GenerateSpriteVisualFactory(CodeBuilder builder, SpriteVisual obj, ObjectData node)
             {
@@ -956,6 +761,14 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualConfig const& p
                 return true;
             }
 
+            protected override void WriteDefaultFields(CodeBuilder builder, bool themed)
+            {
+                if (themed)
+                {
+                    Owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("CompositionPropertySet")), ThemePropertiesFieldName);
+                }
+            }
+
             protected override void WritePopulateShapesCollection(CodeBuilder builder, IList<CompositionShape> shapes, ObjectData node)
             {
                 if (shapes.Any())
@@ -1009,6 +822,11 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualConfig const& p
                 // Do nothing, we have our own
             }
 
+            protected override void EnsureBindPropertyWritten(CodeBuilder builder)
+            {
+                // Do nothing, we have our own
+            }
+
             protected override string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
             {
                 return $"CreateCubicBezierEasingFunction({_generator.GetCubicBezierId(obj.ControlPoint1, obj.ControlPoint2)})";
@@ -1041,7 +859,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualConfig const& p
                         builder.WriteLine($"constexpr static const func_or_field<{storedType}> {k.Name}Id {{ {i++} }};");
                     }
 
-                    builder.WriteLine($"__declspec(noinline) {g.Key} call_method(func_or_field<{storedType}> const& id)");
+                    builder.WriteLine($"__declspec(noinline) {g.Key} call_method(func_or_field<{storedType}> const& id) override");
                     builder.OpenScope();
                     builder.WriteLine("switch (id.id)");
                     builder.OpenScope();
@@ -1055,31 +873,12 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualConfig const& p
                     builder.CloseScope();
                     builder.CloseScope();
                     builder.WriteLine();
-                    builder.WriteManyLines($@"
-constexpr static const uint32_t c_{idType}FieldCount = {fields.Count()};
 
-std::vector<{storedType}> m_{shortName}Storage = std::vector<{storedType}>({fields.Count()}, {storedType} {{ nullptr }});
-
-__declspec(noinline) {g.Key} invoke_func_or_field(func_or_field<{storedType}> const& id) {{
-    auto realId = id.id - 1;
-
-    if (id.id == 0) {{
-        return {{ nullptr }};
-    }} else if (realId < m_{shortName}Storage.size()) {{
-        return m_{shortName}Storage[realId];
-    }} else {{
-        return call_method(id);
-    }}
-}}
-
-__declspec(noinline) auto const& store_field(func_or_field<{storedType}> const& id, {storedType} const& value) {{
-    return m_{shortName}Storage[id.id - 1] = value;
-}}
-"
-);
+                    if (fields.Any())
+                    {
+                        _generator.AddConstructorLine($"m_{shortName}Storage.resize({fields.Count()}, nullptr);");
+                    }
                 }
-
-                builder.WriteLine("template<typename T> T invoke_func_or_field(func_or_field<T> const&) const { return T { nullptr }; }");
             }
 
             protected override string? FieldReadExpression(ObjectData node)
