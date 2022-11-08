@@ -55,6 +55,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         Dictionary<Tuple<Vector2, Vector2>, int> _cubicBeziers = new Dictionary<Tuple<Vector2, Vector2>, int>();
 
+        protected override bool InlineCubicBezierFunctionsIfPossible { get => false; }
+
         internal int GetCubicBezierId(Vector2 point1, Vector2 point2)
         {
             Tuple<Vector2, Vector2> control = new Tuple<Vector2, Vector2>(point1, point2);
@@ -889,11 +891,6 @@ __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const Time
     }
 
     return result;
-}
-
-template<int index> auto CreateCubicBezierEasingFunction()
-{
-    return CreateCubicBezierEasingFunction(index);
 }
 
 __declspec(noinline) CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry> const& src)

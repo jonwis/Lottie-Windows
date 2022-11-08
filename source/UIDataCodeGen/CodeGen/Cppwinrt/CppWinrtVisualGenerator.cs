@@ -171,7 +171,7 @@ struct GradientBrushConfig {
     uint32_t ColorStopCount;
     ConfigFlags Flags;
 };
-__declspec(noinline) void ApplyCompositionGradientProperties(CompositionGradientBrush const& target, GradientBrushConfig const& props)
+__declspec(noinline) void ApplyGradientBrushConfig(CompositionGradientBrush const& target, GradientBrushConfig const& props)
 {
     TEST_FLAG_AND_SET(AnchorPoint);
     TEST_FLAG_AND_SET(CenterPoint);
@@ -191,9 +191,9 @@ __declspec(noinline) void ApplyCompositionGradientProperties(CompositionGradient
         }
     }
 }
-__declspec(noinline) void ApplyCompositionGradientProperties(winrt::Windows::Foundation::IInspectable const& target, GradientBrushConfig const& props)
+__declspec(noinline) void ApplyGradientBrushConfig(winrt::Windows::Foundation::IInspectable const& target, GradientBrushConfig const& props)
 {
-    return ApplyCompositionGradientProperties(target.as<CompositionGradientBrush>(), props);
+    return ApplyGradientBrushConfig(target.as<CompositionGradientBrush>(), props);
 }
 ";
 
@@ -234,7 +234,7 @@ __declspec(noinline) void ApplyCompositionGradientProperties(winrt::Windows::Fou
                 builder.WriteLine("colorStops, colorStopCount,");
                 builder.WriteLine(writer.Fields);
                 builder.CloseScopeWithSemicolon();
-                builder.WriteLine("ApplyCompositionGradientProperties(result, config);");
+                builder.WriteLine("ApplyGradientBrushConfig(result, config);");
             }
 
             protected string ToFuncOrFieldFromFor(string s) => (s.Replace("()", string.Empty) + "Id").Replace("IdId", "Id");
@@ -269,8 +269,8 @@ __declspec(noinline) void ApplyCompositionGradientProperties(winrt::Windows::Fou
             }
 
             internal static string GetCompositionVisualFactory() => @"
-struct VisualSurfaceProps {
-    enum class PropsFlags : uint32_t {
+struct VisualSurfaceConfig {
+    enum class ConfigFlags : uint32_t {
         SourceVisual = (1 << 0),
         SourceSize = (1 << 1),
         SourceOffset = (1 << 2),
@@ -278,9 +278,9 @@ struct VisualSurfaceProps {
     func_or_field<Visual> SourceVisual;
     float2 SourceSize;
     float2 SourceOffset;
-    PropsFlags Flags;
+    ConfigFlags Flags;
 };
-__declspec(noinline) void ApplyVisualSurfaceProps(CompositionVisualSurface const& target, VisualSurfaceProps const& props) {
+__declspec(noinline) void ApplyVisualSurfaceConfig(CompositionVisualSurface const& target, VisualSurfaceConfig const& props) {
     if (auto visual = invoke_func_or_field(props.SourceVisual)) {
         target.SourceVisual(visual);
     }
@@ -296,15 +296,15 @@ __declspec(noinline) void ApplyVisualSurfaceProps(CompositionVisualSurface const
                 InitializeCompositionObject(builder, obj, node);
 
                 var writer = new FieldWriter(builder);
-                builder.WriteLine("constexpr static const VisualSurfaceProps props = ");
+                builder.WriteLine("constexpr static const VisualSurfaceConfig props = ");
                 builder.OpenScope();
                 builder.WriteLine($"{CallFactoryFromFor(node, obj.SourceVisual)},");
-                writer.Write(obj.SourceSize, "VisualSurfaceProps::PropsFlags::SourceSize");
-                writer.Write(obj.SourceOffset, "VisualSurfaceProps::PropsFlags::SourceOffset");
+                writer.Write(obj.SourceSize, "VisualSurfaceConfig::ConfigFlags::SourceSize");
+                writer.Write(obj.SourceOffset, "VisualSurfaceConfig::ConfigFlags::SourceOffset");
                 builder.WriteLine(writer.Fields);
                 builder.CloseScopeWithSemicolon();
 
-                builder.WriteLine("ApplyVisualSurfaceProps(result, props);");
+                builder.WriteLine("ApplyVisualSurfaceConfig(result, props);");
 
                 WriteCompositionObjectFactoryEnd(builder, obj, node);
                 return true;
@@ -378,7 +378,7 @@ __declspec(noinline) void ApplyContainerVisuals(winrt::Windows::Foundation::IIns
             }
 
             internal static string GetInitVisualHelper() => @"
-enum class VisualPropertiesFlags : uint32_t {
+enum class VisualConfigFlags : uint32_t {
     BorderMode = (1 << 0),
     CenterPoint = (1 << 2),
     IsVisible = (1 << 3),
@@ -390,7 +390,7 @@ enum class VisualPropertiesFlags : uint32_t {
     Size = (1 << 9)    
 };
 
-struct VisualProperties {
+struct VisualConfig {
     CompositionBorderMode BorderMode;
     float3 CenterPoint;
     func_or_field<CompositionClip> Clip;
@@ -402,12 +402,12 @@ struct VisualProperties {
     float3 Scale;
     float2 Size;
     float4x4 const* TransformMatrix;
-    VisualPropertiesFlags Flags;
+    VisualConfigFlags Flags;
 };
 
 #define TEST_FLAG_AND_SET(pn) if (HasFlag(props.Flags, decltype(props.Flags)::##pn)) target.##pn(props.##pn)
 
-void ApplyVisualProperties(Visual const& target, const VisualProperties& props) {
+void ApplyVisualConfig(Visual const& target, const VisualConfig& props) {
     TEST_FLAG_AND_SET(BorderMode);
     TEST_FLAG_AND_SET(CenterPoint);
     if (auto clip = invoke_func_or_field(props.Clip)) {
@@ -425,8 +425,8 @@ void ApplyVisualProperties(Visual const& target, const VisualProperties& props) 
     }
 }
 
-void ApplyVisualProperties(winrt::Windows::Foundation::IInspectable const& target, const VisualProperties& props) {
-    return ApplyVisualProperties(target.as<Visual>(), props);
+void ApplyVisualConfig(winrt::Windows::Foundation::IInspectable const& target, const VisualConfig& props) {
+    return ApplyVisualConfig(target.as<Visual>(), props);
 }
 ";
 
@@ -441,34 +441,34 @@ void ApplyVisualProperties(winrt::Windows::Foundation::IInspectable const& targe
                     nameOfTransform = "&transform";
                 }
 
-                builder.WriteLine("constexpr static const VisualProperties visProps =");
+                builder.WriteLine("constexpr static const VisualConfig visProps =");
                 builder.OpenScope();
 
                 var writer = new FieldWriter(builder);
 
                 if (obj.BorderMode.HasValue && obj.BorderMode != CompositionBorderMode.Inherit)
                 {
-                    writer.Write(obj.BorderMode, "VisualPropertiesFlags::BorderMode");
+                    writer.Write(obj.BorderMode, "VisualConfigFlags::BorderMode");
                 }
                 else
                 {
                     builder.WriteLine("{ /* unset */ }, /* BorderMode */");
                 }
 
-                writer.Write(obj.CenterPoint, "VisualPropertiesFlags::CenterPoint");
+                writer.Write(obj.CenterPoint, "VisualConfigFlags::CenterPoint");
                 builder.WriteLine(obj.Clip != null ? $"{CallFactoryFromFor(node, obj.Clip)}," : "{ /* clip unset */ },");
-                writer.Write(obj.IsVisible, "VisualPropertiesFlags::IsVisible");
-                writer.Write(obj.Offset, "VisualPropertiesFlags::Offset");
-                writer.Write(obj.Opacity, "VisualPropertiesFlags::Opacity");
-                writer.Write(obj.RotationAngleInDegrees, "VisualPropertiesFlags::RotationAngleInDegrees");
-                writer.Write(obj.RotationAxis, "VisualPropertiesFlags::RotationAxis");
-                writer.Write(obj.Scale, "VisualPropertiesFlags::Scale");
-                writer.Write(obj.Size, "VisualPropertiesFlags::Size");
+                writer.Write(obj.IsVisible, "VisualConfigFlags::IsVisible");
+                writer.Write(obj.Offset, "VisualConfigFlags::Offset");
+                writer.Write(obj.Opacity, "VisualConfigFlags::Opacity");
+                writer.Write(obj.RotationAngleInDegrees, "VisualConfigFlags::RotationAngleInDegrees");
+                writer.Write(obj.RotationAxis, "VisualConfigFlags::RotationAxis");
+                writer.Write(obj.Scale, "VisualConfigFlags::Scale");
+                writer.Write(obj.Size, "VisualConfigFlags::Size");
                 builder.WriteLine($"{nameOfTransform},");
                 builder.WriteLine(writer.Fields);
                 builder.CloseScopeWithSemicolon();
 
-                builder.WriteLine("ApplyVisualProperties(result, visProps);");
+                builder.WriteLine("ApplyVisualConfig(result, visProps);");
             }
 
             internal static string GetGeometryConfigGenerator() => @"
@@ -483,13 +483,13 @@ struct GeometryConfig {
     float TrimOffset;
     ConfigFlags Flags;
 };
-void ApplyGeometryProps(CompositionGeometry const& target, GeometryConfig const& props) {
+void ApplyGeometryConfig(CompositionGeometry const& target, GeometryConfig const& props) {
     TEST_FLAG_AND_SET(TrimEnd);
     TEST_FLAG_AND_SET(TrimStart);
     TEST_FLAG_AND_SET(TrimOffset);
 }
-__declspec(noinline) void ApplyGeometryProps(winrt::Windows::Foundation::IInspectable const& target, GeometryConfig const& props) {
-    return ApplyGeometryProps(target.as<CompositionGeometry>(), props);
+__declspec(noinline) void ApplyGeometryConfig(winrt::Windows::Foundation::IInspectable const& target, GeometryConfig const& props) {
+    return ApplyGeometryConfig(target.as<CompositionGeometry>(), props);
 }
 ";
 
@@ -505,7 +505,7 @@ __declspec(noinline) void ApplyGeometryProps(winrt::Windows::Foundation::IInspec
                 writer.Write(obj.TrimOffset, "GeometryConfig::ConfigFlags::TrimOffset");
                 builder.WriteLine(writer.Fields);
                 builder.CloseScopeWithSemicolon();
-                builder.WriteLine("ApplyGeometryProps(result, geometryConfig);");
+                builder.WriteLine("ApplyGeometryConfig(result, geometryConfig);");
             }
 
             internal static string GetEllipseGeometryGenerator() => @"
@@ -592,11 +592,11 @@ CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
             }
 
             internal static string GetCreateSpriteVisualBuilder() => @"
-struct SpriteVisualProps {
+struct SpriteVisualConfig {
     func_or_field<CompositionBrush> Brush;
     func_or_field<CompositionShadow> Shadow;
 };
-__declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& props) {
+__declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualConfig const& props) {
     auto result = _c.CreateSpriteVisual();
     if (auto b = invoke_func_or_field(props.Brush)) {
         result.Brush(b);
@@ -612,7 +612,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
             {
                 WriteObjectFactoryStart(builder, node);
 
-                builder.WriteLine("constexpr static const SpriteVisualProps props =");
+                builder.WriteLine("constexpr static const SpriteVisualConfig props =");
                 builder.OpenScope();
                 builder.WriteLine($"{CallFactoryFromFor(node, obj.Brush)},");
                 builder.WriteLine($"{CallFactoryFromFor(node, obj.Shadow)},");

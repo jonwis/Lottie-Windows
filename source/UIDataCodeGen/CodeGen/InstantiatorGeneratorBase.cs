@@ -1021,6 +1021,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     ? _s.Vector4(value!.Value)
                     : throw new InvalidOperationException();
 
+        protected virtual bool InlineCubicBezierFunctionsIfPossible { get => true; }
+
         /// <summary>
         /// Generates an IAnimatedVisual implementation.
         /// </summary>
@@ -1098,16 +1100,17 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
                 // Force inlining on CubicBezierEasingFunction nodes that are only referenced once, because their factories
                 // are always very simple.
-                foreach (var (node, obj) in _objectGraph.CompositionObjectNodes.Where(
-                                        n => n.Object is CubicBezierEasingFunction &&
-                                            IsEqualToOne(FilteredInRefs(n.Node))))
+                if (owner.InlineCubicBezierFunctionsIfPossible)
                 {
-                    /*
-                    node.ForceInline(() =>
+                    foreach (var (node, obj) in _objectGraph.CompositionObjectNodes.Where(
+                                            n => n.Object is CubicBezierEasingFunction &&
+                                                IsEqualToOne(FilteredInRefs(n.Node))))
                     {
-                        return CallCreateCubicBezierEasingFunction((CubicBezierEasingFunction)node.Object);
-                    });
-                    */
+                        node.ForceInline(() =>
+                        {
+                            return CallCreateCubicBezierEasingFunction((CubicBezierEasingFunction)node.Object);
+                        });
+                    }
                 }
 
                 // If there is a theme property set, give it a special name and
@@ -3435,14 +3438,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             // True if the code to create the object will be generated inline.
             internal bool Inlined => _overriddenFactoryCall is not null;
 
-            internal void ForceInline(Func<string>? replacementFactoryCall)
+            internal void ForceInline(Func<string> replacementFactoryCall)
             {
-                if (replacementFactoryCall != null)
-                {
-                    _overriddenFactoryCall = replacementFactoryCall;
-                    RequiresStorage = false;
-                    RequiresReadonlyStorage = false;
-                }
+                _overriddenFactoryCall = replacementFactoryCall;
+                RequiresStorage = false;
+                RequiresReadonlyStorage = false;
             }
 
             // The name of the type of the object described by this node.
