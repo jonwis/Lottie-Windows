@@ -552,38 +552,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine("winrt::com_ptr<ID2D1Factory> _d2dFactory{ nullptr };");
             }
 
-            builder.WriteLine($"using TSelf = {info.ClassName};");
             builder.WriteManyLines(@"
 
-template<typename T> using func_or_field = std::variant<T(TSelf::*)(), T TSelf::*, std::monostate>;
-
-template<typename T> __declspec(noinline) T invoke_func_or_field(func_or_field<T> const& fof)
-{
-    if (std::holds_alternative<T(TSelf::*)()>(fof))
-    {
-        if (auto v = std::get<T(TSelf::*)()>(fof))
-        {
-            return (this->*v)();
-        }        
-    }
-    else if (std::holds_alternative<T(TSelf::*)>(fof))
-    {
-        if (auto v = std::get<T(TSelf::*)>(fof))
-        {
-            return this->*v;
-        }
-    }
-
-    return { nullptr };
+template<typename T> struct func_or_field {
+    uint16_t id;
 };
-
-template<typename Q> auto invoke_func_or_field(Q (TSelf::* pfn)()) {
-    return (this->*pfn)();
-}
-
-template<typename Q> auto invoke_func_or_field(Q TSelf::* pmem) {
-    return this->*pmem;
-}
 
 struct SpriteShapeProperties
 {
@@ -608,7 +581,7 @@ struct SpriteShapeProperties
     SpriteFields Fields;
 };
 
-__declspec(noinline) CompositionSpriteShape MakeAndApplyProperties(
+__declspec(noinline) CompositionShape MakeAndApplyProperties(
     Compositor const& source,
     SpriteShapeProperties const& props)
 {
@@ -997,19 +970,9 @@ template<typename Q> __declspec(noinline) void BindProperty(
     const wchar_t* animatedPropertyName,
     const wchar_t* expression,
     const wchar_t* referenceParameterName,
-    Q (TSelf::*pfn)())
+    func_or_field<Q> const& src)
 {
-    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, (this->*pfn)());
-}
-
-template<typename Q> __declspec(noinline) void BindProperty(
-    winrt::Windows::Foundation::IInspectable const& target,
-    const wchar_t* animatedPropertyName,
-    const wchar_t* expression,
-    const wchar_t* referenceParameterName,
-    Q TSelf::* pmem)
-{
-    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, this->*pmem);
+    return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(src));
 }
 
 AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
@@ -1917,9 +1880,9 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
             builder.WriteLine();
             builder.WriteLine("void Close()");
             builder.OpenScope();
-            builder.WriteLine("if (_root)");
+            builder.WriteLine("if (auto r = m_VisualStorage[_rootId.id - 1])");
             builder.OpenScope();
-            builder.WriteLine("_root.Close();");
+            builder.WriteLine("r.Close();");
             builder.CloseScope();
             builder.CloseScope();
 
@@ -1933,7 +1896,7 @@ template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr
 
             {
                 var propertyImplBuilder = new CodeBuilder();
-                propertyImplBuilder.WriteLine("return _root;");
+                propertyImplBuilder.WriteLine("return m_VisualStorage[_rootId.id - 1];");
                 WritePropertyImpl(builder, nameof(Visual), "RootVisual", propertyImplBuilder);
             }
 
@@ -2055,7 +2018,7 @@ winrt::com_ptr<CanvasGeometry> MakeGeometry(D2D1_FILL_MODE fill, const func_or_f
         /// <inheritdoc/>
         protected override void WriteCanvasGeometryGroupFactory(CodeBuilder builder, CanvasGeometry.Group obj, string typeName, string fieldName)
         {
-            builder.WriteLine("/*constexpr*/ static const func_or_field<winrt::com_ptr<CanvasGeometry>> geometries[] =");
+            builder.WriteLine("constexpr static const func_or_field<winrt::com_ptr<CanvasGeometry>> geometries[] =");
             builder.OpenScope();
             for (var i = 0; i < obj.Geometries.Length; i++)
             {

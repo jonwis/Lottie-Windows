@@ -16,6 +16,7 @@ using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Wg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
+using Microsoft.VisualBasic;
 using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
 using Mgce = CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using Sn = System.Numerics;
@@ -202,7 +203,7 @@ __declspec(noinline) void ApplyCompositionGradientProperties(winrt::Windows::Fou
 
                 if (obj.ColorStops.Any())
                 {
-                    builder.WriteLine("/*constexpr*/ static const func_or_field<CompositionColorGradientStop> colorStops[] =");
+                    builder.WriteLine("constexpr static const func_or_field<CompositionColorGradientStop> colorStops[] =");
                     builder.OpenScope();
                     foreach (var colorStop in obj.ColorStops)
                     {
@@ -210,15 +211,15 @@ __declspec(noinline) void ApplyCompositionGradientProperties(winrt::Windows::Fou
                     }
 
                     builder.CloseScopeWithSemicolon();
-                    builder.WriteLine("/*constexpr*/ static const uint32_t colorStopCount = _countof(colorStops);");
+                    builder.WriteLine("constexpr static const uint32_t colorStopCount = _countof(colorStops);");
                 }
                 else
                 {
-                    builder.WriteLine("/*constexpr*/ static const func_or_field<CompositionColorGradientStop> *colorStops = nullptr;");
-                    builder.WriteLine("/*constexpr*/ static const uint32_t colorStopCount = 0;");
+                    builder.WriteLine("constexpr static const func_or_field<CompositionColorGradientStop> *colorStops = nullptr;");
+                    builder.WriteLine("constexpr static const uint32_t colorStopCount = 0;");
                 }
 
-                builder.WriteLine("/*constexpr*/ static const GradientBrushConfig config =");
+                builder.WriteLine("constexpr static const GradientBrushConfig config =");
                 builder.OpenScope();
                 var writer = new FieldWriter(builder);
                 writer.Write(obj.AnchorPoint, "GradientBrushConfig::ConfigFlags::AnchorPoint");
@@ -236,7 +237,7 @@ __declspec(noinline) void ApplyCompositionGradientProperties(winrt::Windows::Fou
                 builder.WriteLine("ApplyCompositionGradientProperties(result, config);");
             }
 
-            protected string ToFuncOrFieldFromFor(string s) => "&TSelf::" + s.Replace("()", string.Empty);
+            protected string ToFuncOrFieldFromFor(string s) => (s.Replace("()", string.Empty) + "Id").Replace("IdId", "Id");
 
             protected override string CallFactoryFromFor(ObjectData callerNode, ObjectData calleeNode)
             {
@@ -256,7 +257,7 @@ __declspec(noinline) void ApplyCompositionGradientProperties(winrt::Windows::Fou
             protected override bool GenerateCompositionPathGeometryFactory(CodeBuilder builder, CompositionPathGeometry obj, ObjectData node)
             {
                 var path = obj.Path is null ? null : ObjectPath(obj.Path);
-                var createPathText = path is null ? string.Empty : CallFactoryFromFor(node, path).Replace("&TSelf::&TSelf::", "&TSelf::");
+                var createPathText = path is null ? string.Empty : CallFactoryFromFor(node, path);
                 var createPathGeometryText = $"MakePathGeometry({createPathText})";
 
                 WriteObjectFactoryStart(builder, node);
@@ -295,7 +296,7 @@ __declspec(noinline) void ApplyVisualSurfaceProps(CompositionVisualSurface const
                 InitializeCompositionObject(builder, obj, node);
 
                 var writer = new FieldWriter(builder);
-                builder.WriteLine("/*constexpr*/ static const VisualSurfaceProps props = ");
+                builder.WriteLine("constexpr static const VisualSurfaceProps props = ");
                 builder.OpenScope();
                 builder.WriteLine($"{CallFactoryFromFor(node, obj.SourceVisual)},");
                 writer.Write(obj.SourceSize, "VisualSurfaceProps::PropsFlags::SourceSize");
@@ -317,7 +318,7 @@ __declspec(noinline) void ApplyVisualSurfaceProps(CompositionVisualSurface const
 
                 if (sources.Any())
                 {
-                    builder.WriteLine($"/*constexpr*/ static const CompositionBrushProps::SourceParameter params[] =");
+                    builder.WriteLine($"constexpr static const CompositionBrushProps::SourceParameter params[] =");
                     builder.OpenScope();
 
                     foreach (var source in sources)
@@ -328,7 +329,7 @@ __declspec(noinline) void ApplyVisualSurfaceProps(CompositionVisualSurface const
                     builder.CloseScopeWithSemicolon();
                 }
 
-                builder.WriteLine($"/*constexpr*/ static const CompositionBrushProps props =");
+                builder.WriteLine($"constexpr static const CompositionBrushProps props =");
                 builder.OpenScope();
                 builder.WriteLine($"{CallFactoryFromFor(node, obj.GetEffectFactory())},");
                 builder.WriteLine(sources.Any() ? "params, _countof(params)," : "nullptr, 0,");
@@ -363,7 +364,7 @@ __declspec(noinline) void ApplyContainerVisuals(winrt::Windows::Foundation::IIns
 
                 if (obj.Children.Any())
                 {
-                    builder.WriteLine("/*constexpr*/ static const func_or_field<Visual> visuals[] =");
+                    builder.WriteLine("constexpr static const func_or_field<Visual> visuals[] =");
                     builder.OpenScope();
                     foreach (var child in obj.Children)
                     {
@@ -440,7 +441,7 @@ void ApplyVisualProperties(winrt::Windows::Foundation::IInspectable const& targe
                     nameOfTransform = "&transform";
                 }
 
-                builder.WriteLine("static const VisualProperties visProps =");
+                builder.WriteLine("constexpr static const VisualProperties visProps =");
                 builder.OpenScope();
 
                 var writer = new FieldWriter(builder);
@@ -496,7 +497,7 @@ __declspec(noinline) void ApplyGeometryProps(winrt::Windows::Foundation::IInspec
             {
                 InitializeCompositionObject(builder, obj, node);
 
-                builder.WriteLine("/*constexpr*/ static const GeometryConfig geometryConfig =");
+                builder.WriteLine("constexpr static const GeometryConfig geometryConfig =");
                 builder.OpenScope();
                 var writer = new FieldWriter(builder);
                 writer.Write(obj.TrimEnd, "GeometryConfig::ConfigFlags::TrimEnd");
@@ -544,7 +545,7 @@ CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
                 }
 
                 // Write all the constant properties
-                builder.WriteLine("/*constexpr*/ static const SpriteShapeProperties props =");
+                builder.WriteLine("constexpr static const SpriteShapeProperties props =");
                 builder.OpenScope();
                 var writer = new FieldWriter(builder);
 
@@ -571,9 +572,9 @@ CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
                     builder.WriteLine("nullptr, 0,");
                 }
 
-                builder.WriteLine((obj.Geometry != null) ? $"{CallFactoryFromFor(node, obj.Geometry)}," : "std::monostate { /* no geometry */ },");
-                builder.WriteLine((obj.FillBrush != null) ? $"{CallFactoryFromFor(node, obj.FillBrush)}," : "std::monostate { /* no fill */ },");
-                builder.WriteLine((obj.StrokeBrush != null) ? $"{CallFactoryFromFor(node, obj.StrokeBrush)}," : "std::monostate { /* no stroke */ },");
+                builder.WriteLine((obj.Geometry != null) ? $"{CallFactoryFromFor(node, obj.Geometry)}," : "func_or_field<CompositionGeometry> { /* no geometry */ },");
+                builder.WriteLine((obj.FillBrush != null) ? $"{CallFactoryFromFor(node, obj.FillBrush)}," : "func_or_field<CompositionBrush> { /* no fill */ },");
+                builder.WriteLine((obj.StrokeBrush != null) ? $"{CallFactoryFromFor(node, obj.StrokeBrush)}," : "func_or_field<CompositionBrush> { /* no stroke */ },");
 
                 builder.WriteLine(writer.Fields);
                 builder.CloseScopeWithSemicolon();
@@ -611,7 +612,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
             {
                 WriteObjectFactoryStart(builder, node);
 
-                builder.WriteLine("/*constexpr*/ static const SpriteVisualProps props =");
+                builder.WriteLine("constexpr static const SpriteVisualProps props =");
                 builder.OpenScope();
                 builder.WriteLine($"{CallFactoryFromFor(node, obj.Brush)},");
                 builder.WriteLine($"{CallFactoryFromFor(node, obj.Shadow)},");
@@ -637,7 +638,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("/*constexpr*/ static const KeyFrameStep<float2> steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<float2> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -679,7 +680,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("/*constexpr*/ static const KeyFrameStep<float3> steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<float3> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -721,7 +722,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("/*constexpr*/ static const KeyFrameStep<float4> steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<float4> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -763,7 +764,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("/*constexpr*/ static const KeyFrameStep<float> steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<float> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -805,7 +806,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("/*constexpr*/ static const KeyFrameStep<Color> steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<Color> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -847,7 +848,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("/*constexpr*/ static const KeyFrameStep<func_or_field<CompositionPath>> steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<func_or_field<CompositionPath>> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -889,7 +890,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
                     durationAmount = "&duration";
                 }
 
-                builder.WriteLine("/*constexpr*/ static const KeyFrameStep<bool> steps[] =");
+                builder.WriteLine("constexpr static const KeyFrameStep<bool> steps[] =");
                 builder.OpenScope();
                 foreach (var kf in keyFrames)
                 {
@@ -959,7 +960,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
             {
                 if (shapes.Any())
                 {
-                    builder.WriteLine("/*constexpr*/ static const func_or_field<CompositionShape> shapes[] =");
+                    builder.WriteLine("constexpr static const func_or_field<CompositionShape> shapes[] =");
                     builder.OpenScope();
 
                     foreach (var shape in shapes)
@@ -998,7 +999,7 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
             protected override void WriteProgressBoundAnimationBuild(CodeBuilder builder, string name, string property, string animationFactory, string expressionFactory)
             {
                 builder.OpenScope();
-                builder.WriteLine($"/*constexpr*/ static const BoundAnimation anim = {{ {property}, {animationFactory}, {expressionFactory} }};");
+                builder.WriteLine($"constexpr static const BoundAnimation anim = {{ {property}, {animationFactory}, {expressionFactory} }};");
                 builder.WriteLine($"StartProgressBoundAnimation({name}, anim);");
                 builder.CloseScope();
             }
@@ -1010,10 +1011,93 @@ __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualProps const& pr
 
             protected override string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
             {
-                return $"CreateCubicBezierEasingFunction<{_generator.GetCubicBezierId(obj.ControlPoint1, obj.ControlPoint2)}>()";
+                return $"CreateCubicBezierEasingFunction({_generator.GetCubicBezierId(obj.ControlPoint1, obj.ControlPoint2)})";
             }
 
             protected override string ReferencePropertySetName() => "result.Properties()";
+
+            protected override void WriteFields(CodeBuilder builder)
+            {
+                foreach (var g in Nodes.GroupBy(_ => _s.ReferenceTypeName(_.TypeName)))
+                {
+                    var storedType = g.Key;
+                    var shortName = storedType;
+                    if (shortName == "winrt::com_ptr<CanvasGeometry>")
+                    {
+                        shortName = "CanvasGeometry";
+                    }
+
+                    var idType = shortName + "FieldId";
+                    var fields = g.Where(_ => _.RequiresReadonlyStorage || _.RequiresStorage);
+                    var nonFields = g.Where(_ => !(_.RequiresReadonlyStorage || _.RequiresStorage));
+                    int i = 1;
+                    foreach (var k in fields)
+                    {
+                        builder.WriteLine($"constexpr static const func_or_field<{storedType}> {k.FieldName}Id {{ {i++} }};");
+                    }
+
+                    foreach (var k in g)
+                    {
+                        builder.WriteLine($"constexpr static const func_or_field<{storedType}> {k.Name}Id {{ {i++} }};");
+                    }
+
+                    builder.WriteLine($"__declspec(noinline) {g.Key} call_method(func_or_field<{storedType}> const& id)");
+                    builder.OpenScope();
+                    builder.WriteLine("switch (id.id)");
+                    builder.OpenScope();
+
+                    foreach (var m in g)
+                    {
+                        builder.WriteLine($"case {m.Name}Id.id: return {m.Name}(); break;");
+                    }
+
+                    builder.WriteLine("default: throw std::invalid_argument(\"oops\");");
+                    builder.CloseScope();
+                    builder.CloseScope();
+                    builder.WriteLine();
+                    builder.WriteManyLines($@"
+constexpr static const uint32_t c_{idType}FieldCount = {fields.Count()};
+
+std::vector<{storedType}> m_{shortName}Storage = std::vector<{storedType}>({fields.Count()}, {storedType} {{ nullptr }});
+
+__declspec(noinline) {g.Key} invoke_func_or_field(func_or_field<{storedType}> const& id) {{
+    auto realId = id.id - 1;
+
+    if (id.id == 0) {{
+        return {{ nullptr }};
+    }} else if (realId < m_{shortName}Storage.size()) {{
+        return m_{shortName}Storage[realId];
+    }} else {{
+        return call_method(id);
+    }}
+}}
+
+__declspec(noinline) auto const& store_field(func_or_field<{storedType}> const& id, {storedType} const& value) {{
+    return m_{shortName}Storage[id.id - 1] = value;
+}}
+"
+);
+                }
+
+                builder.WriteLine("template<typename T> T invoke_func_or_field(func_or_field<T> const&) const { return T { nullptr }; }");
+            }
+
+            protected override string? FieldReadExpression(ObjectData node)
+            {
+                if (node.FieldName == null)
+                {
+                    return null;
+                }
+
+                var typeName = _s.ReferenceTypeName(node.TypeName);
+                return $"{node.FieldName}Id";
+            }
+
+            protected override string FieldWriteExpression(ObjectData node, string value)
+            {
+                var typeName = _s.ReferenceTypeName(node.TypeName);
+                return $"store_field({node.FieldName}Id, {value})";
+            }
 
             protected override bool GenerateCompositionEffectFactory(CodeBuilder builder, CompositionEffectFactory obj, ObjectData node)
             {

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using CommunityToolkit.WinUI.Lottie.CompMetadata;
 using CommunityToolkit.WinUI.Lottie.GenericData;
@@ -1036,6 +1037,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             // The subset of the object graph for which factories will be generated.
             readonly ObjectData[] _nodes;
 
+            protected ObjectData[] Nodes
+            {
+                get
+                {
+                    return _nodes;
+                }
+            }
+
             private CodeBuilder? _rootCodeBuilder = null;
 
             bool controllerCreatedInCreateAnimationsMethod = false;
@@ -1093,10 +1102,12 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                                         n => n.Object is CubicBezierEasingFunction &&
                                             IsEqualToOne(FilteredInRefs(n.Node))))
                 {
+                    /*
                     node.ForceInline(() =>
                     {
                         return CallCreateCubicBezierEasingFunction((CubicBezierEasingFunction)node.Object);
                     });
+                    */
                 }
 
                 // If there is a theme property set, give it a special name and
@@ -1292,7 +1303,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 if (calleeNode.RequiresStorage && !_owner._disableFieldOptimization)
                 {
                     // The node has storage for its result. Next time just return the field.
-                    callerNode.CallFactoryFromForCache.Add(calleeNode, calleeNode.FieldName!);
+                    callerNode.CallFactoryFromForCache.Add(calleeNode, FieldReadExpression(calleeNode)!);
                 }
                 else
                 {
@@ -1311,7 +1322,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 if (calleeNode == _rootNode)
                 {
                     Debug.Assert(calleeNode.RequiresStorage, "Root node is not stored in a field");
-                    return calleeNode.FieldName!;
+                    return FieldReadExpression(calleeNode)!;
                 }
 
                 if (_owner._disableFieldOptimization)
@@ -1362,11 +1373,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     // The object was created by another caller. Just access the field.
                     Debug.Assert(calleeNode.RequiresStorage, "Expecting to access a field containing a previously cached value, but the callee has no field");
-                    return calleeNode.FieldName!;
+                    return FieldReadExpression(calleeNode)!;
                 }
                 else if (calleeNode.RequiresStorage && _factoriesAlreadyCalled.Contains((callerNode, calleeNode)))
                 {
-                    return calleeNode.FieldName!;
+                    return FieldReadExpression(calleeNode)!;
                 }
                 else
                 {
@@ -1429,7 +1440,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     // Use FieldName as the reference name in case if we are implementing IAnimatedVisual2.
                     // We can't use local name "result" since animations will be started from different place.
-                    StartAnimations(builder, obj, node, node.FieldName ?? string.Empty, ref controllerCreatedInCreateAnimationsMethod);
+                    StartAnimations(builder, obj, node, FieldReadExpression(node) ?? string.Empty, ref controllerCreatedInCreateAnimationsMethod);
                 }
                 else
                 {
@@ -1451,34 +1462,25 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             protected void WriteSimpleObjectFactory(CodeBuilder builder, ObjectData node, string createCallText)
             {
                 WriteObjectFactoryStart(builder, node);
-                if (node.RequiresStorage)
+                WriteCreateAssignment(builder, node, createCallText);
+                WriteObjectFactoryEnd(builder);
+            }
+
+            protected virtual string? FieldReadExpression(ObjectData node)
+            {
+                if (node.FieldName == null)
                 {
-                    if (_owner._disableFieldOptimization)
-                    {
-                        // Create the object unless it has already been created.
-                        builder.WriteLine($"return ({node.FieldName} == {Null})");
-                        builder.Indent();
-                        builder.WriteLine($"? {node.FieldName} = {createCallText}");
-                        builder.WriteLine($": {node.FieldName};");
-                        builder.UnIndent();
-                    }
-                    else
-                    {
-                        // If field optimization is enabled, the method will only get called once.
-                        builder.WriteLine($"{_s.Var} created = {createCallText};");
-                        builder.WriteLine($"{node.FieldName} = created;");
-                        builder.WriteLine($"return created;");
-                    }
+                    return null;
                 }
                 else
                 {
-                    // The object is only used once.
-                    builder.WriteLine($"return {createCallText};");
+                    return $"{node.FieldName}";
                 }
+            }
 
-                builder.CloseScope();
-                builder.WriteLine();
-                _currentObjectFactoryNode = null;
+            protected virtual string FieldWriteExpression(ObjectData node, string value)
+            {
+                return $"{node.FieldName} = {value}";
             }
 
             protected void WriteCreateAssignment(CodeBuilder builder, ObjectData node, string createCallText)
@@ -1488,11 +1490,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     if (_owner._disableFieldOptimization)
                     {
                         // If the field has already been assigned, return its value.
-                        builder.WriteLine($"if ({node.FieldName} != {Null}) {{ return {node.FieldName}; }}");
+                        builder.WriteLine($"if ({FieldReadExpression(node)} != {Null}) {{ return {FieldReadExpression(node)}; }}");
                     }
 
                     builder.WriteLine($"{ConstVar} result = {createCallText};");
-                    builder.WriteLine($"{node.FieldName} = result;");
+                    builder.WriteLine($"{FieldWriteExpression(node, "result")};");
                 }
                 else
                 {
@@ -1668,7 +1670,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _owner._currentAnimatedVisualGenerator = null;
             }
 
-            void WriteFields(CodeBuilder builder)
+            protected virtual void WriteFields(CodeBuilder builder)
             {
                 foreach (var node in OrderByTypeThenName(_nodes.Where(n => n.RequiresReadonlyStorage)))
                 {
@@ -1712,7 +1714,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             {
                 WriteObjectFactoryStart(builder, node);
                 var typeName = _s.ReferenceTypeName(node.TypeName);
-                var fieldName = node.FieldName!;
+                var fieldName = FieldReadExpression(node)!;
 
                 switch (obj.Type)
                 {
@@ -3147,7 +3149,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 var surfaceInitializationText = obj.Surface switch
                 {
                     CompositionObject compositionObject => CallFactoryFromFor(node, compositionObject),
-                    Wmd.LoadedImageSurface _ => surfaceNode!.FieldName!,
+                    Wmd.LoadedImageSurface _ => FieldReadExpression(surfaceNode!)!,
                     null => string.Empty,
                     _ => throw new InvalidOperationException(),
                 };
@@ -3433,11 +3435,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             // True if the code to create the object will be generated inline.
             internal bool Inlined => _overriddenFactoryCall is not null;
 
-            internal void ForceInline(Func<string> replacementFactoryCall)
+            internal void ForceInline(Func<string>? replacementFactoryCall)
             {
-                _overriddenFactoryCall = replacementFactoryCall;
-                RequiresStorage = false;
-                RequiresReadonlyStorage = false;
+                if (replacementFactoryCall != null)
+                {
+                    _overriddenFactoryCall = replacementFactoryCall;
+                    RequiresStorage = false;
+                    RequiresReadonlyStorage = false;
+                }
             }
 
             // The name of the type of the object described by this node.
