@@ -2,7 +2,8 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <LottieGenExe Condition="'$(LottieGenExe)'==''">$(SolutionDir)win-x64\bin\AnyCPU\$(Configuration)\net5.0\win-x64\LottieGen.exe</LottieGenExe>
-        <LottieArgs>-MinimumUapVersion 12 -lang CppWinRT -WinUIVersion 2.7 </LottieArgs>
+        <LottieArgs>-MinimumUapVersion 12 -lang CppWinRT</LottieArgs>
+        <LottieArgs>$(LottieArgs) -WinUIVersion 2.7</LottieArgs>
         <LottieArgs Condition="'$(LottieNamespace)'!=''">$(LottieArgs) -Namespace $(LottieNamespace) -RootNamespace $(LottieNamespace)</LottieArgs>
         <LottieOutputDir>$(GeneratedFilesDir)\lotties</LottieOutputDir>
     </PropertyGroup>

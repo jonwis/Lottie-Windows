@@ -402,7 +402,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.CloseScopeWithSemicolon();
 
                 // Write the call to the maker method
-                builder.WriteLine($"auto result = MakeAndApplyProperties(_c, props);");
+                WriteCreateAssignment(builder, node, "MakeAndApplyProperties(props)");
 
                 WriteCompositionObjectStartAnimations(builder, obj, node);
 
@@ -804,21 +804,35 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 }
             }
 
+            readonly string _dotProperties = ".Properties()";
+
+            string RemapTargetName(string target)
+            {
+                if (target.EndsWith(_dotProperties) && !target.StartsWith("result."))
+                {
+                    return $"invoke_func_or_field({target.Replace(_dotProperties, string.Empty)}).Properties()";
+                }
+                else
+                {
+                    return target;
+                }
+            }
+
             protected override void WriteAnimationStart(CodeBuilder builder, string targetName, string propertyName, string animationFactoryCall)
             {
-                builder.WriteLine($"invoke_func_or_field({targetName}).StartAnimation({propertyName}, invoke_func_or_field({animationFactoryCall}));");
+                builder.WriteLine($"StartAnimation({RemapTargetName(targetName)}, {propertyName}, {animationFactoryCall});");
             }
 
             protected override void WriteDestroyAnimation(CodeBuilder builder, string localName, string propertyName)
             {
-                builder.WriteLine($"invoke_func_or_field({localName}).StopAnimation(L\"{propertyName}\");");
+                builder.WriteLine($"StopAnimation({RemapTargetName(localName)}, L\"{propertyName}\");");
             }
 
             protected override void WriteProgressBoundAnimationBuild(CodeBuilder builder, string name, string property, string animationFactory, string expressionFactory)
             {
                 builder.OpenScope();
                 builder.WriteLine($"constexpr static const BoundAnimation anim = {{ {property}, {animationFactory}, {expressionFactory} }};");
-                builder.WriteLine($"StartProgressBoundAnimation({name}, anim);");
+                builder.WriteLine($"StartProgressBoundAnimation({RemapTargetName(name)}, anim);");
                 builder.CloseScope();
             }
 

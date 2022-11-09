@@ -839,6 +839,28 @@ struct AnimationBaseType
         return common_invoke(id, m_CompositionColorGradientStopStorage);
     }
 
+    template<typename TTarget, typename TField> auto coerce_type(func_or_field<TField> const& src)
+    {
+        if constexpr (std::is_same_v<TTarget, TField>)
+        {
+            return invoke_func_or_field(src);
+        }
+        else
+        {
+            return invoke_func_or_field(src).as<TTarget>();
+        }
+    }
+
+    template<typename TTarget> TTarget const& coerce_type(TTarget const& src)
+    {
+        return src;
+    }
+
+    template<typename TTarget> auto coerce_type(winrt::Windows::Foundation::IInspectable const& src)
+    {
+        return src.as<TTarget>();
+    }
+
     struct SpriteShapeProperties
     {
         float3x2 Transformation;
@@ -863,17 +885,16 @@ struct AnimationBaseType
     };
 
     __declspec(noinline) CompositionShape MakeAndApplyProperties(
-        Compositor const& source,
         SpriteShapeProperties const& props)
     {
         CompositionSpriteShape result{ nullptr };
         if (auto g = invoke_func_or_field(props.geometry))
         {
-            result = source.CreateSpriteShape(g);
+            result = _c.CreateSpriteShape(g);
         }
         else
         {
-            result = source.CreateSpriteShape();
+            result = _c.CreateSpriteShape();
         }
 
         if (auto b = invoke_func_or_field(props.fillBrush))
@@ -1221,13 +1242,13 @@ struct AnimationBaseType
         controller.StartAnimation(L""Progress"", invoke_func_or_field(controllerProgressExpression));
     }
 
-    __declspec(noinline) void StartProgressBoundAnimation(
-        winrt::Windows::Foundation::IInspectable const& target,
+    template<typename TTarget, typename TAnimation, typename TExpression> __declspec(noinline) void StartProgressBoundAnimation(
+        TTarget const& target,
         const wchar_t* animatedPropertyName,
-        func_or_field<CompositionAnimation> const& animation,
-        func_or_field<ExpressionAnimation> const& controllerProgressExpression)
+        TAnimation const& animation,
+        TExpression const& controllerProgressExpression)
     {
-        StartProgressBoundAnimation(target.as<CompositionObject>(), animatedPropertyName, animation, controllerProgressExpression);
+        StartProgressBoundAnimation(coerce_type<CompositionObject>(target), animatedPropertyName, coerce_type<CompositionAnimation>(animation), coerce_type<ExpressionAnimation>(controllerProgressExpression));
     }
 
     __declspec(noinline) void BindProperty(CompositionObject const& target, const wchar_t* animatedPropertyName, const wchar_t* expression, const wchar_t* referenceParameterName, CompositionObject const& referencedObject)
@@ -1238,34 +1259,9 @@ struct AnimationBaseType
         target.StartAnimation(animatedPropertyName, _reusableExpressionAnimation);
     }
 
-    __declspec(noinline) void BindProperty(
-        winrt::Windows::Foundation::IInspectable const& target,
-        const wchar_t* animatedPropertyName,
-        const wchar_t* expression,
-        const wchar_t* referenceParameterName,
-        winrt::Windows::Foundation::IInspectable const& referencedObject)
+    template<typename TTarget, typename TReference> __declspec(noinline) void BindProperty(TTarget const& target, const wchar_t* animatedPropertyName, const wchar_t* expression, const wchar_t* referencedParameterName, TReference const& referencedObject)
     {
-        return BindProperty(target.as<CompositionObject>(), animatedPropertyName, expression, referenceParameterName, referencedObject.as<CompositionObject>());
-    }
-
-    template<typename Q> __declspec(noinline) void BindProperty(
-        winrt::Windows::Foundation::IInspectable const& target,
-        const wchar_t* animatedPropertyName,
-        const wchar_t* expression,
-        const wchar_t* referenceParameterName,
-        func_or_field<Q> const& src)
-    {
-        return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(src));
-    }
-
-    template<typename T, typename Q> __declspec(noinline) void BindProperty(
-        func_or_field<T> const& target,
-        const wchar_t* animatedPropertyName,
-        const wchar_t* expression,
-        const wchar_t* referenceParameterName,
-        func_or_field<Q> const& src)
-    {
-        return BindProperty(invoke_func_or_field(target), animatedPropertyName, expression, referenceParameterName, src);
+        return BindProperty(coerce_type<CompositionObject>(target), animatedPropertyName, expression, referencedParameterName, coerce_type<CompositionObject>(referencedObject));
     }
 
     AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
@@ -1278,9 +1274,9 @@ struct AnimationBaseType
         return controller;
     }
 
-    AnimationController GetAnimationController(winrt::Windows::Foundation::IInspectable const& target, const wchar_t* propertyName, bool pauseFirst)
+    template<typename TTarget> __declspec(noinline) AnimationController GetAnimationController(TTarget const& target, const wchar_t* propertyName, bool pauseFirst)
     {
-        return GetAnimationController(target.as<CompositionObject>(), propertyName, pauseFirst);
+        return GetAnimationController(coerce_type<CompositionObject>(target), propertyName, pauseFirst);
     }
 
     template<typename Q> AnimationController GetAnimationController(func_or_field<Q> const& target, const wchar_t* propertyName, bool pauseFirst)
@@ -1296,7 +1292,7 @@ struct AnimationBaseType
 
     template<typename Q> __declspec(noinline) void StartProgressBoundAnimation(func_or_field<Q> const& target, const BoundAnimation& animation)
     {
-        return StartProgressAnimation(invoke_func_or_field(target), animation);
+        return StartProgressBoundAnimation(invoke_func_or_field(target), animation);
     }
 
     __declspec(noinline) void StartProgressBoundAnimation(CompositionObject const& target, const BoundAnimation& animation)
@@ -1306,7 +1302,47 @@ struct AnimationBaseType
 
     __declspec(noinline) void StartProgressBoundAnimation(winrt::Windows::Foundation::IInspectable const& target, const BoundAnimation& animation)
     {
-        return StartProgressBoundAnimation(target.as<CompositionObject>(), animation.property, animation.animation, animation.expression);
+        return StartProgressBoundAnimation(target.as<CompositionObject>(), animation);
+    }
+    __declspec(noinline) void StartAnimation(CompositionObject const& target, const wchar_t* propertyName, CompositionAnimation const& animation)
+    {
+        target.StartAnimation(propertyName, animation);
+    }
+
+/*
+    __declspec(noinline) void StartAnimation(winrt::Windows::Foundation::IInspectable const& target, const wchar_t* propertyName, CompositionAnimation const& animation)
+    {
+        return StartAnimation(target.as<CompositionObject>(), propertyName, animation);
+    }
+
+    template<typename T, typename Q> __declspec(noinline) void StartAnimation(func_or_field<T> const& target, const wchar_t* propertyName, func_or_field<Q> const& animation)
+    {
+        return StartAnimation(invoke_func_or_field(target), propertyName, invoke_func_or_field(animation));
+    }
+*/
+    template<typename TTarget, typename TAnim> __declspec(noinline) void StartAnimation(TTarget const& target, const wchar_t* propertyName, TAnim const& animation)
+    {
+        return StartAnimation(coerce_type<CompositionObject>(target), propertyName, coerce_type<CompositionAnimation>(animation));
+    }
+
+    __declspec(noinline) void StopAnimation(CompositionObject const& target, const wchar_t* propertyName)
+    {
+        target.StopAnimation(propertyName);
+    }
+/*
+    __declspec(noinline) void StopAnimation(winrt::Windows::Foundation::IInspectable const& target, const wchar_t* propertyName)
+    {
+        return StopAnimation(target.as<CompositionObject>(), propertyName);
+    }
+
+    template<typename T> __declspec(noinline) void StopAnimation(func_or_field<T> const& target, const wchar_t* propertyName)
+    {
+        return StopAnimation(invoke_func_or_field(target), propertyName);
+    }
+*/
+    template<typename TTarget> __declspec(noinline) void StopAnimation(TTarget const& target, const wchar_t* propertyName)
+    {
+        return StopAnimation(coerce_type<CompositionObject>(target), propertyName);
     }
 
     template<typename TThing> void AddCompositionShapes(
