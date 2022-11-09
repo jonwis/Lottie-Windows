@@ -1258,6 +1258,16 @@ struct AnimationBaseType
         return BindProperty(target, animatedPropertyName, expression, referenceParameterName, invoke_func_or_field(src));
     }
 
+    template<typename T, typename Q> __declspec(noinline) void BindProperty(
+        func_or_field<T> const& target,
+        const wchar_t* animatedPropertyName,
+        const wchar_t* expression,
+        const wchar_t* referenceParameterName,
+        func_or_field<Q> const& src)
+    {
+        return BindProperty(invoke_func_or_field(target), animatedPropertyName, expression, referenceParameterName, src);
+    }
+
     AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
     {
         auto controller = target.TryGetAnimationController(propertyName);
@@ -1273,11 +1283,21 @@ struct AnimationBaseType
         return GetAnimationController(target.as<CompositionObject>(), propertyName, pauseFirst);
     }
 
+    template<typename Q> AnimationController GetAnimationController(func_or_field<Q> const& target, const wchar_t* propertyName, bool pauseFirst)
+    {
+        return GetAnimationController(invoke_func_or_field(target), propertyName, pauseFirst);
+    }
+
     struct BoundAnimation {
         const wchar_t* property;
         func_or_field<CompositionAnimation> animation;
         func_or_field<ExpressionAnimation> expression;
     };
+
+    template<typename Q> __declspec(noinline) void StartProgressBoundAnimation(func_or_field<Q> const& target, const BoundAnimation& animation)
+    {
+        return StartProgressAnimation(invoke_func_or_field(target), animation);
+    }
 
     __declspec(noinline) void StartProgressBoundAnimation(CompositionObject const& target, const BoundAnimation& animation)
     {

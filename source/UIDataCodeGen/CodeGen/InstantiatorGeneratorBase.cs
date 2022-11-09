@@ -19,6 +19,7 @@ using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.MetaData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
+using static CommunityToolkit.WinUI.Lottie.WinCompData.CompositionObject;
 using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
 using Mgce = CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using Sn = System.Numerics;
@@ -1486,14 +1487,19 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return $"{node.FieldName} = {value}";
             }
 
+            protected virtual void WriteOptimizedFieldRead(CodeBuilder builder, ObjectData node)
+            {
+                // If the field has already been assigned, return its value.
+                builder.WriteLine($"if ({FieldReadExpression(node)} != {Null}) {{ return {FieldReadExpression(node)}; }}");
+            }
+
             protected void WriteCreateAssignment(CodeBuilder builder, ObjectData node, string createCallText)
             {
                 if (node.RequiresStorage)
                 {
                     if (_owner._disableFieldOptimization)
                     {
-                        // If the field has already been assigned, return its value.
-                        builder.WriteLine($"if ({FieldReadExpression(node)} != {Null}) {{ return {FieldReadExpression(node)}; }}");
+                        WriteOptimizedFieldRead(builder, node);
                     }
 
                     builder.WriteLine($"{ConstVar} result = {createCallText};");
@@ -1966,6 +1972,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
+            protected virtual void WriteDestroyAnimation(CodeBuilder builder, string localName, string propertyName)
+            {
+                builder.WriteLine($"{localName}{Deref}StopAnimation({String(propertyName)});");
+            }
+
             void StartAnimation(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName, ref bool controllerVariableAdded, CompositionObject.Animator animator)
             {
                 // ExpressionAnimations are treated specially - a singleton
@@ -2015,8 +2026,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                                         WriteProgressBoundAnimationBuild(_createAnimationsCodeBuilder, localName, String(animator.AnimatedProperty), animationFactoryCall, CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode));
 
                                         // If we are implementing IAnimatedVisual2 we should also write a destruction call.
-                                        _destroyAnimationsCodeBuilder
-                                            .WriteLine($"{localName}{Deref}StopAnimation({String(animator.AnimatedProperty)});");
+                                        WriteDestroyAnimation(_destroyAnimationsCodeBuilder, localName, animator.AnimatedProperty);
                                     }
                                     else
                                     {
@@ -2036,8 +2046,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         ConfigureAnimationController(_createAnimationsCodeBuilder, localName, ref controllerVariableAdded, animator);
 
                         // If we are implementing IAnimatedVisual2 we should also write a destruction call.
-                        _destroyAnimationsCodeBuilder
-                            .WriteLine($"{localName}{Deref}StopAnimation({String(animator.AnimatedProperty)});");
+                        WriteDestroyAnimation(_destroyAnimationsCodeBuilder, localName, animator.AnimatedProperty);
                     }
                     else
                     {

@@ -806,7 +806,12 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
             protected override void WriteAnimationStart(CodeBuilder builder, string targetName, string propertyName, string animationFactoryCall)
             {
-                builder.WriteLine($"{targetName}.StartAnimation({propertyName}, invoke_func_or_field({animationFactoryCall}));");
+                builder.WriteLine($"invoke_func_or_field({targetName}).StartAnimation({propertyName}, invoke_func_or_field({animationFactoryCall}));");
+            }
+
+            protected override void WriteDestroyAnimation(CodeBuilder builder, string localName, string propertyName)
+            {
+                builder.WriteLine($"invoke_func_or_field({localName}).StopAnimation(L\"{propertyName}\");");
             }
 
             protected override void WriteProgressBoundAnimationBuild(CodeBuilder builder, string name, string property, string animationFactory, string expressionFactory)
@@ -833,6 +838,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             }
 
             protected override string ReferencePropertySetName() => "result.Properties()";
+
+            protected override void WriteOptimizedFieldRead(CodeBuilder builder, ObjectData node)
+            {
+                // do nothing; our fields are aleady cached
+            }
 
             protected override void WriteFields(CodeBuilder builder)
             {
