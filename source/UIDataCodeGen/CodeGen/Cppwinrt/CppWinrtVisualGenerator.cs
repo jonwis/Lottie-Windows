@@ -291,17 +291,18 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             {
                 InitializeCompositionObject(builder, obj, node);
 
+                var subBuilder = new CodeBuilder();
                 string nameOfTransform = "nullptr";
                 if (obj.TransformMatrix.HasValue)
                 {
-                    builder.WriteLine($"constexpr static const float4x4 transform = {Matrix4x4(obj.TransformMatrix.Value)};");
+                    subBuilder.WriteLine($"constexpr static const float4x4 transform = {Matrix4x4(obj.TransformMatrix.Value)};");
                     nameOfTransform = "&transform";
                 }
 
-                builder.WriteLine("constexpr static const VisualConfig visProps =");
-                builder.OpenScope();
+                subBuilder.WriteLine("constexpr static const VisualConfig visProps =");
+                subBuilder.OpenScope();
 
-                var writer = new FieldWriter(builder);
+                var writer = new FieldWriter(subBuilder);
 
                 if (obj.BorderMode.HasValue && obj.BorderMode != CompositionBorderMode.Inherit)
                 {
@@ -309,11 +310,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 }
                 else
                 {
-                    builder.WriteLine("{ /* unset */ }, /* BorderMode */");
+                    subBuilder.WriteLine("{ /* unset */ }, /* BorderMode */");
                 }
 
                 writer.Write(obj.CenterPoint, "VisualConfigFlags::CenterPoint");
-                builder.WriteLine(obj.Clip != null ? $"{CallFactoryFromFor(node, obj.Clip)}," : "{ /* clip unset */ },");
+                subBuilder.WriteLine(obj.Clip != null ? $"{CallFactoryFromFor(node, obj.Clip)}," : "{ /* clip unset */ },");
                 writer.Write(obj.IsVisible, "VisualConfigFlags::IsVisible");
                 writer.Write(obj.Offset, "VisualConfigFlags::Offset");
                 writer.Write(obj.Opacity, "VisualConfigFlags::Opacity");
@@ -321,26 +322,36 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 writer.Write(obj.RotationAxis, "VisualConfigFlags::RotationAxis");
                 writer.Write(obj.Scale, "VisualConfigFlags::Scale");
                 writer.Write(obj.Size, "VisualConfigFlags::Size");
-                builder.WriteLine($"{nameOfTransform},");
-                builder.WriteLine(writer.Fields);
-                builder.CloseScopeWithSemicolon();
+                subBuilder.WriteLine($"{nameOfTransform},");
+                subBuilder.WriteLine(writer.Fields);
+                subBuilder.CloseScopeWithSemicolon();
+                subBuilder.WriteLine("ApplyVisualConfig(result, visProps);");
 
-                builder.WriteLine("ApplyVisualConfig(result, visProps);");
+                if (writer.Fields.Any() || nameOfTransform != "nullptr")
+                {
+                    builder.WriteCodeBuilder(subBuilder);
+                }
             }
 
             protected override void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 
-                builder.WriteLine("constexpr static const GeometryConfig geometryConfig =");
-                builder.OpenScope();
-                var writer = new FieldWriter(builder);
+                var subBuilder = new CodeBuilder();
+                subBuilder.WriteLine("constexpr static const GeometryConfig geometryConfig =");
+                subBuilder.OpenScope();
+                var writer = new FieldWriter(subBuilder);
                 writer.Write(obj.TrimEnd, "GeometryConfig::ConfigFlags::TrimEnd");
                 writer.Write(obj.TrimStart, "GeometryConfig::ConfigFlags::TrimStart");
                 writer.Write(obj.TrimOffset, "GeometryConfig::ConfigFlags::TrimOffset");
-                builder.WriteLine(writer.Fields);
-                builder.CloseScopeWithSemicolon();
-                builder.WriteLine("ApplyGeometryConfig(result, geometryConfig);");
+                subBuilder.WriteLine(writer.Fields);
+                subBuilder.CloseScopeWithSemicolon();
+                subBuilder.WriteLine("ApplyGeometryConfig(result, geometryConfig);");
+
+                if (writer.Fields.Any())
+                {
+                    builder.WriteCodeBuilder(subBuilder);
+                }
             }
 
             protected override bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
@@ -439,8 +450,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
-                    durationAmount = "&duration";
+                    durationAmount = "&c_duration";
                 }
 
                 builder.WriteLine("constexpr static const KeyFrameStep<float2> steps[] =");
@@ -481,8 +491,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
-                    durationAmount = "&duration";
+                    durationAmount = "&c_duration";
                 }
 
                 builder.WriteLine("constexpr static const KeyFrameStep<float3> steps[] =");
@@ -523,8 +532,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
-                    durationAmount = "&duration";
+                    durationAmount = "&c_duration";
                 }
 
                 builder.WriteLine("constexpr static const KeyFrameStep<float4> steps[] =");
@@ -565,8 +573,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
-                    durationAmount = "&duration";
+                    durationAmount = "&c_duration";
                 }
 
                 builder.WriteLine("constexpr static const KeyFrameStep<float> steps[] =");
@@ -607,8 +614,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
-                    durationAmount = "&duration";
+                    durationAmount = "&c_duration";
                 }
 
                 builder.WriteLine("constexpr static const KeyFrameStep<Color> steps[] =");
@@ -649,8 +655,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
-                    durationAmount = "&duration";
+                    durationAmount = "&c_duration";
                 }
 
                 builder.WriteLine("constexpr static const KeyFrameStep<func_or_field<CompositionPath>> steps[] =");
@@ -691,8 +696,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
                 if (obj.Duration == Owner.CompositionDuration)
                 {
-                    builder.WriteLine($"constexpr static const auto duration = {TimeSpan(obj.Duration)};");
-                    durationAmount = "&duration";
+                    durationAmount = "&c_duration";
                 }
 
                 builder.WriteLine("constexpr static const KeyFrameStep<bool> steps[] =");

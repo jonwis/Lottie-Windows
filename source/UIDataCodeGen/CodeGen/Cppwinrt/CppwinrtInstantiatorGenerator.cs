@@ -2317,9 +2317,11 @@ struct AnimationBaseType
 
             // Write the members on IAnimatedVisual.
             builder.WriteLine();
+            builder.WriteLine($"constexpr static const TimeSpan c_duration {{ {SourceInfo.DurationTicksFieldName} }};");
+            builder.WriteLine();
             {
                 var propertyImplBuilder = new CodeBuilder();
-                propertyImplBuilder.WriteLine($"return TimeSpan{{ {SourceInfo.DurationTicksFieldName} }};");
+                propertyImplBuilder.WriteLine($"return c_duration;");
                 WritePropertyImpl(builder, "TimeSpan", "Duration", propertyImplBuilder);
             }
 
