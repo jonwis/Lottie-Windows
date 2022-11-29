@@ -859,7 +859,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
             protected override void WriteOptimizedFieldRead(CodeBuilder builder, ObjectData node)
             {
-                // do nothing; our fields are aleady cached
+                if (node.FieldName != null)
+                {
+                    builder.WriteLine($"if (auto& cacheValue = read_field({node.FieldName}Id))");
+                    builder.OpenScope();
+                    builder.WriteLine("return cacheValue;");
+                    builder.CloseScope();
+                }
             }
 
             protected override void WriteFields(CodeBuilder builder)

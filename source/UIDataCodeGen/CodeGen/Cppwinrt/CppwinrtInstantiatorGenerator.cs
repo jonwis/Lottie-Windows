@@ -698,126 +698,6 @@ struct AnimationBaseType
         }
     }
 
-    std::vector<CompositionShape> m_CompositionShapeStorage;
-    virtual CompositionShape call_method(func_or_field<CompositionShape> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionShape> const& id, CompositionShape const& value) {
-        return m_CompositionShapeStorage[id.id - 1] = value;
-    }
-    CompositionShape invoke_func_or_field(func_or_field<CompositionShape> const& id)
-    {
-        return common_invoke(id, m_CompositionShapeStorage);
-    }
-
-    std::vector<CompositionGeometry> m_CompositionGeometryStorage;
-    virtual CompositionGeometry call_method(func_or_field<CompositionGeometry> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionGeometry> const& id, CompositionGeometry const& value) {
-        return m_CompositionGeometryStorage[id.id - 1] = value;
-    }
-    CompositionGeometry invoke_func_or_field(func_or_field<CompositionGeometry> const& id)
-    {
-        return common_invoke(id, m_CompositionGeometryStorage);
-    }
-
-    std::vector<CompositionPath> m_CompositionPathStorage;
-    virtual CompositionPath call_method(func_or_field<CompositionPath> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionPath> const& id, CompositionPath const& value) {
-        return m_CompositionPathStorage[id.id - 1] = value;
-    }
-    CompositionPath invoke_func_or_field(func_or_field<CompositionPath> const& id)
-    {
-        return common_invoke(id, m_CompositionPathStorage);
-    }
-   
-    std::vector<Visual> m_VisualStorage;
-    virtual Visual call_method(func_or_field<Visual> const&) { return nullptr; }
-    auto const& store_field(func_or_field<Visual> const& id, Visual const& value) {
-        return m_VisualStorage[id.id - 1] = value;
-    }
-    Visual invoke_func_or_field(func_or_field<Visual> const& id)
-    {
-        return common_invoke(id, m_VisualStorage);
-    }
-
-    std::vector<CompositionEasingFunction> m_CompositionEasingFunctionStorage;
-    virtual CompositionEasingFunction call_method(func_or_field<CompositionEasingFunction> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionEasingFunction> const& id, CompositionEasingFunction const& value) {
-        return m_CompositionEasingFunctionStorage[id.id - 1] = value;
-    }
-    CompositionEasingFunction invoke_func_or_field(func_or_field<CompositionEasingFunction> const& id)
-    {
-        return common_invoke(id, m_CompositionEasingFunctionStorage);
-    }
-
-    std::vector<CompositionAnimation> m_CompositionAnimationStorage;
-    virtual CompositionAnimation call_method(func_or_field<CompositionAnimation> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionAnimation> const& id, CompositionAnimation const& value) {
-        return m_CompositionAnimationStorage[id.id - 1] = value;
-    }
-    CompositionAnimation invoke_func_or_field(func_or_field<CompositionAnimation> const& id)
-    {
-        return common_invoke(id, m_CompositionAnimationStorage);
-    }
-
-    std::vector<CompositionBrush> m_CompositionBrushStorage;
-    virtual CompositionBrush call_method(func_or_field<CompositionBrush> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionBrush> const& id, CompositionBrush const& value) {
-        return m_CompositionBrushStorage[id.id - 1] = value;
-    }
-    CompositionBrush invoke_func_or_field(func_or_field<CompositionBrush> const& id)
-    {
-        return common_invoke(id, m_CompositionBrushStorage);
-    }
-
-    std::vector<ExpressionAnimation> m_ExpressionAnimationStorage;
-    virtual ExpressionAnimation call_method(func_or_field<ExpressionAnimation> const&) { return nullptr; }
-    auto const& store_field(func_or_field<ExpressionAnimation> const& id, ExpressionAnimation const& value) {
-        return m_ExpressionAnimationStorage[id.id - 1] = value;
-    }
-    ExpressionAnimation invoke_func_or_field(func_or_field<ExpressionAnimation> const& id)
-    {
-        return common_invoke(id, m_ExpressionAnimationStorage);
-    }
-
-    std::vector<CompositionEffectFactory> m_CompositionEffectFactoryStorage;
-    virtual CompositionEffectFactory call_method(func_or_field<CompositionEffectFactory> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionEffectFactory> const& id, CompositionEffectFactory const& value) {
-        return m_CompositionEffectFactoryStorage[id.id - 1] = value;
-    }
-    CompositionEffectFactory invoke_func_or_field(func_or_field<CompositionEffectFactory> const& id)
-    {
-        return common_invoke(id, m_CompositionEffectFactoryStorage);
-    }
-
-    std::vector<CompositionVisualSurface> m_CompositionVisualSurfaceStorage;
-    virtual CompositionVisualSurface call_method(func_or_field<CompositionVisualSurface> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionVisualSurface> const& id, CompositionVisualSurface const& value) {
-        return m_CompositionVisualSurfaceStorage[id.id - 1] = value;
-    }
-    CompositionVisualSurface invoke_func_or_field(func_or_field<CompositionVisualSurface> const& id)
-    {
-        return common_invoke(id, m_CompositionVisualSurfaceStorage);
-    }
-
-    std::vector<CompositionShadow> m_CompositionShadowStorage;
-    virtual CompositionShadow call_method(func_or_field<CompositionShadow> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionShadow> const& id, CompositionShadow const& value) {
-        return m_CompositionShadowStorage[id.id - 1] = value;
-    }
-    CompositionShadow invoke_func_or_field(func_or_field<CompositionShadow> const& id)
-    {
-        return common_invoke(id, m_CompositionShadowStorage);
-    }
-
-
-    std::vector<CompositionClip> m_CompositionClipStorage;
-    virtual CompositionClip call_method(func_or_field<CompositionClip> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionClip> const& id, CompositionClip const& value) {
-        return m_CompositionClipStorage[id.id - 1] = value;
-    }
-    CompositionClip invoke_func_or_field(func_or_field<CompositionClip> const& id)
-    {
-        return common_invoke(id, m_CompositionClipStorage);
-    }
 
     std::vector<winrt::com_ptr<CanvasGeometry>> m_CanvasGeometryStorage;
     virtual winrt::com_ptr<CanvasGeometry> call_method(func_or_field<winrt::com_ptr<CanvasGeometry>> const&) { return nullptr; }
@@ -828,17 +708,8 @@ struct AnimationBaseType
     {
         return common_invoke(id, m_CanvasGeometryStorage);
     }
-
-    std::vector<CompositionColorGradientStop> m_CompositionColorGradientStopStorage;
-    virtual CompositionColorGradientStop call_method(func_or_field<CompositionColorGradientStop> const&) { return nullptr; }
-    auto const& store_field(func_or_field<CompositionColorGradientStop> const& id, CompositionColorGradientStop const& value) {
-        return m_CompositionColorGradientStopStorage[id.id - 1] = value;
-    }
-    CompositionColorGradientStop invoke_func_or_field(func_or_field<CompositionColorGradientStop> const& id)
-    {
-        return common_invoke(id, m_CompositionColorGradientStopStorage);
-    }
-
+    auto& read_field(func_or_field<winrt::com_ptr<CanvasGeometry>> const& id) { return m_CanvasGeometryStorage[id.id - 1]; }
+" + GetStorageHelperPieces() + @"
     template<typename TTarget, typename TField> auto coerce_type(func_or_field<TField> const& src)
     {
         if constexpr (std::is_same_v<TTarget, TField>)
@@ -1309,17 +1180,6 @@ struct AnimationBaseType
         target.StartAnimation(propertyName, animation);
     }
 
-/*
-    __declspec(noinline) void StartAnimation(winrt::Windows::Foundation::IInspectable const& target, const wchar_t* propertyName, CompositionAnimation const& animation)
-    {
-        return StartAnimation(target.as<CompositionObject>(), propertyName, animation);
-    }
-
-    template<typename T, typename Q> __declspec(noinline) void StartAnimation(func_or_field<T> const& target, const wchar_t* propertyName, func_or_field<Q> const& animation)
-    {
-        return StartAnimation(invoke_func_or_field(target), propertyName, invoke_func_or_field(animation));
-    }
-*/
     template<typename TTarget, typename TAnim> __declspec(noinline) void StartAnimation(TTarget const& target, const wchar_t* propertyName, TAnim const& animation)
     {
         return StartAnimation(coerce_type<CompositionObject>(target), propertyName, coerce_type<CompositionAnimation>(animation));
@@ -1329,17 +1189,7 @@ struct AnimationBaseType
     {
         target.StopAnimation(propertyName);
     }
-/*
-    __declspec(noinline) void StopAnimation(winrt::Windows::Foundation::IInspectable const& target, const wchar_t* propertyName)
-    {
-        return StopAnimation(target.as<CompositionObject>(), propertyName);
-    }
 
-    template<typename T> __declspec(noinline) void StopAnimation(func_or_field<T> const& target, const wchar_t* propertyName)
-    {
-        return StopAnimation(invoke_func_or_field(target), propertyName);
-    }
-*/
     template<typename TTarget> __declspec(noinline) void StopAnimation(TTarget const& target, const wchar_t* propertyName)
     {
         return StopAnimation(coerce_type<CompositionObject>(target), propertyName);
@@ -1685,6 +1535,39 @@ struct AnimationBaseType
             builder.WriteManyLines(GaussianBlurEffectClass);
 
             builder.WriteManyLines(AnimationBaseTypeClass);
+        }
+
+        private string GetStorageHelperPieces()
+        {
+            CodeBuilder builder = new CodeBuilder();
+            var types = new[]
+            {
+                "CompositionShape",
+                "CompositionGeometry",
+                "CompositionPath",
+                "Visual",
+                "CompositionEasingFunction",
+                "CompositionAnimation",
+                "CompositionBrush",
+                "ExpressionAnimation",
+                "CompositionEffectFactory",
+                "CompositionVisualSurface",
+                "CompositionShadow",
+                "CompositionClip",
+                "CompositionColorGradientStop",
+            };
+
+            foreach (var type in types)
+            {
+                builder.WriteManyLines($@"
+std::vector<{type}> m_{type}Storage;
+virtual {type} call_method(func_or_field<{type}> const&) {{ return nullptr; }}
+auto const& store_field(func_or_field<{type}> const& id, {type} const& value) {{ return m_{type}Storage[id.id - 1] = value; }}
+auto& read_field(func_or_field<{type}> const& id) {{ return m_{type}Storage[id.id - 1]; }}
+{type} invoke_func_or_field(func_or_field<{type}> const& id) {{ return common_invoke(id, m_{type}Storage); }}");
+            }
+
+            return builder.ToString();
         }
 
         /// <inheritdoc/>
