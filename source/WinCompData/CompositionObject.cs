@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace CommunityToolkit.WinUI.Lottie.WinCompData
@@ -82,6 +83,8 @@ namespace CommunityToolkit.WinUI.Lottie.WinCompData
 
         public string? Comment { get; set; }
 
+#pragma warning disable CA1033 // Interface methods should be callable by child types
+
         /// <summary>
         /// Gets or sets a description of the object. This may be used to add comments to generated code.
         /// Cf. the <see cref="Comment"/> property which is a property on real composition
@@ -112,15 +115,18 @@ namespace CommunityToolkit.WinUI.Lottie.WinCompData
             get => (string?)TryGetMetadata(in s_nameMetadataKey);
             set => SetMetadata(in s_nameMetadataKey, value);
         }
+#pragma warning restore CA1033 // Interface methods should be callable by child types
 
         public CompositionPropertySet Properties { get; }
 
         /// <summary>
-        /// Binds an animation to a property.
+        /// Binds an animation to a property with a given custom controller.
         /// </summary>
         /// <param name="target">The name of the property.</param>
         /// <param name="animation">The animation.</param>
-        public void StartAnimation(string target, CompositionAnimation animation)
+        /// <param name="customController">Custom controller.</param>
+        /// <returns>New animator.</returns>
+        public Animator StartAnimation(string target, CompositionAnimation animation, AnimationController? customController)
         {
             // Remove any existing animation.
             StopAnimation(target);
@@ -133,6 +139,13 @@ namespace CommunityToolkit.WinUI.Lottie.WinCompData
                 ? null
                 : new AnimationController(this, target);
 
+            if (customController is not null)
+            {
+                Debug.Assert(customController.IsCustom, "Should be custom!");
+                Debug.Assert(animation is not ExpressionAnimation, "Should not be ExpressionAnimation!");
+                controller = customController;
+            }
+
             var animator = new Animator(
                                 animatedProperty: target,
                                 animatedObject: this,
@@ -140,7 +153,16 @@ namespace CommunityToolkit.WinUI.Lottie.WinCompData
                                 controller: controller);
 
             _animators.Add(animator);
+            return animator;
         }
+
+        /// <summary>
+        /// Binds an animation to a property.
+        /// </summary>
+        /// <param name="target">The name of the property.</param>
+        /// <param name="animation">The animation.</param>
+        /// <returns>New animator.</returns>
+        public Animator StartAnimation(string target, CompositionAnimation animation) => StartAnimation(target, animation, null);
 
         /// <summary>
         /// Stops an animation that was previously started.
@@ -189,6 +211,12 @@ namespace CommunityToolkit.WinUI.Lottie.WinCompData
         /// <inheritdoc/>
         public void Dispose()
         {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
         }
 
         public override string ToString() => Type.ToString();
@@ -230,7 +258,7 @@ namespace CommunityToolkit.WinUI.Lottie.WinCompData
             /// The controller for this <see cref="Animator"/> or null
             /// if the animation is an <see cref="ExpressionAnimation"/>.
             /// </summary>
-            public AnimationController? Controller { get; }
+            public AnimationController? Controller { get; private set; }
 
             /// <inheritdoc/>
             public override string ToString() => AnimatedProperty;

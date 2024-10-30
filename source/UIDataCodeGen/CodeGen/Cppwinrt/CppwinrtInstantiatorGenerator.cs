@@ -231,11 +231,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             else
             {
                 builder.WriteLine($": [default] {Interface_IAnimatedVisualSource.NormalizedQualifiedName}");
+            }
 
-                if (SourceInfo.WinUIVersion >= new Version(2, 6) && SourceInfo.WinUIVersion.Major < 3)
-                {
-                    builder.WriteLine($", {Interface_IAnimatedVisualSource2.NormalizedQualifiedName}");
-                }
+            if (SourceInfo.WinUIVersion >= new Version(2, 6))
+            {
+                builder.WriteLine($", {Interface_IAnimatedVisualSource2.NormalizedQualifiedName}");
             }
 
             if (_isIDynamic)
@@ -593,10 +593,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             {
                 builder.WriteLine($"winrt::{_animatedVisualTypeName2},");
             }
-            else
-            {
-                builder.WriteLine($"winrt::{_animatedVisualTypeName},");
-            }
+
+            builder.WriteLine($"winrt::{_animatedVisualTypeName},");
 
             builder.WriteLine($"IClosable>");
             builder.UnIndent();
@@ -1376,7 +1374,10 @@ CompositionSpriteShape MakeAndApplyProperties(
                     builder.WriteBreakableLine($"auto result = winrt::make<{info.ClassName}>(", CommaSeparate(GetConstructorArguments(info)), ");");
                     if (info.ImplementCreateAndDestroyMethods)
                     {
-                        builder.WriteLine($"result.{CreateAnimationsMethod}();");
+                        builder.WriteLine($"if (auto result2 = result.try_as<{_animatedVisualTypeName2}>())");
+                        builder.OpenScope();
+                        builder.WriteLine($"result2.{CreateAnimationsMethod}();");
+                        builder.CloseScope();
                     }
 
                     builder.WriteLine("return result;");
@@ -1491,7 +1492,7 @@ CompositionSpriteShape MakeAndApplyProperties(
             builder.WriteLine("if (!m_isImageLoadingStarted)");
             builder.OpenScope();
             builder.WriteLine("m_isImageLoadingStarted = true;");
-            builder.WriteLine($"TypedEventHandler<LoadedImageSurface, LoadedImageSourceLoadCompletedEventArgs> eventHandler{{ this, &{_sourceClassName}::HandleLoadCompleted }};");
+            builder.WriteLine($"TypedEventHandler<LoadedImageSurface, LoadedImageSourceLoadCompletedEventArgs> eventHandler{{ get_weak(), &{_sourceClassName}::HandleLoadCompleted }};");
 
             foreach (var n in SourceInfo.LoadedImageSurfaces)
             {
@@ -1859,14 +1860,14 @@ CompositionSpriteShape MakeAndApplyProperties(
         winrt::com_ptr<ID2D1Geometry> const& Geometry() { return _geometry; }
 
         // IGeometrySource2DInterop.
-        IFACEMETHODIMP GetGeometry(ID2D1Geometry** value) override
+        IFACEMETHODIMP GetGeometry(ID2D1Geometry** value) noexcept(true) override
         {
             _geometry.copy_to(value);
             return S_OK;
         }
 
         // IGeometrySource2DInterop.
-        IFACEMETHODIMP TryGetGeometryUsingFactory(ID2D1Factory*, ID2D1Geometry**) override
+        IFACEMETHODIMP TryGetGeometryUsingFactory(ID2D1Factory*, ID2D1Geometry**) noexcept(true) override
         {
             return E_NOTIMPL;
         }
@@ -1917,7 +1918,7 @@ CompositionSpriteShape MakeAndApplyProperties(
         winrt::hstring Name() { return m_name; }
 
         // IGraphicsEffectD2D1Interop.
-        IFACEMETHODIMP GetEffectId(GUID* id) override
+        IFACEMETHODIMP GetEffectId(GUID* id) noexcept(true) override
         {
             if (id != nullptr)
             {
@@ -1929,7 +1930,7 @@ CompositionSpriteShape MakeAndApplyProperties(
         }
 
         // IGraphicsEffectD2D1Interop.
-        IFACEMETHODIMP GetSourceCount(UINT* count) override
+        IFACEMETHODIMP GetSourceCount(UINT* count) noexcept(true) override
         {
             if (count != nullptr)
             {
@@ -1942,7 +1943,7 @@ CompositionSpriteShape MakeAndApplyProperties(
         // IGraphicsEffectD2D1Interop.
         IFACEMETHODIMP GetSource(
             UINT index,
-            ::ABI::Windows::Graphics::Effects::IGraphicsEffectSource** source) override
+            ::ABI::Windows::Graphics::Effects::IGraphicsEffectSource** source) noexcept(true) override
         {
             if (index >= m_sources.size() ||
                 source == nullptr)
@@ -1956,12 +1957,12 @@ CompositionSpriteShape MakeAndApplyProperties(
         }
 
         // IGraphicsEffectD2D1Interop.
-        IFACEMETHODIMP GetPropertyCount(UINT* count) override { *count = 1; return S_OK; }
+        IFACEMETHODIMP GetPropertyCount(UINT* count) noexcept(true) override { *count = 1; return S_OK; }
 
         // IGraphicsEffectD2D1Interop.
         IFACEMETHODIMP GetProperty(
             UINT index,
-            ::ABI::Windows::Foundation::IPropertyValue** value) override
+            ::ABI::Windows::Foundation::IPropertyValue** value) noexcept(true) override
         {
             switch (index)
             {
@@ -2010,7 +2011,7 @@ CompositionSpriteShape MakeAndApplyProperties(
         winrt::hstring Name() { return m_name; }
 
         // IGraphicsEffectD2D1Interop.
-        IFACEMETHODIMP GetEffectId(GUID* id) override
+        IFACEMETHODIMP GetEffectId(GUID* id) noexcept(true) override
         {
             if (id != nullptr)
             {
@@ -2022,7 +2023,7 @@ CompositionSpriteShape MakeAndApplyProperties(
         }
 
         // IGraphicsEffectD2D1Interop.
-        IFACEMETHODIMP GetSourceCount(UINT* count) override
+        IFACEMETHODIMP GetSourceCount(UINT* count) noexcept(true) override
         {
             if (count != nullptr)
             {
@@ -2035,7 +2036,7 @@ CompositionSpriteShape MakeAndApplyProperties(
         // IGraphicsEffectD2D1Interop.
         IFACEMETHODIMP GetSource(
             UINT index,
-            ::ABI::Windows::Graphics::Effects::IGraphicsEffectSource** source) override
+            ::ABI::Windows::Graphics::Effects::IGraphicsEffectSource** source) noexcept(true) override
         {
             if (index != 0 ||
                 source == nullptr)
@@ -2049,12 +2050,12 @@ CompositionSpriteShape MakeAndApplyProperties(
         }
 
         // IGraphicsEffectD2D1Interop.
-        IFACEMETHODIMP GetPropertyCount(UINT* count) override { *count = 3; return S_OK; }
+        IFACEMETHODIMP GetPropertyCount(UINT* count) noexcept(true) override { *count = 3; return S_OK; }
 
         // IGraphicsEffectD2D1Interop.
         IFACEMETHODIMP GetProperty(
             UINT index,
-            ::ABI::Windows::Foundation::IPropertyValue** value) override
+            ::ABI::Windows::Foundation::IPropertyValue** value) noexcept(true) override
         {
             switch (index)
             {
@@ -2083,7 +2084,7 @@ CompositionSpriteShape MakeAndApplyProperties(
         IFACEMETHODIMP GetNamedPropertyMapping(
             LPCWSTR,
             UINT*,
-            ::ABI::Windows::Graphics::Effects::GRAPHICS_EFFECT_PROPERTY_MAPPING*) override
+            ::ABI::Windows::Graphics::Effects::GRAPHICS_EFFECT_PROPERTY_MAPPING*) noexcept(true) override
         {
             return E_INVALIDARG;
         }
