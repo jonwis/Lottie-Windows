@@ -135,7 +135,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         IAnimatedVisualSourceInfo SourceInfo => AnimatedVisualSourceInfo;
 
-        protected override AnimatedVisualGenerator GetGenerator(InstantiatorGeneratorBase owner, CompositionObject graphRoot, uint requiredUapVersion, bool isPartOfMultiVersionSource, CodegenConfiguration configuration)
+        private protected override AnimatedVisualGenerator GetGenerator(InstantiatorGeneratorBase owner, CompositionObject graphRoot, uint requiredUapVersion, bool isPartOfMultiVersionSource, CodegenConfiguration configuration)
         {
             return new CppWinrtVisualGenerator(this, owner, graphRoot!, requiredUapVersion, isPartOfMultiVersionSource, configuration);
         }

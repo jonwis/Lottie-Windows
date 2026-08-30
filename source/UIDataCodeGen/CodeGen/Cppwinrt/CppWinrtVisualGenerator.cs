@@ -4,10 +4,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Numerics;
-using CommunityToolkit.WinUI.Lottie.LottieData;
 using CommunityToolkit.WinUI.Lottie.UIData.CodeGen;
 using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.MetaData;
@@ -16,7 +14,6 @@ using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Wg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
-using Microsoft.VisualBasic;
 using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
 using Mgce = CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using Sn = System.Numerics;

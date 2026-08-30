@@ -85,7 +85,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
         AnimatedVisualGenerator? _currentAnimatedVisualGenerator;
 
-        protected virtual AnimatedVisualGenerator GetGenerator(
+        private protected virtual AnimatedVisualGenerator GetGenerator(
                 InstantiatorGeneratorBase owner,
                 CompositionObject graphRoot,
                 uint requiredUapVersion,
@@ -1245,13 +1245,9 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string ConstVar => _s.ConstVar;
 
-<<<<<<< HEAD
-            protected string Bool(bool value) => value ? "true" : "false";
-=======
             string Var => _s.Var;
 
-            string Bool(bool value) => value ? "true" : "false";
->>>>>>> origin/main
+            protected string Bool(bool value) => value ? "true" : "false";
 
             protected string Color(Wui.Color value) => _s.Color(value);
 
@@ -2051,11 +2047,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
                     if (_configuration.ImplementCreateAndDestroyMethods)
                     {
-<<<<<<< HEAD
-                        WriteAnimationStart(_createAnimationsCodeBuilder, localName, String(animator.AnimatedProperty), animationFactoryCall);
-
-                        ConfigureAnimationController(_createAnimationsCodeBuilder, localName, ref controllerVariableAdded, animator);
-=======
                         if (animator.Controller is not null && animator.Controller.IsCustom)
                         {
                             _createAnimationsCodeBuilder
@@ -2063,31 +2054,24 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         }
                         else
                         {
-                            _createAnimationsCodeBuilder
-                                .WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall});");
+                            WriteAnimationStart(_createAnimationsCodeBuilder, localName, String(animator.AnimatedProperty), animationFactoryCall);
                             ConfigureAnimationController(_createAnimationsCodeBuilder, localName, ref controllerVariableAdded, animator);
                         }
->>>>>>> origin/main
 
                         // If we are implementing IAnimatedVisual2 we should also write a destruction call.
                         WriteDestroyAnimation(_destroyAnimationsCodeBuilder, localName, animator.AnimatedProperty);
                     }
                     else
                     {
-<<<<<<< HEAD
-                        WriteAnimationStart(builder, localName, String(animator.AnimatedProperty), animationFactoryCall);
-                        ConfigureAnimationController(builder, localName, ref controllerVariableAdded, animator);
-=======
                         if (animator.Controller is not null && animator.Controller.IsCustom)
                         {
                             builder.WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall}, {CallFactoryFromFor(node, NodeFor(animator.Controller))});");
                         }
                         else
                         {
-                            builder.WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall});");
+                            WriteAnimationStart(builder, localName, String(animator.AnimatedProperty), animationFactoryCall);
                             ConfigureAnimationController(builder, localName, ref controllerVariableAdded, animator);
                         }
->>>>>>> origin/main
                     }
                 }
             }
@@ -2613,10 +2597,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 InitializeCompositionAnimation(builder, animation, node);
             }
 
-<<<<<<< HEAD
-            protected virtual bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
-=======
-            bool GenerateCustomAnimationController(CodeBuilder builder, AnimationController obj, ObjectData node)
+            protected virtual bool GenerateCustomAnimationController(CodeBuilder builder, AnimationController obj, ObjectData node)
             {
                 if (!obj.IsCustom)
                 {
@@ -2637,8 +2618,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
->>>>>>> origin/main
+            protected virtual bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
