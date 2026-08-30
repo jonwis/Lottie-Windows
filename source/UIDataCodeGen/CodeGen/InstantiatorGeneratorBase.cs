@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using CommunityToolkit.WinUI.Lottie.CompMetadata;
 using CommunityToolkit.WinUI.Lottie.GenericData;

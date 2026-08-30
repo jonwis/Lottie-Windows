@@ -662,18 +662,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                     WriteFrameNumberComment(builder, kf.Progress);
                     var valueKeyFrame = (PathKeyFrameAnimation.ValueKeyFrame)kf;
                     builder.WriteLine($"{{ {Float(kf.Progress)}, func_or_field<CompositionPath> {{ {CallFactoryFromFor(node, valueKeyFrame.Value)} }}, {CallFactoryFromFor(node, kf.Easing)} }},");
-
-                    switch (kf.Type)
-                    {
-                        case KeyFrameType.Expression:
-                            var expressionKeyFrame = (KeyFrameAnimation<Wui.Color, Expr.Color>.ExpressionKeyFrame)kf;
-                            builder.WriteLine($"{{ {Float(kf.Progress)}, {String(expressionKeyFrame.Expression)}, {CallFactoryFromFor(node, kf.Easing)} }},");
-                            break;
-                        case KeyFrameType.Value:
-                            break;
-                        default:
-                            throw new InvalidOperationException();
-                    }
                 }
 
                 builder.CloseScopeWithSemicolon();

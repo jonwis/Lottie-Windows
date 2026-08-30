@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Numerics;
 using CommunityToolkit.WinUI.Lottie.WinCompData;
@@ -838,7 +837,7 @@ struct AnimationBaseType
 
         if (HasFlag(props.Fields, SpriteFields::Scale))
         {
-            result.Offset(props.Scale);
+            result.Scale(props.Scale);
         }
 
         if (props.dashCount)
