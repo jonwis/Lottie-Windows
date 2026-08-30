@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using CommunityToolkit.WinUI.Lottie;
@@ -29,7 +30,7 @@ namespace CommunityToolkit.WinUI.Lottie
     /// An <see cref="IAnimatedVisualSource"/> for a Lottie composition. This allows
     /// a Lottie to be specified as the source for a <see cref="AnimatedVisualPlayer"/>.
     /// </summary>
-    public sealed class LottieVisualSource : DependencyObject, IDynamicAnimatedVisualSource
+    public sealed partial class LottieVisualSource : DependencyObject, IDynamicAnimatedVisualSource
     {
 #if WINAPPSDK
         HashSet<TypedEventHandler<IDynamicAnimatedVisualSource?, object?>> _compositionInvalidatedEventTokenTable = new HashSet<TypedEventHandler<IDynamicAnimatedVisualSource?, object?>>();

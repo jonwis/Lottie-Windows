@@ -748,6 +748,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
         string New(string typeName) => _s.New(typeName);
 
+#pragma warning disable CA1033 // Interface methods should be callable by child types
+
         string IAnimatedVisualSourceInfo.ClassName => _className;
 
         string IAnimatedVisualSourceInfo.Namespace => _namespace;
@@ -793,6 +795,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         IReadOnlyList<LoadedImageSurfaceInfo> IAnimatedVisualSourceInfo.LoadedImageSurfaces => _loadedImageSurfaceInfos;
 
         SourceMetadata IAnimatedVisualSourceInfo.SourceMetadata => _sourceMetadata;
+
+#pragma warning restore CA1033 // Interface methods should be callable by child types
 
         // Return true if any of the AnimatedVisualGenerators match the given predicate.
         bool Any(Func<AnimatedVisualGenerator, bool> predicate) => _animatedVisualGenerators.Any(predicate);
@@ -1171,7 +1175,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                             node.RequiresStorage = true;
                         }
                     }
-                    else if (configuration.ImplementCreateAndDestroyMethods && node.Object is CompositionObject obj && obj.Animators.Count > 0)
+                    else if ((configuration.ImplementCreateAndDestroyMethods && node.Object is CompositionObject obj && obj.Animators.Count > 0) || (node.Object is AnimationController c && c.IsCustom))
                     {
                         // If we are implementing IAnimatedVisual2 interface we need to store all the composition objects that have animators.
                         node.RequiresStorage = true;
@@ -1241,7 +1245,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string ConstVar => _s.ConstVar;
 
+<<<<<<< HEAD
             protected string Bool(bool value) => value ? "true" : "false";
+=======
+            string Var => _s.Var;
+
+            string Bool(bool value) => value ? "true" : "false";
+>>>>>>> origin/main
 
             protected string Color(Wui.Color value) => _s.Color(value);
 
@@ -1329,14 +1339,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     return FieldReadExpression(calleeNode)!;
                 }
 
-                if (_owner._disableFieldOptimization)
-                {
-                    // When field optimization is disabled, always return a call to the factory.
-                    // If the factory has been called already, it will return the value from
-                    // its storage.
-                    return calleeNode.FactoryCall();
-                }
-
                 if (calleeNode.Object is CompositionPropertySet propertySet)
                 {
                     // CompositionPropertySets do not have factories unless they are
@@ -1346,6 +1348,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     {
                         return _s.PropertyGet(CallFactoryFromFor(callerNode, NodeFor(propertySet.Owner)), "Properties");
                     }
+                }
+
+                if (_owner._disableFieldOptimization)
+                {
+                    // When field optimization is disabled, always return a call to the factory.
+                    // If the factory has been called already, it will return the value from
+                    // its storage.
+                    return calleeNode.FactoryCall();
                 }
 
                 // Find the vertex from caller to callee.
@@ -1765,7 +1775,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return obj.Type switch
                 {
                     // Do not generate code for animation controllers. It is done inline in the CompositionObject initialization.
-                    CompositionObjectType.AnimationController => throw new InvalidOperationException(),
+                    CompositionObjectType.AnimationController => GenerateCustomAnimationController(builder, (AnimationController)obj, node),
                     CompositionObjectType.BooleanKeyFrameAnimation => GenerateBooleanKeyFrameAnimationFactory(builder, (BooleanKeyFrameAnimation)obj, node),
                     CompositionObjectType.ColorKeyFrameAnimation => GenerateColorKeyFrameAnimationFactory(builder, (ColorKeyFrameAnimation)obj, node),
                     CompositionObjectType.CompositionColorBrush => GenerateCompositionColorBrushFactory(builder, (CompositionColorBrush)obj, node),
@@ -2041,17 +2051,43 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
                     if (_configuration.ImplementCreateAndDestroyMethods)
                     {
+<<<<<<< HEAD
                         WriteAnimationStart(_createAnimationsCodeBuilder, localName, String(animator.AnimatedProperty), animationFactoryCall);
 
                         ConfigureAnimationController(_createAnimationsCodeBuilder, localName, ref controllerVariableAdded, animator);
+=======
+                        if (animator.Controller is not null && animator.Controller.IsCustom)
+                        {
+                            _createAnimationsCodeBuilder
+                                .WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall}, {CallFactoryFromFor(node, NodeFor(animator.Controller))});");
+                        }
+                        else
+                        {
+                            _createAnimationsCodeBuilder
+                                .WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall});");
+                            ConfigureAnimationController(_createAnimationsCodeBuilder, localName, ref controllerVariableAdded, animator);
+                        }
+>>>>>>> origin/main
 
                         // If we are implementing IAnimatedVisual2 we should also write a destruction call.
                         WriteDestroyAnimation(_destroyAnimationsCodeBuilder, localName, animator.AnimatedProperty);
                     }
                     else
                     {
+<<<<<<< HEAD
                         WriteAnimationStart(builder, localName, String(animator.AnimatedProperty), animationFactoryCall);
                         ConfigureAnimationController(builder, localName, ref controllerVariableAdded, animator);
+=======
+                        if (animator.Controller is not null && animator.Controller.IsCustom)
+                        {
+                            builder.WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall}, {CallFactoryFromFor(node, NodeFor(animator.Controller))});");
+                        }
+                        else
+                        {
+                            builder.WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall});");
+                            ConfigureAnimationController(builder, localName, ref controllerVariableAdded, animator);
+                        }
+>>>>>>> origin/main
                     }
                 }
             }
@@ -2077,7 +2113,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     if (!controllerVariableAdded)
                     {
                         // Declare and initialize the controller variable.
-                        builder.WriteLine($"{ConstVar} controller = {localName}{Deref}TryGetAnimationController({String(animator.AnimatedProperty)});");
+                        builder.WriteLine($"{Var} controller = {localName}{Deref}TryGetAnimationController({String(animator.AnimatedProperty)});");
                         controllerVariableAdded = true;
                     }
                     else
@@ -2239,7 +2275,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     b.WriteLine($"{ReferenceTypeName("CompositionSpriteShape")} CreateSpriteShape({ReferenceTypeName("CompositionGeometry")} geometry, {_s.TypeMatrix3x2} transformMatrix)");
                     b.OpenScope();
-                    WriteCreateAssignment(b, node, $"_c{Deref}CreateSpriteShape(geometry)");
+                    b.WriteLine($"{ConstVar} result = _c{Deref}CreateSpriteShape(geometry);");
                     WriteSetPropertyStatement(b, "TransformMatrix", "transformMatrix");
                     b.WriteLine("return result;");
                     b.CloseScope();
@@ -2271,7 +2307,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     b.WriteLine($"{ReferenceTypeName("CompositionSpriteShape")} CreateSpriteShape({ArgumentTypeName("CompositionGeometry")} geometry, {ArgumentTypeName(_s.TypeMatrix3x2)} transformMatrix, {ArgumentTypeName("CompositionBrush")} fillBrush)");
                     b.OpenScope();
-                    WriteCreateAssignment(b, node, $"_c{Deref}CreateSpriteShape(geometry)");
+                    b.WriteLine($"{ConstVar} result = _c{Deref}CreateSpriteShape(geometry);");
                     WriteSetPropertyStatement(b, "TransformMatrix", "transformMatrix");
                     WriteSetPropertyStatement(b, "FillBrush", "fillBrush");
                     b.WriteLine("return result;");
@@ -2577,7 +2613,32 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 InitializeCompositionAnimation(builder, animation, node);
             }
 
+<<<<<<< HEAD
             protected virtual bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
+=======
+            bool GenerateCustomAnimationController(CodeBuilder builder, AnimationController obj, ObjectData node)
+            {
+                if (!obj.IsCustom)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                WriteObjectFactoryStart(builder, node);
+
+                WriteCreateAssignment(builder, node, $"_c{Deref}Create{obj.Type}()");
+
+                if (obj.IsPaused)
+                {
+                    builder.WriteLine($"result{Deref}Pause();");
+                }
+
+                WriteCompositionObjectFactoryEnd(builder, obj, node);
+
+                return true;
+            }
+
+            bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
+>>>>>>> origin/main
             {
                 WriteObjectFactoryStart(builder, node);
 
@@ -3491,7 +3552,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         {
                             // AnimationController is never created explicitly - they result from
                             // calling TryGetAnimationController(...).
-                            CompositionObjectType.AnimationController => false,
+                            CompositionObjectType.AnimationController => ((AnimationController)obj).IsCustom,
 
                             // CompositionPropertySet is never created explicitly - they just exist
                             // on the Properties property of every CompositionObject.

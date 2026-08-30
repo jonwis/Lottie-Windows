@@ -25,6 +25,8 @@ using Windows.UI.Composition;
 
 namespace CommunityToolkit.WinUI.Lottie
 {
+#pragma warning disable SA1303 // Constants must begin with an upper case letter.
+
     /// <summary>
     /// Handles loading a composition from a Lottie file. The result of the load
     /// is a <see cref="AnimatedVisualFactory"/> that can be used to instantiate a
@@ -32,6 +34,11 @@ namespace CommunityToolkit.WinUI.Lottie
     /// </summary>
     abstract class Loader : IDisposable
     {
+        // TODO: we do not support versions above 14 in Lottie-Windows yet, only in LottieGen.
+        // Mostly this is because Lottie-Windows does not yet support custom AnimationControllers.
+        const uint c_maxUapContractVersion = 14u;
+        const uint c_maxWinAppSDKContractVersion = 14u;
+
         // Identifies the bound property names in SourceMetadata.
         static readonly Guid s_propertyBindingNamesKey = new Guid("A115C46A-254C-43E6-A3C7-9DE516C3C3C8");
 
@@ -90,7 +97,7 @@ namespace CommunityToolkit.WinUI.Lottie
                             LottieCompositionReader.Options.IgnoreMatchNames,
                             out var readerIssues);
 
-                    if (lottieComposition is not null)
+                    if (lottieComposition is not null && options.HasFlag(LottieVisualOptions.Optimize))
                     {
                         lottieComposition = LottieMergeOptimizer.Optimize(lottieComposition);
                     }
@@ -147,7 +154,14 @@ namespace CommunityToolkit.WinUI.Lottie
                         {
                             TranslatePropertyBindings = makeColorsBindable,
                             GenerateColorBindings = makeColorsBindable,
+#if WINAPPSDK
+                            // The WindowsAppSDK has access to the latest APIs, and should not use
+                            // fallback APIs based on which OS the app is running on. In the future
+                            // Lottie might be able to target specific WinAppSDK versions.
+                            TargetUapVersion = c_maxWinAppSDKContractVersion,
+#else
                             TargetUapVersion = GetCurrentUapVersion(),
+#endif
                         });
 
                     wincompDataRootVisual = translationResult.RootVisual;
@@ -211,6 +225,7 @@ namespace CommunityToolkit.WinUI.Lottie
         static IReadOnlyList<Issue> ToIssues(IEnumerable<TranslationIssue> issues)
             => issues.Select(issue => new Issue(code: issue.Code, description: issue.Description)).ToArray();
 
+#if !WINAPPSDK
         /// <summary>
         /// Gets the highest UAP version supported by the current process.
         /// </summary>
@@ -219,18 +234,21 @@ namespace CommunityToolkit.WinUI.Lottie
         {
             // Start testing on version 2. We know that at least version 1 is supported because
             // we are running in UAP code.
-            var versionToTest = 2u;
+            var versionToTest = 1u;
 
             // Keep querying until IsApiContractPresent fails to find the version.
-            while (ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", (ushort)versionToTest))
+            while (ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", (ushort)(versionToTest + 1)))
             {
                 // Keep looking ...
                 versionToTest++;
             }
 
+            versionToTest = Math.Min(versionToTest, c_maxUapContractVersion);
+
             // Query failed on versionToTest. Return the previous version.
-            return versionToTest - 1;
+            return versionToTest;
         }
+#endif
 
         // Specializes the Stopwatch to do just the one thing we need of it - get the time
         // elapsed since the last call then restart the Stopwatch to start measuring again.

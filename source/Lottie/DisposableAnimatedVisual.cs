@@ -5,6 +5,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Microsoft.UI.Xaml.Controls;
 
@@ -16,14 +17,24 @@ using Windows.UI.Composition;
 
 namespace CommunityToolkit.WinUI.Lottie
 {
-    sealed class DisposableAnimatedVisual : IAnimatedVisual, IDisposable
+    /// <summary>
+    /// Type and any parent types should be marked partial for trimming and AOT compatibility if passed across the WinRT ABI.
+    /// </summary>
+    internal sealed partial class DisposableAnimatedVisual : IAnimatedVisual, IDisposable
     {
-        internal DisposableAnimatedVisual(Visual rootVisual)
+        internal DisposableAnimatedVisual(Visual rootVisual, IEnumerable<AnimationController> customAnimationControllers)
         {
             RootVisual = rootVisual;
+            CustomAnimationControllers = customAnimationControllers;
         }
 
         public Visual RootVisual { get; }
+
+        /// <summary>
+        /// Keeps references to all custom AnimationController objects.
+        /// We need references because otherwise they will be destroyed from dwm.
+        /// </summary>
+        public IEnumerable<AnimationController> CustomAnimationControllers { get; }
 
         public TimeSpan Duration { get; set; }
 
