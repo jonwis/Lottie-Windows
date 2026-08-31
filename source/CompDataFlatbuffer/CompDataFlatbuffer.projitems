@@ -9,8 +9,10 @@
     <Import_RootNamespace>CompDataFlatbuffer</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)FlatBufferFormatException.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Format.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)GraphIndexer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CompositionDeserializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CompositionSerializer.cs" />
   </ItemGroup>
   <ItemGroup>

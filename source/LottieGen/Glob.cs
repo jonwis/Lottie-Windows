@@ -161,7 +161,7 @@ namespace CommunityToolkit.WinUI.Lottie.LottieGen
 
             if (string.IsNullOrEmpty(directoryPath))
             {
-                directoryPath = @".\";
+                directoryPath = $".{Path.DirectorySeparatorChar}";
             }
 
             if (directoryPath.EndsWith(":"))
@@ -171,10 +171,10 @@ namespace CommunityToolkit.WinUI.Lottie.LottieGen
                 directoryPath += @".\";
             }
 
-            // Ensure that we always have a trailing backslash. Callers expect this.
-            if (!directoryPath.EndsWith(@"\"))
+            // Ensure that we always have a trailing directory separator. Callers expect this.
+            if (!directoryPath.EndsWith(Path.DirectorySeparatorChar.ToString()))
             {
-                directoryPath += @"\";
+                directoryPath += Path.DirectorySeparatorChar;
             }
 
             return (Path.GetFullPath(directoryPath), pattern);
