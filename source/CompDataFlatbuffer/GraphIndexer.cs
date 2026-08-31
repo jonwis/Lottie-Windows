@@ -121,15 +121,15 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
             return (uint)index;
         }
 
-        internal uint GetVisual(Visual? value) => Reference(_visuals, value, Schema.ObjectCategory.Visual);
+        internal uint GetVisual(Visual? value) => Index(_visuals, value);
 
-        internal uint GetShape(CompositionShape? value) => Reference(_shapes, value, Schema.ObjectCategory.Shape);
+        internal uint GetShape(CompositionShape? value) => Index(_shapes, value);
 
-        internal uint GetGeometry(CompositionGeometry? value) => Reference(_geometries, value, Schema.ObjectCategory.Geometry);
+        internal uint GetGeometry(CompositionGeometry? value) => Index(_geometries, value);
 
         internal uint GetCanvasGeometry(CanvasGeometry? value) => Index(_canvasGeometries, value);
 
-        internal uint GetBrush(CompositionBrush? value) => Reference(_brushes, value, Schema.ObjectCategory.Brush);
+        internal uint GetBrush(CompositionBrush? value) => Index(_brushes, value);
 
         internal uint GetGradientStop(CompositionColorGradientStop? value) => Index(_gradientStops, value);
 
@@ -160,41 +160,31 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
         /// <returns>The packed object reference, or <see cref="Format.NullIndex"/>.</returns>
         internal uint GetObjectReference(CompositionObject? value)
         {
-            switch (value)
+            if (value is null)
             {
-                case null: return Format.NullIndex;
-                case Visual visual: return GetVisual(visual);
-                case CompositionShape shape: return GetShape(shape);
-                case CompositionGeometry geometry: return GetGeometry(geometry);
-                case CompositionBrush brush: return GetBrush(brush);
-                case CompositionAnimation animation:
-                    return Format.PackObjectReference(Schema.ObjectCategory.Animation, (int)GetAnimation(animation));
-                case CompositionEasingFunction easing:
-                    return Format.PackObjectReference(Schema.ObjectCategory.Easing, (int)GetEasing(easing));
-                case CompositionPropertySet propertySet:
-                    return Format.PackObjectReference(Schema.ObjectCategory.PropertySet, (int)GetPropertySet(propertySet));
-                case CompositionVisualSurface surface:
-                    return Format.PackObjectReference(Schema.ObjectCategory.Surface, (int)GetSurface(surface));
-                case CompositionClip clip:
-                    return Format.PackObjectReference(Schema.ObjectCategory.Clip, (int)GetClip(clip));
-                case AnimationController controller:
-                    return Format.PackObjectReference(Schema.ObjectCategory.Controller, (int)GetController(controller));
-                case CompositionShadow shadow:
-                    return Format.PackObjectReference(Schema.ObjectCategory.Shadow, (int)GetShadow(shadow));
-                case CompositionColorGradientStop stop:
-                    return Format.PackObjectReference(Schema.ObjectCategory.GradientStop, (int)GetGradientStop(stop));
-                case CompositionViewBox viewBox:
-                    return Format.PackObjectReference(Schema.ObjectCategory.ViewBox, (int)GetViewBox(viewBox));
-                default:
-                    throw new InvalidOperationException($"Cannot reference {value.Type}.");
+                return Format.NullIndex;
             }
-        }
 
-        // Returns the packed object reference for a node in a category whose index is
-        // also used directly by strongly typed fields.
-        uint Reference<T>(Dictionary<object, int> map, T? value, Schema.ObjectCategory category)
-            where T : class
-            => value is null ? Format.NullIndex : Format.PackObjectReference(category, (int)Index(map, value));
+            var (category, index) = value switch
+            {
+                Visual visual => (Schema.ObjectCategory.Visual, GetVisual(visual)),
+                CompositionShape shape => (Schema.ObjectCategory.Shape, GetShape(shape)),
+                CompositionGeometry geometry => (Schema.ObjectCategory.Geometry, GetGeometry(geometry)),
+                CompositionBrush brush => (Schema.ObjectCategory.Brush, GetBrush(brush)),
+                CompositionAnimation animation => (Schema.ObjectCategory.Animation, GetAnimation(animation)),
+                CompositionEasingFunction easing => (Schema.ObjectCategory.Easing, GetEasing(easing)),
+                CompositionPropertySet propertySet => (Schema.ObjectCategory.PropertySet, GetPropertySet(propertySet)),
+                CompositionVisualSurface surface => (Schema.ObjectCategory.Surface, GetSurface(surface)),
+                CompositionClip clip => (Schema.ObjectCategory.Clip, GetClip(clip)),
+                AnimationController controller => (Schema.ObjectCategory.Controller, GetController(controller)),
+                CompositionShadow shadow => (Schema.ObjectCategory.Shadow, GetShadow(shadow)),
+                CompositionColorGradientStop stop => (Schema.ObjectCategory.GradientStop, GetGradientStop(stop)),
+                CompositionViewBox viewBox => (Schema.ObjectCategory.ViewBox, GetViewBox(viewBox)),
+                _ => throw new InvalidOperationException($"Cannot reference {value.Type}."),
+            };
+
+            return Format.PackObjectReference(category, (int)index);
+        }
 
         // Returns the plain index of a node, adding it to the graph if it has not been
         // seen before. The node is registered before its children are walked so that
