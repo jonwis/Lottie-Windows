@@ -42,6 +42,19 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             _lines.Add(new CodeLine { Contents = line, IndentCount = _indentCount });
         }
 
+        internal void WriteManyLines(string line)
+        {
+            WriteManyLines(line.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        internal void WriteManyLines(IEnumerable<string> lines)
+        {
+            foreach (var s in lines)
+            {
+                WriteLine(s);
+            }
+        }
+
         // Writes a line, or multiple lines if the line would be too long as a single line.
         // Typically used for writing method calls and signature.
         internal void WriteBreakableLine(string prefix, string[] breakableParts, string postfix)

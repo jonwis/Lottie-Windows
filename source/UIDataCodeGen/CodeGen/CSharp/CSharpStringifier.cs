@@ -99,6 +99,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.CSharp
 
         public override string ReferenceTypeName(string value) => value;
 
+        public override string FieldTypeName(string value) => ReferenceTypeName(value);
+
+        public override string ArgumentTypeName(string value) => ReferenceTypeName(value);
+
         public override string ScopeResolve => ".";
 
         public override string String(string value) => $"\"{value}\"";

@@ -5,6 +5,7 @@
 using System;
 using System.Globalization;
 using System.Numerics;
+using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Wui;
 using Mgcg = CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
 
@@ -33,15 +34,15 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 _ => throw new InvalidOperationException(),
             };
 
-        public override string CanvasGeometryFactoryCall(string value) => $"CanvasGeometryToIGeometrySource2D({value})";
+        public override string CanvasGeometryFactoryCall(string value) => value;
 
         public override string Color(Color value) => $"{{ {ColorArgs(value)} }}";
 
         public string ColorArgs(Color value) => $"{Hex(value.A)}, {Hex(value.R)}, {Hex(value.G)}, {Hex(value.B)}";
 
-        public override string ConstExprField(string type, string name, string value) => $"static constexpr {type} {name}{{ {value} }};";
+        public override string ConstExprField(string type, string name, string value) => $"static const constexpr {type} {name}{{ {value} }};";
 
-        public override string ConstVar => "const auto";
+        public override string ConstVar => "auto";
 
         public override string DefaultInitialize => "{ nullptr }";
 
@@ -79,7 +80,47 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public override string Namespace(string value) => value.Replace(".", "::");
 
-        public override string New(string typeName) => typeName;
+        public override string New(string typeName) => typeName switch
+        {
+            _ => typeName
+        };
+
+        public override string FieldTypeName(string value) => value switch
+        {
+            "BackEasingFunction" => "CompositionEasingFunction",
+            "BounceEasingFunction" => "CompositionEasingFunction",
+            "CircleEasingFunction" => "CompositionEasingFunction",
+            "CubicBezierEasingFunction" => "CompositionEasingFunction",
+            "ElasticEasingFunction" => "CompositionEasingFunction",
+            "ExponentialEasingFunction" => "CompositionEasingFunction",
+            "LinearEasingFunction" => "CompositionEasingFunction",
+            "PowerEasingFunction" => "CompositionEasingFunction",
+            "SineEasingFunction" => "CompositionEasingFunction",
+            "StepEasingFunction" => "CompositionEasingFunction",
+
+            "CompositionEllipseGeometry" => "CompositionGeometry",
+            "CompositionPathGeometry" => "CompositionGeometry",
+            "CompositionRectangleGeometry" => "CompositionGeometry",
+            "CompositionLineGeometry" => "CompositionGeometry",
+            "CompositionRoundedRectangleGeometry" => "CompositionGeometry",
+
+            "InsetClip" => "CompositionClip",
+
+            // "ExpressionAnimation" => "CompositionAnimation",
+            "KeyframeAnimation" => "CompositionAnimation",
+            "NaturalMotionAnimation" => "CompositionAnimation",
+            "BooleanKeyFrameAnimation" => "CompositionAnimation",
+            "ColorKeyFrameAnimation" => "CompositionAnimation",
+            "PathKeyFrameAnimation" => "CompositionAnimation",
+            "QuaternionKeyFrameAnimation" => "CompositionAnimation",
+            "ScalarKeyFrameAnimation" => "CompositionAnimation",
+            "Vector2KeyFrameAnimation" => "CompositionAnimation",
+            "Vector3KeyFrameAnimation" => "CompositionAnimation",
+            "Vector4KeyFrameAnimation" => "CompositionAnimation",
+            "CompositionLinearGradientBrush" => "CompositionBrush",
+            "CompositionColorBrush" => "CompositionBrush",
+            _ => value
+        };
 
         public override string Null => "nullptr";
 
@@ -92,7 +133,53 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             value switch
             {
                 "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry>",
-                _ => value,
+
+                "StepEasingFunction" => "CompositionEasingFunction",
+                "CubicBezierEasingFunction" => "CompositionEasingFunction",
+
+                "CompositionContainerShape" => "CompositionShape",
+                "CompositionSpriteShape" => "CompositionShape",
+
+                "CompositionEllipseGeometry" => "CompositionGeometry",
+                "CompositionPathGeometry" => "CompositionGeometry",
+                "CompositionRectangleGeometry" => "CompositionGeometry",
+                "CompositionLineGeometry" => "CompositionGeometry",
+                "CompositionRoundedRectangleGeometry" => "CompositionGeometry",
+
+                "CompositionSurfaceBrush" => "CompositionBrush",
+                "CompositionRadialGradientBrush" => "CompositionBrush",
+                "CompositionBackdropBrush" => "CompositionBrush",
+                "CompositionColorBrush" => "CompositionBrush",
+                "CompositionEffectBrush" => "CompositionBrush",
+                "CompositionGradientBrush" => "CompositionBrush",
+                "CompositionMaskBrush" => "CompositionBrush",
+                "CompositionNineGridBrush" => "CompositionBrush",
+                "CompositionLinearGradientBrush" => "CompositionBrush",
+
+                "InsetClip" => "CompositionClip",
+
+                "Vector2KeyFrameAnimation" => "CompositionAnimation",
+                "Vector3KeyFrameAnimation" => "CompositionAnimation",
+                "Vector4KeyFrameAnimation" => "CompositionAnimation",
+                "BooleanKeyFrameAnimation" => "CompositionAnimation",
+                "ScalarKeyFrameAnimation" => "CompositionAnimation",
+                "ColorKeyFrameAnimation" => "CompositionAnimation",
+                "PathKeyFrameAnimation" => "CompositionAnimation",
+
+                "SpriteVisual" => "Visual",
+                "ShapeVisual" => "Visual",
+                "LayerVisual" => "Visual",
+                "RedirectVisual" => "Visual",
+                "ContainerVisual" => "Visual",
+                _ => value
+            };
+
+        public override string ArgumentTypeName(string value) =>
+            value switch
+            {
+                "CanvasGeometry" => "winrt::com_ptr<CanvasGeometry> const&",
+                "CompositionPath" => string.Empty,
+                _ => $"{value} const&"
             };
 
         public override string ScopeResolve => "::";
@@ -109,7 +196,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         public override string TypeMatrix3x2 { get; } = "float3x2";
 
-        public override string TypeString => "winrt::hstring";
+        public override string TypeString => "const wchar_t*";
 
         public override string TypeVector2 { get; } = "float2";
 
@@ -132,5 +219,33 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         public override string Vector4(Vector4 value) => $"{{ {Vector4Args(value)} }}";
 
         public string Vector4Args(Vector4 value) => $"{Float(value.X)}, {Float(value.Y)}, {Float(value.Z)}, {Float(value.W)}";
+
+        public string Stringify(bool? value) => value.GetValueOrDefault() ? "true" : "false";
+
+        public string Stringify(CompositionBorderMode? value) => BorderMode(value.GetValueOrDefault());
+
+        public string Stringify(CompositionColorSpace? value) => ColorSpace(value.GetValueOrDefault());
+
+        public string Stringify(CompositionDropShadowSourcePolicy? value) => DropShadowSourcePolicy(value.GetValueOrDefault());
+
+        public string Stringify(CompositionGradientExtendMode? value) => ExtendMode(value.GetValueOrDefault());
+
+        public string Stringify(CompositionMappingMode? value) => MappingMode(value.GetValueOrDefault());
+
+        public string Stringify(CompositionStrokeCap? value) => StrokeCap(value.GetValueOrDefault());
+
+        public string Stringify(CompositionStrokeLineJoin? value) => StrokeLineJoin(value.GetValueOrDefault());
+
+        public string Stringify(float? value) => Float(value.GetValueOrDefault());
+
+        public string Stringify(Matrix3x2? value) => Matrix3x2(value.GetValueOrDefault());
+
+        public string Stringify(Matrix4x4? value) => Matrix4x4(value.GetValueOrDefault());
+
+        public string Stringify(Vector2? value) => Vector2(value.GetValueOrDefault());
+
+        public string Stringify(Vector3? value) => Vector3(value.GetValueOrDefault());
+
+        public string Stringify(Vector4? value) => Vector4(value.GetValueOrDefault());
     }
 }

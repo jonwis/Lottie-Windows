@@ -18,6 +18,7 @@ using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.MetaData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
+using static CommunityToolkit.WinUI.Lottie.WinCompData.CompositionObject;
 using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
 using Mgce = CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using Sn = System.Numerics;
@@ -33,10 +34,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
     abstract class InstantiatorGeneratorBase : IAnimatedVisualSourceInfo
     {
         // The name of the field holding the singleton reusable ExpressionAnimation.
-        const string SingletonExpressionAnimationName = "_reusableExpressionAnimation";
+        protected const string SingletonExpressionAnimationName = "_reusableExpressionAnimation";
 
         // The name of the field holding the theme properties.
-        const string ThemePropertiesFieldName = "_themeProperties";
+        protected const string ThemePropertiesFieldName = "_themeProperties";
 
         // The name of the constant holding the duration of the animation in ticks.
         const string DurationTicksFieldName = "c_durationTicks";
@@ -77,7 +78,21 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         readonly IReadOnlyList<MarkerInfo> _markers;
         readonly IReadOnlyList<NamedConstant> _internalConstants;
 
+        public bool SetCommentProperties => _setCommentProperties;
+
+        public TimeSpan CompositionDuration => _compositionDuration;
+
         AnimatedVisualGenerator? _currentAnimatedVisualGenerator;
+
+        private protected virtual AnimatedVisualGenerator GetGenerator(
+                InstantiatorGeneratorBase owner,
+                CompositionObject graphRoot,
+                uint requiredUapVersion,
+                bool isPartOfMultiVersionSource,
+                CodegenConfiguration configuration)
+        {
+            return new AnimatedVisualGenerator(owner, graphRoot, requiredUapVersion, isPartOfMultiVersionSource, configuration);
+        }
 
         private protected InstantiatorGeneratorBase(
             CodegenConfiguration configuration,
@@ -106,7 +121,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             var graphs = configuration.ObjectGraphs;
 
-            _animatedVisualGenerators = graphs.Select(g => new AnimatedVisualGenerator(this, g.graphRoot, g.requiredUapVersion, graphs.Count > 1, configuration)).ToArray();
+            _animatedVisualGenerators = graphs.Select(g => GetGenerator(this, g.graphRoot, g.requiredUapVersion, graphs.Count > 1, configuration)).ToArray();
 
             // Determine whether theming is enabled.
             _isThemed = _animatedVisualGenerators.Any(avg => avg.IsThemed);
@@ -581,7 +596,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         /// Returns the code to call the factory for the given object.
         /// </summary>
         /// <returns>The code to call the factory for the given object.</returns>
-        protected string CallFactoryFor(CanvasGeometry obj)
+        public string CallFactoryFor(CanvasGeometry obj)
         {
             return _currentAnimatedVisualGenerator!.CallFactoryFor(obj);
         }
@@ -621,7 +636,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         protected void WriteInitializedField(CodeBuilder builder, string typeName, string fieldName, string initialization)
             => builder.WriteLine($"{typeName} {fieldName}{initialization};");
 
-        void WriteDefaultInitializedField(CodeBuilder builder, string typeName, string fieldName)
+        internal void WriteDefaultInitializedField(CodeBuilder builder, string typeName, string fieldName)
             => WriteInitializedField(builder, typeName, fieldName, _s.DefaultInitialize);
 
         // Returns true iff the given sequence has exactly one item in it.
@@ -974,7 +989,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _ => throw new InvalidOperationException(),
             };
 
-        string PropertySetValueInitializer(CompositionPropertySet propertySet, string propertyName, PropertySetValueType propertyType)
+        public string PropertySetValueInitializer(CompositionPropertySet propertySet, string propertyName, PropertySetValueType propertyType)
             => propertyType switch
             {
                 PropertySetValueType.Color => PropertySetColorValueInitializer(propertySet, propertyName),
@@ -985,35 +1000,37 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _ => throw new InvalidOperationException(),
             };
 
-        string PropertySetColorValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetColorValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetColor(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Color(value!.Value)
                     : throw new InvalidOperationException();
 
-        string PropertySetScalarValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetScalarValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetScalar(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Float(value!.Value)
                     : throw new InvalidOperationException();
 
-        string PropertySetVector2ValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetVector2ValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetVector2(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Vector2(value!.Value)
                     : throw new InvalidOperationException();
 
-        string PropertySetVector3ValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetVector3ValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetVector3(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Vector3(value!.Value)
                     : throw new InvalidOperationException();
 
-        string PropertySetVector4ValueInitializer(CompositionPropertySet propertySet, string propertyName)
+        public string PropertySetVector4ValueInitializer(CompositionPropertySet propertySet, string propertyName)
             => propertySet.TryGetVector4(propertyName, out var value) == CompositionGetValueStatus.Succeeded
                     ? _s.Vector4(value!.Value)
                     : throw new InvalidOperationException();
 
+        protected virtual bool InlineCubicBezierFunctionsIfPossible { get => true; }
+
         /// <summary>
         /// Generates an IAnimatedVisual implementation.
         /// </summary>
-        sealed class AnimatedVisualGenerator : IAnimatedVisualInfo
+        internal class AnimatedVisualGenerator : IAnimatedVisualInfo
         {
             readonly HashSet<(ObjectData, ObjectData)> _factoriesAlreadyCalled = new HashSet<(ObjectData, ObjectData)>();
             readonly InstantiatorGeneratorBase _owner;
@@ -1025,6 +1042,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             // The subset of the object graph for which factories will be generated.
             readonly ObjectData[] _nodes;
+
+            protected ObjectData[] Nodes
+            {
+                get
+                {
+                    return _nodes;
+                }
+            }
 
             private CodeBuilder? _rootCodeBuilder = null;
 
@@ -1040,7 +1065,19 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             private CodegenConfiguration _configuration;
 
-            internal AnimatedVisualGenerator(
+            protected InstantiatorGeneratorBase Owner => _owner;
+
+            protected ObjectData GetObjectData(WinCompData.Wg.IGeometrySource2D source) => _objectGraph[source];
+
+            protected ObjectData ObjectPath(CompositionPath path) => _objectGraph[path];
+
+            protected virtual string CallCreateCompositionPath(ObjectData node, Wg.IGeometrySource2D source)
+            {
+                var inlinedFactoryCode = CallFactoryFromFor(node, ((CompositionPath)node.Object).Source);
+                return $"{New("CompositionPath")}({_s.CanvasGeometryFactoryCall(inlinedFactoryCode)})";
+            }
+
+            protected internal AnimatedVisualGenerator(
                 InstantiatorGeneratorBase owner,
                 CompositionObject graphRoot,
                 uint requiredUapVersion,
@@ -1062,23 +1099,22 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                                         n => n.Type == Graph.NodeType.CompositionPath &&
                                         IsEqualToOne(FilteredInRefs(n))))
                 {
-                    node.ForceInline(() =>
-                    {
-                        var inlinedFactoryCode = CallFactoryFromFor(node, ((CompositionPath)node.Object).Source);
-                        return $"{New("CompositionPath")}({_s.CanvasGeometryFactoryCall(inlinedFactoryCode)})";
-                    });
+                    node.ForceInline(() => CallCreateCompositionPath(node, ((CompositionPath)node.Object).Source));
                 }
 
                 // Force inlining on CubicBezierEasingFunction nodes that are only referenced once, because their factories
                 // are always very simple.
-                foreach (var (node, obj) in _objectGraph.CompositionObjectNodes.Where(
-                                        n => n.Object is CubicBezierEasingFunction &&
-                                            IsEqualToOne(FilteredInRefs(n.Node))))
+                if (owner.InlineCubicBezierFunctionsIfPossible)
                 {
-                    node.ForceInline(() =>
+                    foreach (var (node, obj) in _objectGraph.CompositionObjectNodes.Where(
+                                            n => n.Object is CubicBezierEasingFunction &&
+                                                IsEqualToOne(FilteredInRefs(n.Node))))
                     {
-                        return CallCreateCubicBezierEasingFunction((CubicBezierEasingFunction)node.Object);
-                    });
+                        node.ForceInline(() =>
+                        {
+                            return CallCreateCubicBezierEasingFunction((CubicBezierEasingFunction)node.Object);
+                        });
+                    }
                 }
 
                 // If there is a theme property set, give it a special name and
@@ -1172,13 +1208,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             internal IEnumerable<ObjectData> GetSharedNodes() => _objectGraph.Nodes.Where(n => n.IsSharedNode);
 
             // Returns the node for the given object.
-            ObjectData NodeFor(CompositionObject obj) => _objectGraph[obj];
+            protected ObjectData NodeFor(CompositionObject obj) => _objectGraph[obj];
 
-            ObjectData NodeFor(CompositionPath obj) => _objectGraph[obj];
+            protected ObjectData NodeFor(CompositionPath obj) => _objectGraph[obj];
 
-            ObjectData NodeFor(Wg.IGeometrySource2D obj) => _objectGraph[obj];
+            protected ObjectData NodeFor(Wg.IGeometrySource2D obj) => _objectGraph[obj];
 
-            ObjectData NodeFor(Wmd.LoadedImageSurface obj) => _objectGraph[obj];
+            protected ObjectData NodeFor(Wmd.LoadedImageSurface obj) => _objectGraph[obj];
 
             internal bool UsesCanvas => _nodes.Where(n => n.UsesCanvas).Any();
 
@@ -1204,36 +1240,38 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string ReferenceTypeName(string value) => _s.ReferenceTypeName(value);
 
+            string ArgumentTypeName(string value) => _s.ArgumentTypeName(value);
+
             string ConstVar => _s.ConstVar;
 
             string Var => _s.Var;
 
-            string Bool(bool value) => value ? "true" : "false";
+            protected string Bool(bool value) => value ? "true" : "false";
 
-            string Color(Wui.Color value) => _s.Color(value);
+            protected string Color(Wui.Color value) => _s.Color(value);
 
             string IListAdd => _s.IListAdd;
 
-            string Float(float value) => _s.Float(value);
+            protected string Float(float value) => _s.Float(value);
 
-            string Int(int value) => _s.Int32(value);
+            protected string Int(int value) => _s.Int32(value);
 
-            string Matrix3x2(Sn.Matrix3x2 value) => _s.Matrix3x2(value);
+            public string Matrix3x2(Sn.Matrix3x2 value) => _s.Matrix3x2(value);
 
-            string Matrix4x4(Matrix4x4 value) => _s.Matrix4x4(value);
+            protected string Matrix4x4(Matrix4x4 value) => _s.Matrix4x4(value);
 
             // readonly on C#, const on C++.
-            string Readonly(string value) => _s.Readonly(value);
+            protected string Readonly(string value) => _s.Readonly(value);
 
-            string String(WinCompData.Expressions.Expression value) => String(value.ToText());
+            protected string String(WinCompData.Expressions.Expression value) => String(value.ToText());
 
-            string String(string value) => _s.String(value);
+            protected string String(string value) => _s.String(value);
 
-            string Vector2(Sn.Vector2 value) => _s.Vector2(value);
+            protected string Vector2(Sn.Vector2 value) => _s.Vector2(value);
 
-            string Vector3(Sn.Vector3 value) => _s.Vector3(value);
+            protected string Vector3(Sn.Vector3 value) => _s.Vector3(value);
 
-            string Vector4(Sn.Vector4 value) => _s.Vector4(value);
+            protected string Vector4(Sn.Vector4 value) => _s.Vector4(value);
 
             string BorderMode(CompositionBorderMode value) => _s.BorderMode(value);
 
@@ -1249,17 +1287,17 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
             string StrokeLineJoin(CompositionStrokeLineJoin value) => _s.StrokeLineJoin(value);
 
-            string TimeSpan(TimeSpan value) => value == _owner._compositionDuration ? _s.TimeSpan(DurationTicksFieldName) : _s.TimeSpan(value);
+            protected string TimeSpan(TimeSpan value) => value == _owner._compositionDuration ? _s.TimeSpan(DurationTicksFieldName) : _s.TimeSpan(value);
 
             /// <summary>
             /// Returns the code to call the factory for the given object.
             /// </summary>
             /// <returns>The code to call the factory for the given object.</returns>
-            internal string CallFactoryFor(CanvasGeometry obj)
+            public string CallFactoryFor(CanvasGeometry obj)
                 => CallFactoryFromFor(_currentObjectFactoryNode!, obj);
 
             // Returns the code to call the factory for the given node from the given node.
-            string CallFactoryFromFor(ObjectData callerNode, ObjectData calleeNode)
+            protected virtual string CallFactoryFromFor(ObjectData callerNode, ObjectData calleeNode)
             {
                 if (callerNode.CallFactoryFromForCache.TryGetValue(calleeNode, out string? result))
                 {
@@ -1274,7 +1312,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 if (calleeNode.RequiresStorage && !_owner._disableFieldOptimization)
                 {
                     // The node has storage for its result. Next time just return the field.
-                    callerNode.CallFactoryFromForCache.Add(calleeNode, calleeNode.FieldName!);
+                    callerNode.CallFactoryFromForCache.Add(calleeNode, FieldReadExpression(calleeNode)!);
                 }
                 else
                 {
@@ -1293,7 +1331,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 if (calleeNode == _rootNode)
                 {
                     Debug.Assert(calleeNode.RequiresStorage, "Root node is not stored in a field");
-                    return calleeNode.FieldName!;
+                    return FieldReadExpression(calleeNode)!;
                 }
 
                 if (calleeNode.Object is CompositionPropertySet propertySet)
@@ -1344,11 +1382,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     // The object was created by another caller. Just access the field.
                     Debug.Assert(calleeNode.RequiresStorage, "Expecting to access a field containing a previously cached value, but the callee has no field");
-                    return calleeNode.FieldName!;
+                    return FieldReadExpression(calleeNode)!;
                 }
                 else if (calleeNode.RequiresStorage && _factoriesAlreadyCalled.Contains((callerNode, calleeNode)))
                 {
-                    return calleeNode.FieldName!;
+                    return FieldReadExpression(calleeNode)!;
                 }
                 else
                 {
@@ -1368,16 +1406,16 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             }
 
             // Returns the code to call the factory for the given object from the given node.
-            string CallFactoryFromFor(ObjectData callerNode, CompositionObject? obj) =>
+            protected virtual string CallFactoryFromFor(ObjectData callerNode, CompositionObject? obj) =>
                 obj is null
                 ? _s.Null
                 : CallFactoryFromFor(callerNode, NodeFor(obj));
 
-            string CallFactoryFromFor(ObjectData callerNode, CompositionPath obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
+            protected string CallFactoryFromFor(ObjectData callerNode, CompositionPath obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
 
-            string CallFactoryFromFor(ObjectData callerNode, Wg.IGeometrySource2D obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
+            protected string CallFactoryFromFor(ObjectData callerNode, Wg.IGeometrySource2D obj) => CallFactoryFromFor(callerNode, NodeFor(obj));
 
-            bool GenerateCompositionPathFactory(CodeBuilder builder, CompositionPath obj, ObjectData node)
+            protected virtual bool GenerateCompositionPathFactory(CodeBuilder builder, CompositionPath obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var canvasGeometry = _objectGraph[(CanvasGeometry)obj.Source];
@@ -1386,7 +1424,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            void WriteObjectFactoryStart(CodeBuilder builder, ObjectData node, IEnumerable<string>? parameters = null)
+            protected void WriteObjectFactoryStart(CodeBuilder builder, ObjectData node, IEnumerable<string>? parameters = null)
             {
                 // Save the node as the current node while the factory is being written.
                 _currentObjectFactoryNode = node;
@@ -1397,7 +1435,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 builder.OpenScope();
             }
 
-            void WriteObjectFactoryEnd(CodeBuilder builder)
+            protected void WriteObjectFactoryEnd(CodeBuilder builder)
             {
                 builder.WriteLine("return result;");
                 builder.CloseScope();
@@ -1405,69 +1443,72 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _currentObjectFactoryNode = null;
             }
 
-            /// <summary>
-            /// Combines the calls to <see cref="StartAnimations(CodeBuilder, CompositionObject, ObjectData, string)"/>
-            /// with <see cref="WriteObjectFactoryEnd(CodeBuilder)"/>.
-            /// </summary>
-            void WriteCompositionObjectFactoryEnd(CodeBuilder builder, CompositionObject obj, ObjectData node)
+            protected void WriteCompositionObjectStartAnimations(CodeBuilder builder, CompositionObject obj, ObjectData node)
             {
                 if (_configuration.ImplementCreateAndDestroyMethods)
                 {
                     // Use FieldName as the reference name in case if we are implementing IAnimatedVisual2.
                     // We can't use local name "result" since animations will be started from different place.
-                    StartAnimations(builder, obj, node, node.FieldName ?? string.Empty, ref controllerCreatedInCreateAnimationsMethod);
+                    StartAnimations(builder, obj, node, FieldReadExpression(node) ?? string.Empty, ref controllerCreatedInCreateAnimationsMethod);
                 }
                 else
                 {
-                    StartAnimationsOnResult(builder, obj, node);
+                    StartAnimations(builder, obj, node, "result");
                 }
+            }
 
+            /// <summary>
+            /// Combines the calls to <see cref="StartAnimations(CodeBuilder, CompositionObject, ObjectData, string)"/>
+            /// with <see cref="WriteObjectFactoryEnd(CodeBuilder)"/>.
+            /// </summary>
+            protected void WriteCompositionObjectFactoryEnd(CodeBuilder builder, CompositionObject obj, ObjectData node)
+            {
+                WriteCompositionObjectStartAnimations(builder, obj, node);
                 WriteObjectFactoryEnd(builder);
             }
 
             // Writes a factory that just creates an object but doesn't parameterize it before it is returned.
-            void WriteSimpleObjectFactory(CodeBuilder builder, ObjectData node, string createCallText)
+            protected void WriteSimpleObjectFactory(CodeBuilder builder, ObjectData node, string createCallText)
             {
                 WriteObjectFactoryStart(builder, node);
-                if (node.RequiresStorage)
+                WriteCreateAssignment(builder, node, createCallText);
+                WriteObjectFactoryEnd(builder);
+            }
+
+            protected virtual string? FieldReadExpression(ObjectData node)
+            {
+                if (node.FieldName == null)
                 {
-                    if (_owner._disableFieldOptimization)
-                    {
-                        // Create the object unless it has already been created.
-                        builder.WriteLine($"return ({node.FieldName} == {Null})");
-                        builder.Indent();
-                        builder.WriteLine($"? {node.FieldName} = {createCallText}");
-                        builder.WriteLine($": {node.FieldName};");
-                        builder.UnIndent();
-                    }
-                    else
-                    {
-                        // If field optimization is enabled, the method will only get called once.
-                        builder.WriteLine($"return {node.FieldName} = {createCallText};");
-                    }
+                    return null;
                 }
                 else
                 {
-                    // The object is only used once.
-                    builder.WriteLine($"return {createCallText};");
+                    return $"{node.FieldName}";
                 }
-
-                builder.CloseScope();
-                builder.WriteLine();
-                _currentObjectFactoryNode = null;
             }
 
-            void WriteCreateAssignment(CodeBuilder builder, ObjectData node, string createCallText)
+            protected virtual string FieldWriteExpression(ObjectData node, string value)
+            {
+                return $"{node.FieldName} = {value}";
+            }
+
+            protected virtual void WriteOptimizedFieldRead(CodeBuilder builder, ObjectData node)
+            {
+                // If the field has already been assigned, return its value.
+                builder.WriteLine($"if ({FieldReadExpression(node)} != {Null}) {{ return {FieldReadExpression(node)}; }}");
+            }
+
+            protected void WriteCreateAssignment(CodeBuilder builder, ObjectData node, string createCallText)
             {
                 if (node.RequiresStorage)
                 {
                     if (_owner._disableFieldOptimization)
                     {
-                        // If the field has already been assigned, return its value.
-                        builder.WriteLine($"if ({node.FieldName} != {Null}) {{ return {node.FieldName}; }}");
+                        WriteOptimizedFieldRead(builder, node);
                     }
 
-                    builder.WriteLine($"{ConstVar} result = {node.FieldName} = {createCallText};");
+                    builder.WriteLine($"{ConstVar} result = {createCallText};");
+                    builder.WriteLine($"{FieldWriteExpression(node, "result")};");
                 }
                 else
                 {
@@ -1520,7 +1561,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void WriteSetPropertyStatementDefaultIsNullOrWhitespace(
+            protected void WriteSetPropertyStatementDefaultIsNullOrWhitespace(
                 CodeBuilder builder,
                 string propertyName,
                 string? value,
@@ -1545,7 +1586,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void WritePopulateShapesCollection(CodeBuilder builder, IList<CompositionShape> shapes, ObjectData node)
+            protected virtual void WritePopulateShapesCollection(CodeBuilder builder, IList<CompositionShape> shapes, ObjectData node)
             {
                 switch (shapes.Count)
                 {
@@ -1577,9 +1618,20 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void WriteFrameNumberComment(CodeBuilder builder, double progress)
+            protected void WriteFrameNumberComment(CodeBuilder builder, double progress)
             {
                 builder.WriteComment($"Frame {_owner._sourceMetadata.ProgressToFrameNumber(progress):0.##}.");
+            }
+
+            protected virtual void WriteDefaultFields(CodeBuilder builder, bool themed)
+            {
+                _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("Compositor")), "_c");
+                _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("ExpressionAnimation")), SingletonExpressionAnimationName);
+
+                if (themed)
+                {
+                    _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("CompositionPropertySet")), ThemePropertiesFieldName);
+                }
             }
 
             internal void WriteAnimatedVisualCode(CodeBuilder builder)
@@ -1596,13 +1648,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
 
                 // Write fields for each object that needs storage (i.e. objects that are referenced more than once).
                 // Write read-only fields first.
-                _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("Compositor")), "_c");
-                _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("ExpressionAnimation")), SingletonExpressionAnimationName);
-
-                if (_owner._isThemed)
-                {
-                    _owner.WriteDefaultInitializedField(builder, Readonly(_s.ReferenceTypeName("CompositionPropertySet")), ThemePropertiesFieldName);
-                }
+                WriteDefaultFields(builder, _owner._isThemed);
 
                 WriteFields(builder);
 
@@ -1643,7 +1689,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 _owner._currentAnimatedVisualGenerator = null;
             }
 
-            void WriteFields(CodeBuilder builder)
+            protected virtual void WriteFields(CodeBuilder builder)
             {
                 foreach (var node in OrderByTypeThenName(_nodes.Where(n => n.RequiresReadonlyStorage)))
                 {
@@ -1654,7 +1700,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 foreach (var node in OrderByTypeThenName(_nodes.Where(n => n.RequiresStorage && !n.RequiresReadonlyStorage)))
                 {
                     // Generate a field for the non-read-only storage.
-                    _owner.WriteDefaultInitializedField(builder, _s.ReferenceTypeName(node.TypeName), node.FieldName!);
+                    _owner.WriteDefaultInitializedField(builder, _s.FieldTypeName(node.TypeName), node.FieldName!);
                 }
             }
 
@@ -1680,14 +1726,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
+            protected virtual string CallCreateCubicBezierEasingFunction(CubicBezierEasingFunction obj)
                 => $"_c{Deref}CreateCubicBezierEasingFunction({Vector2(obj.ControlPoint1)}, {Vector2(obj.ControlPoint2)})";
 
-            bool GenerateCanvasGeometryFactory(CodeBuilder builder, CanvasGeometry obj, ObjectData node)
+            protected virtual bool GenerateCanvasGeometryFactory(CodeBuilder builder, CanvasGeometry obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var typeName = _s.ReferenceTypeName(node.TypeName);
-                var fieldName = node.FieldName!;
+                var fieldName = FieldReadExpression(node)!;
 
                 switch (obj.Type)
                 {
@@ -1890,7 +1936,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
+            protected virtual bool GenerateContainerVisualFactory(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"_c{Deref}CreateContainerVisual()");
@@ -1908,10 +1954,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            void StartAnimationsOnResult(CodeBuilder builder, CompositionObject obj, ObjectData node)
-                => StartAnimations(builder, obj, node, "result");
-
-            void StartAnimations(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName)
+            protected void StartAnimations(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName)
             {
                 var controllerVariableAdded = false;
                 StartAnimations(builder, obj, node, localName, ref controllerVariableAdded);
@@ -1932,6 +1975,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     // Start the animations for properties on the property set.
                     StartAnimations(builder, obj.Properties, NodeFor(obj.Properties), _s.PropertyGet(localName, "Properties"), ref controllerVariableAdded);
                 }
+            }
+
+            protected virtual void WriteDestroyAnimation(CodeBuilder builder, string localName, string propertyName)
+            {
+                builder.WriteLine($"{localName}{Deref}StopAnimation({String(propertyName)});");
             }
 
             void StartAnimation(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName, ref bool controllerVariableAdded, CompositionObject.Animator animator)
@@ -1980,24 +2028,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                                     {
                                         // If we are implementing IAnimatedVisual2 we should create these animation not in the tree initialization code,
                                         // but inside CreateAnimations method.
-                                        _createAnimationsCodeBuilder
-                                            .WriteLine(
-                                            $"StartProgressBoundAnimation({localName}, " +
-                                            $"{String(animator.AnimatedProperty)}, " +
-                                            $"{animationFactoryCall}, " +
-                                            $"{CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode)});");
+                                        WriteProgressBoundAnimationBuild(_createAnimationsCodeBuilder, localName, String(animator.AnimatedProperty), animationFactoryCall, CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode));
 
                                         // If we are implementing IAnimatedVisual2 we should also write a destruction call.
-                                        _destroyAnimationsCodeBuilder
-                                            .WriteLine($"{localName}{Deref}StopAnimation({String(animator.AnimatedProperty)});");
+                                        WriteDestroyAnimation(_destroyAnimationsCodeBuilder, localName, animator.AnimatedProperty);
                                     }
                                     else
                                     {
-                                        builder.WriteLine(
-                                            $"StartProgressBoundAnimation({localName}, " +
-                                            $"{String(animator.AnimatedProperty)}, " +
-                                            $"{animationFactoryCall}, " +
-                                            $"{CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode)});");
+                                        WriteProgressBoundAnimationBuild(builder, localName, String(animator.AnimatedProperty), animationFactoryCall, CallFactoryFromFor(NodeFor(animator.Controller), controllerExpressionAnimationNode));
                                     }
 
                                     return;
@@ -2015,14 +2053,12 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         }
                         else
                         {
-                            _createAnimationsCodeBuilder
-                                .WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall});");
+                            WriteAnimationStart(_createAnimationsCodeBuilder, localName, String(animator.AnimatedProperty), animationFactoryCall);
                             ConfigureAnimationController(_createAnimationsCodeBuilder, localName, ref controllerVariableAdded, animator);
                         }
 
                         // If we are implementing IAnimatedVisual2 we should also write a destruction call.
-                        _destroyAnimationsCodeBuilder
-                            .WriteLine($"{localName}{Deref}StopAnimation({String(animator.AnimatedProperty)});");
+                        WriteDestroyAnimation(_destroyAnimationsCodeBuilder, localName, animator.AnimatedProperty);
                     }
                     else
                     {
@@ -2032,14 +2068,24 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         }
                         else
                         {
-                            builder.WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {animationFactoryCall});");
+                            WriteAnimationStart(builder, localName, String(animator.AnimatedProperty), animationFactoryCall);
                             ConfigureAnimationController(builder, localName, ref controllerVariableAdded, animator);
                         }
                     }
                 }
             }
 
-            void ConfigureAnimationController(CodeBuilder builder, string localName, ref bool controllerVariableAdded, CompositionObject.Animator animator)
+            protected virtual void WriteAnimationStart(CodeBuilder builder, string targetName, string propertyName, string animationFactoryCall)
+            {
+                builder.WriteLine($"{targetName}{Deref}StartAnimation({propertyName}, {animationFactoryCall});");
+            }
+
+            protected virtual void WriteProgressBoundAnimationBuild(CodeBuilder builder, string name, string property, string animationFactory, string expressionFactory)
+            {
+                builder.WriteLine($"StartProgressBoundAnimation({name}, {property}, {animationFactory}, {expressionFactory});");
+            }
+
+            protected virtual void ConfigureAnimationController(CodeBuilder builder, string localName, ref bool controllerVariableAdded, CompositionObject.Animator animator)
             {
                 // If the animation has a controller, get the controller, optionally pause it, and recurse to start the animations
                 // on the controller.
@@ -2070,7 +2116,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             }
 
             // Helper method that starts an animation and binds its AnimationController.Progress to an expression.
-            void EnsureStartProgressBoundAnimationWritten(CodeBuilder builder)
+            protected virtual void EnsureStartProgressBoundAnimationWritten(CodeBuilder builder)
             {
                 // Write a static method that starts an animation, then binds the Progress property of its
                 // AnimationController for that animation to an expression. This is used to start animations
@@ -2080,10 +2126,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     b.WriteLine("static void StartProgressBoundAnimation(");
                     b.Indent();
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} target,");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} target,");
                     b.WriteLine($"{_s.TypeString} animatedPropertyName,");
-                    b.WriteLine($"{ReferenceTypeName("CompositionAnimation")} animation,");
-                    b.WriteLine($"{ReferenceTypeName("ExpressionAnimation")} controllerProgressExpression)");
+                    b.WriteLine($"{ArgumentTypeName("CompositionAnimation")} animation,");
+                    b.WriteLine($"{ArgumentTypeName("ExpressionAnimation")} controllerProgressExpression)");
                     b.UnIndent();
                     b.OpenScope();
                     b.WriteLine($"target{Deref}StartAnimation(animatedPropertyName, animation);");
@@ -2095,7 +2141,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void EnsureBindPropertyWritten(CodeBuilder builder)
+            protected virtual void EnsureBindPropertyWritten(CodeBuilder builder)
             {
                 // Write the method that binds an expression to an object using the singleton ExpressionAnimation object.
                 var b = builder.GetSubBuilder("BindProperty");
@@ -2104,11 +2150,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     // 1 reference parameter version.
                     b.WriteLine("void BindProperty(");
                     b.Indent();
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} target,");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} target,");
                     b.WriteLine($"{_s.TypeString} animatedPropertyName,");
                     b.WriteLine($"{_s.TypeString} expression,");
                     b.WriteLine($"{_s.TypeString} referenceParameterName,");
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} referencedObject)");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} referencedObject)");
                     b.UnIndent();
                     b.OpenScope();
                     b.WriteLine($"{SingletonExpressionAnimationName}{Deref}ClearAllParameters();");
@@ -2130,13 +2176,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     // 2 reference parameter version.
                     b.WriteLine($"void BindProperty2(");
                     b.Indent();
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} target,");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} target,");
                     b.WriteLine($"{_s.TypeString} animatedPropertyName,");
                     b.WriteLine($"{_s.TypeString} expression,");
                     b.WriteLine($"{_s.TypeString} referenceParameterName0,");
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} referencedObject0,");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} referencedObject0,");
                     b.WriteLine($"{_s.TypeString} referenceParameterName1,");
-                    b.WriteLine($"{ReferenceTypeName("CompositionObject")} referencedObject1)");
+                    b.WriteLine($"{ArgumentTypeName("CompositionObject")} referencedObject1)");
                     b.UnIndent();
                     b.OpenScope();
                     b.WriteLine($"{SingletonExpressionAnimationName}{Deref}ClearAllParameters();");
@@ -2157,7 +2203,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 {
                     CompositionObjectType.BooleanKeyFrameAnimation => "bool",
                     CompositionObjectType.ColorKeyFrameAnimation => "Color",
-                    CompositionObjectType.PathKeyFrameAnimation => ReferenceTypeName("CompositionPath"),
+                    CompositionObjectType.PathKeyFrameAnimation => ArgumentTypeName("CompositionPath"),
                     CompositionObjectType.ScalarKeyFrameAnimation => _s.TypeFloat32,
                     CompositionObjectType.Vector2KeyFrameAnimation => _s.TypeVector2,
                     CompositionObjectType.Vector3KeyFrameAnimation => _s.TypeVector3,
@@ -2174,14 +2220,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     var easingParameter =
                         animationType == CompositionObjectType.BooleanKeyFrameAnimation
                             ? string.Empty
-                            : $", {ReferenceTypeName("CompositionEasingFunction")} initialEasingFunction";
+                            : $", {ArgumentTypeName("CompositionEasingFunction")} initialEasingFunction";
 
                     var easingArgument =
                         animationType == CompositionObjectType.BooleanKeyFrameAnimation
                             ? string.Empty
                             : $", initialEasingFunction";
 
-                    b.WriteLine($"{ReferenceTypeName(animationType.ToString())} {methodName}(float initialProgress, {valueType} initialValue{easingParameter})");
+                    b.WriteLine($"{ReferenceTypeName(animationType.ToString())} {methodName}(float initialProgress, {ArgumentTypeName(valueType)} initialValue{easingParameter})");
                     b.OpenScope();
                     b.WriteLine($"{ConstVar} result = _c{Deref}{methodName}();");
                     WriteSetPropertyStatement(b, "Duration", TimeSpan(_owner._compositionDuration));
@@ -2242,7 +2288,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 var b = builder.GetSubBuilder("CreateSpriteShapeWithFillBrush");
                 if (b.IsEmpty)
                 {
-                    b.WriteLine($"{ReferenceTypeName("CompositionSpriteShape")} CreateSpriteShape({ReferenceTypeName("CompositionGeometry")} geometry, {_s.TypeMatrix3x2} transformMatrix, {ReferenceTypeName("CompositionBrush")} fillBrush)");
+                    b.WriteLine($"{ReferenceTypeName("CompositionSpriteShape")} CreateSpriteShape({ArgumentTypeName("CompositionGeometry")} geometry, {ArgumentTypeName(_s.TypeMatrix3x2)} transformMatrix, {ArgumentTypeName("CompositionBrush")} fillBrush)");
                     b.OpenScope();
                     b.WriteLine($"{ConstVar} result = _c{Deref}CreateSpriteShape(geometry);");
                     WriteSetPropertyStatement(b, "TransformMatrix", "transformMatrix");
@@ -2271,7 +2317,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             // This reparameterizes the singleton each time it is called, and therefore avoids the
             // cost of creating a new ExpressionAnimation. However, because it gets reparameterized
             // for each use, it cannot be used if the ExpressionAnimation is shared by multiple nodes.
-            void StartSingletonExpressionAnimation(
+            protected virtual void StartSingletonExpressionAnimation(
                     CodeBuilder builder,
                     CompositionObject obj,
                     string localName,
@@ -2340,9 +2386,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                         builder.WriteLine($"{SingletonExpressionAnimationName}{Deref}SetReferenceParameter({String(rp.Key)}, {referenceParameterName});");
                     }
 
-                    builder.WriteLine($"{localName}{Deref}StartAnimation({String(animator.AnimatedProperty)}, {SingletonExpressionAnimationName});");
+                    WriteAnimationStart(builder, localName, String(animator.AnimatedProperty), SingletonExpressionAnimationName);
                 }
             }
+
+            protected virtual string ReferencePropertySetName() => "propertySet";
 
             string GetReferenceParameterName(
                 CompositionObject obj,
@@ -2362,7 +2410,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                     if (propSetOwner == obj)
                     {
                         // Use the name of the local that is holding the property set.
-                        return "propertySet";
+                        return ReferencePropertySetName();
                     }
 
                     if (propSetOwner is null)
@@ -2381,7 +2429,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return CallFactoryFromFor(animationNode, referenceParameter.Value);
             }
 
-            void InitializeCompositionObject(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName = "result")
+            protected virtual void InitializeCompositionObject(CodeBuilder builder, CompositionObject obj, ObjectData node, string localName = "result")
             {
                 if (_owner._setCommentProperties)
                 {
@@ -2397,7 +2445,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void InitializeCompositionBrush(CodeBuilder builder, CompositionBrush obj, ObjectData node) =>
+            protected void InitializeCompositionBrush(CodeBuilder builder, CompositionBrush obj, ObjectData node) =>
                 InitializeCompositionObject(builder, obj, node);
 
             void InitializeCompositionEasingFunction(CodeBuilder builder, CompositionEasingFunction obj, ObjectData node) =>
@@ -2406,7 +2454,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
             void InitializeCompositionShadow(CodeBuilder builder, CompositionShadow obj, ObjectData node) =>
                 InitializeCompositionObject(builder, obj, node);
 
-            void InitializeVisual(CodeBuilder builder, Visual obj, ObjectData node)
+            protected virtual void InitializeVisual(CodeBuilder builder, Visual obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 
@@ -2435,7 +2483,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 WriteSetPropertyStatement(builder, nameof(obj.Scale), obj.Scale);
             }
 
-            void InitializeCompositionGradientBrush(CodeBuilder builder, CompositionGradientBrush obj, ObjectData node)
+            protected virtual void InitializeCompositionGradientBrush(CodeBuilder builder, CompositionGradientBrush obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 
@@ -2471,7 +2519,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 WriteSetPropertyStatement(builder, nameof(obj.TransformMatrix), obj.TransformMatrix);
             }
 
-            void InitializeContainerVisual(CodeBuilder builder, ContainerVisual obj, ObjectData node)
+            protected virtual void InitializeContainerVisual(CodeBuilder builder, ContainerVisual obj, ObjectData node)
             {
                 InitializeVisual(builder, obj, node);
 
@@ -2505,7 +2553,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
+            protected virtual void InitializeCompositionGeometry(CodeBuilder builder, CompositionGeometry obj, ObjectData node)
             {
                 InitializeCompositionObject(builder, obj, node);
 
@@ -2514,16 +2562,16 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 WriteSetPropertyStatement(builder, nameof(obj.TrimStart), obj.TrimStart);
             }
 
-            void InitializeCompositionAnimation(CodeBuilder builder, CompositionAnimation obj, ObjectData node)
+            protected void InitializeCompositionAnimation(CodeBuilder builder, CompositionAnimation obj, ObjectData node)
             {
-                InitializeCompositionAnimationWithParameters(
+                InitializeCompositionAnimation(
                     builder,
                     obj,
                     node,
                     obj.ReferenceParameters.Select(p => new KeyValuePair<string, string>(p.Key, $"{CallFactoryFromFor(node, p.Value)}")));
             }
 
-            void InitializeCompositionAnimationWithParameters(
+            protected virtual void InitializeCompositionAnimation(
                 CodeBuilder builder,
                 CompositionAnimation obj,
                 ObjectData node,
@@ -2548,7 +2596,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 InitializeCompositionAnimation(builder, animation, node);
             }
 
-            bool GenerateCustomAnimationController(CodeBuilder builder, AnimationController obj, ObjectData node)
+            protected virtual bool GenerateCustomAnimationController(CodeBuilder builder, AnimationController obj, ObjectData node)
             {
                 if (!obj.IsCustom)
                 {
@@ -2569,7 +2617,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateBooleanKeyFrameAnimationFactory(CodeBuilder builder, BooleanKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
@@ -2618,7 +2666,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateColorKeyFrameAnimationFactory(CodeBuilder builder, ColorKeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateColorKeyFrameAnimationFactory(CodeBuilder builder, ColorKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
@@ -2674,7 +2722,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateVector2KeyFrameAnimationFactory(CodeBuilder builder, Vector2KeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateVector2KeyFrameAnimationFactory(CodeBuilder builder, Vector2KeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
@@ -2723,7 +2771,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateVector3KeyFrameAnimationFactory(CodeBuilder builder, Vector3KeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateVector3KeyFrameAnimationFactory(CodeBuilder builder, Vector3KeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var keyFrames = obj.KeyFrames;
@@ -2771,7 +2819,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateVector4KeyFrameAnimationFactory(CodeBuilder builder, Vector4KeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateVector4KeyFrameAnimationFactory(CodeBuilder builder, Vector4KeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var keyFrames = obj.KeyFrames;
@@ -2819,7 +2867,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionEffectFactory(CodeBuilder builder, CompositionEffectFactory obj, ObjectData node)
+            protected virtual bool GenerateCompositionEffectFactory(CodeBuilder builder, CompositionEffectFactory obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
@@ -2837,7 +2885,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GeneratePathKeyFrameAnimationFactory(CodeBuilder builder, PathKeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GeneratePathKeyFrameAnimationFactory(CodeBuilder builder, PathKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var keyFrames = obj.KeyFrames;
@@ -2872,7 +2920,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateScalarKeyFrameAnimationFactory(CodeBuilder builder, ScalarKeyFrameAnimation obj, ObjectData node)
+            protected virtual bool GenerateScalarKeyFrameAnimationFactory(CodeBuilder builder, ScalarKeyFrameAnimation obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 var keyFrames = obj.KeyFrames;
@@ -2947,7 +2995,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
+            protected virtual bool GenerateCompositionEllipseGeometryFactory(CodeBuilder builder, CompositionEllipseGeometry obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"_c{Deref}CreateEllipseGeometry()");
@@ -2964,7 +3012,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionPathGeometryFactory(CodeBuilder builder, CompositionPathGeometry obj, ObjectData node)
+            protected virtual bool GenerateCompositionPathGeometryFactory(CodeBuilder builder, CompositionPathGeometry obj, ObjectData node)
             {
                 var path = obj.Path is null ? null : _objectGraph[obj.Path];
                 var createPathText = path is null ? string.Empty : CallFactoryFromFor(node, path);
@@ -3028,7 +3076,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateShapeVisualFactory(CodeBuilder builder, ShapeVisual obj, ObjectData node)
+            protected virtual bool GenerateShapeVisualFactory(CodeBuilder builder, ShapeVisual obj, ObjectData node)
             {
                 // Sanity check: A ShapeVisual's size is its clip. If it's not set, nothing will display.
                 Debug.Assert(obj.Size.HasValue && obj.Size.Value.Length() > 0, "ShapeVisuals need a size");
@@ -3040,7 +3088,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateSpriteVisualFactory(CodeBuilder builder, SpriteVisual obj, ObjectData node)
+            protected virtual bool GenerateSpriteVisualFactory(CodeBuilder builder, SpriteVisual obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"_c{Deref}CreateSpriteVisual()");
@@ -3063,7 +3111,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionEffectBrushFactory( CodeBuilder builder, CompositionEffectBrush obj, ObjectData node)
+            protected virtual bool GenerateCompositionEffectBrushFactory( CodeBuilder builder, CompositionEffectBrush obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
 
@@ -3082,7 +3130,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateSpriteShapeFactory(CodeBuilder builder, CompositionSpriteShape obj, ObjectData node)
+            protected virtual bool GenerateSpriteShapeFactory(CodeBuilder builder, CompositionSpriteShape obj, ObjectData node)
             {
                 var setFillBrush = true;
                 WriteObjectFactoryStart(builder, node);
@@ -3145,7 +3193,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionSurfaceBrushFactory(CodeBuilder builder, CompositionSurfaceBrush obj, ObjectData node)
+            protected virtual bool GenerateCompositionSurfaceBrushFactory(CodeBuilder builder, CompositionSurfaceBrush obj, ObjectData node)
             {
                 var surfaceNode = obj.Surface switch
                 {
@@ -3158,7 +3206,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 var surfaceInitializationText = obj.Surface switch
                 {
                     CompositionObject compositionObject => CallFactoryFromFor(node, compositionObject),
-                    Wmd.LoadedImageSurface _ => surfaceNode!.FieldName!,
+                    Wmd.LoadedImageSurface _ => FieldReadExpression(surfaceNode!)!,
                     null => string.Empty,
                     _ => throw new InvalidOperationException(),
                 };
@@ -3206,7 +3254,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 return true;
             }
 
-            bool GenerateCompositionVisualSurfaceFactory(CodeBuilder builder, CompositionVisualSurface obj, ObjectData node)
+            protected virtual bool GenerateCompositionVisualSurfaceFactory(CodeBuilder builder, CompositionVisualSurface obj, ObjectData node)
             {
                 WriteObjectFactoryStart(builder, node);
                 WriteCreateAssignment(builder, node, $"_c{Deref}CreateVisualSurface()");
@@ -3280,7 +3328,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
                 }
             }
 
-            static void WriteShortDescriptionComment(CodeBuilder builder, IDescribable obj) =>
+            protected static void WriteShortDescriptionComment(CodeBuilder builder, IDescribable obj) =>
                 builder.WriteComment(obj.ShortDescription);
         }
 
@@ -3313,7 +3361,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen
         }
 
         // A node in the object graph, annotated with extra stuff to assist in code generation.
-        sealed class ObjectData : Graph.Node<ObjectData>
+        public sealed class ObjectData : Graph.Node<ObjectData>
         {
             Func<string>? _overriddenFactoryCall;
             Dictionary<ObjectData, string>? _callFactoryFromForCache;

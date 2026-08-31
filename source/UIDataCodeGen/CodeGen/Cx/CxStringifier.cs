@@ -93,10 +93,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cx
 
         public override string Readonly(string value) => $"{value} const";
 
+        public override string FieldTypeName(string value) => ReferenceTypeName(value);
+
         public override string ReferenceTypeName(string value)
             => value == "CanvasGeometry"
                     ? "CanvasGeometry" // CanvasGeometry is a typedef for ComPtr<GeoSource>, thus no hat pointer.
                     : $"{value}^";
+
+        public override string ArgumentTypeName(string value) => ReferenceTypeName(value);
 
         public override string String(string value) => $"\"{value}\"";
 

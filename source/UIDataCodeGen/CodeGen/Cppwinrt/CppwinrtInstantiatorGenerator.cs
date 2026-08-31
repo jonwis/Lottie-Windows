@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -10,7 +10,12 @@ using CommunityToolkit.WinUI.Lottie.WinCompData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.MetaData;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgce;
 using CommunityToolkit.WinUI.Lottie.WinCompData.Mgcg;
+using CommunityToolkit.WinUI.Lottie.WinCompData.Wg;
 using CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
+using Expr = CommunityToolkit.WinUI.Lottie.WinCompData.Expressions;
+using Sn = System.Numerics;
+using Wmd = CommunityToolkit.WinUI.Lottie.WinUIXamlMediaData;
+using Wui = CommunityToolkit.WinUI.Lottie.WinCompData.Wui;
 
 namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 {
@@ -19,8 +24,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
     /// </summary>
 #if PUBLIC_UIDataCodeGen
     public
+#else
+    internal
 #endif
-    sealed class CppwinrtInstantiatorGenerator : InstantiatorGeneratorBase
+    partial class CppwinrtInstantiatorGenerator : InstantiatorGeneratorBase
     {
         const string Muxc = "winrt::Microsoft::UI::Xaml::Controls";
         readonly CppwinrtStringifier _s;
@@ -44,6 +51,23 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         // True iff the generated code implements IDynamicAnimatedVisualSource.
         readonly bool _isIDynamic;
+
+        Dictionary<Tuple<Vector2, Vector2>, int> _cubicBeziers = new Dictionary<Tuple<Vector2, Vector2>, int>();
+
+        protected override bool InlineCubicBezierFunctionsIfPossible { get => false; }
+
+        internal int GetCubicBezierId(Vector2 point1, Vector2 point2)
+        {
+            Tuple<Vector2, Vector2> control = new Tuple<Vector2, Vector2>(point1, point2);
+            int id;
+            if (!_cubicBeziers.TryGetValue(control, out id))
+            {
+                id = _cubicBeziers.Count;
+                _cubicBeziers.Add(control, id);
+            }
+
+            return id;
+        }
 
         /// <summary>
         /// Returns the Cppwinrt code for a factory that will instantiate the given <see cref="Visual"/> as a
@@ -109,6 +133,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         static string FieldAssignment(string fieldName) => fieldName is not null ? $"{fieldName} = " : string.Empty;
 
         IAnimatedVisualSourceInfo SourceInfo => AnimatedVisualSourceInfo;
+
+        private protected override AnimatedVisualGenerator GetGenerator(InstantiatorGeneratorBase owner, CompositionObject graphRoot, uint requiredUapVersion, bool isPartOfMultiVersionSource, CodegenConfiguration configuration)
+        {
+            return new CppWinrtVisualGenerator(this, owner, graphRoot!, requiredUapVersion, isPartOfMultiVersionSource, configuration);
+        }
 
         /// <summary>
         /// Generates the text for the .IDL file.
@@ -499,7 +528,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             IAnimatedVisualInfo info)
         {
             // Start writing the instantiator.
-            builder.WriteLine($"class {info.ClassName} : public winrt::implements<{info.ClassName},");
+            builder.WriteLine($"class {info.ClassName} : public AnimationBaseType, public winrt::implements<{info.ClassName},");
             builder.Indent();
             builder.Indent();
 
@@ -545,13 +574,13 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 switch (c.Type)
                 {
                     case ConstantType.Color:
-                        builder.WriteLine($"static inline const winrt::Windows::UI::Color {c.Name}{_s.Color((WinCompData.Wui.Color)c.Value)};");
+                        builder.WriteLine($"constexpr static const winrt::Windows::UI::Color {c.Name}{_s.Color((WinCompData.Wui.Color)c.Value)};");
                         break;
                     case ConstantType.Int64:
-                        builder.WriteLine($"static constexpr int64_t {c.Name}{{ {_s.Int64((long)c.Value)} }};");
+                        builder.WriteLine($"constexpr static const int64_t {c.Name}{{ {_s.Int64((long)c.Value)} }};");
                         break;
                     case ConstantType.Float:
-                        builder.WriteLine($"static constexpr float {c.Name}{{ {_s.Float((float)c.Value)} }};");
+                        builder.WriteLine($"constexpr static const float {c.Name}{{ {_s.Float((float)c.Value)} }};");
                         break;
                     default:
                         throw new InvalidOperationException();
@@ -561,11 +590,821 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             }
         }
 
+        protected string AnimationBaseTypeClass => @"
+enum class SpriteFields : uint32_t
+{
+    Transformation = (1 << 0),
+    StrokeDashCap = (1 << 1),
+    StrokeDashOffset = (1 << 2),
+    StrokeStartCap = (1 << 3),
+    StrokeEndCap = (1 << 4),
+    StrokeLineJoin = (1 << 5),
+    StrokeMiterLimit = (1 << 6),
+    StrokeThickness = (1 << 7),
+    IsStrokeNonScaling = (1 << 8),
+    CenterPoint = (1 << 9),
+    Offset = (1 << 10),
+    RotationInDegrees = (1 << 11),
+    Scale = (1 << 12),
+};
+DEFINE_ENUM_FLAG_OPERATORS(SpriteFields);
+
+template<typename T> constexpr inline bool HasFlag(T const& flagset, T const& value) {
+    return (static_cast<uint32_t>(flagset) & static_cast<uint32_t>(value)) != 0;
+}
+
+template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr auto operator|(T const& a, T const& b) {
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(a) | static_cast<std::underlying_type_t<T>>(b));
+}
+
+template<class T, class Z = std::enable_if_t<std::is_enum_v<T>, void>> constexpr auto operator&(T const& a, T const& b) {
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(a) & static_cast<std::underlying_type_t<T>>(b));
+}
+
+struct AnimationBaseType
+{
+    AnimationBaseType(Compositor const& c) : _c(c), _reusableExpressionAnimation{c.CreateExpressionAnimation()} { }
+
+    ExpressionAnimation _reusableExpressionAnimation {nullptr};
+    Compositor _c{ nullptr };
+
+    struct propset_value
+    {
+        const wchar_t* Name;
+        std::variant<Color, float, float2, float3, float4> Value;
+    };
+
+    __declspec(noinline) void ApplyProperties(CompositionObject const& target, const propset_value* props, int propCount)
+    {
+        auto propSet = target.Properties();
+        auto visitor = [&propSet, &props](auto&& prop)
+        {
+            using T = std::decay_t<decltype(prop)>;
+            if constexpr (std::is_same_v<T, Color>)
+            {
+                propSet.InsertColor(props->Name, prop);
+            }
+            else if constexpr (std::is_same_v<T, float>)
+            {
+                propSet.InsertScalar(props->Name, prop);
+            }
+            else if constexpr (std::is_same_v<T, float2>)
+            {
+                propSet.InsertVector2(props->Name, prop);
+            }
+            else if constexpr (std::is_same_v<T, float3>)
+            {
+                propSet.InsertVector3(props->Name, prop);
+            }
+            else if constexpr (std::is_same_v<T, float4>)
+            {
+                propSet.InsertVector4(props->Name, prop);
+            }
+            else
+            {
+                static_assert(""incomplete"");
+            }
+        };
+
+        auto end = props + propCount;
+        while (props != end)
+        {
+            std::visit(visitor, props->Value);
+            ++props;
+        }
+    }
+
+    __declspec(noinline) void ApplyProperties(winrt::Windows::Foundation::IInspectable const& target, const propset_value* props, int propCount)
+    {
+        return ApplyProperties(target.as<CompositionObject>(), props, propCount);
+    }
+
+    template<typename T> struct func_or_field {
+        uint16_t id;
+    };
+
+    template<typename T> T common_invoke(func_or_field<T> const& id, std::vector<T>& storage)
+    {
+        auto realId = id.id - 1;
+        if (id.id == 0) {
+            return { nullptr };
+        } else if (realId < storage.size()) {
+            return storage[realId];
+        } else {
+            return call_method(id);
+        }
+    }
+
+
+    std::vector<winrt::com_ptr<CanvasGeometry>> m_CanvasGeometryStorage;
+    virtual winrt::com_ptr<CanvasGeometry> call_method(func_or_field<winrt::com_ptr<CanvasGeometry>> const&) { return nullptr; }
+    auto const& store_field(func_or_field<winrt::com_ptr<CanvasGeometry>> const& id, winrt::com_ptr<CanvasGeometry> const& value) {
+        return m_CanvasGeometryStorage[id.id - 1] = value;
+    }
+    winrt::com_ptr<CanvasGeometry> invoke_func_or_field(func_or_field<winrt::com_ptr<CanvasGeometry>> const& id)
+    {
+        return common_invoke(id, m_CanvasGeometryStorage);
+    }
+    auto& read_field(func_or_field<winrt::com_ptr<CanvasGeometry>> const& id) { return m_CanvasGeometryStorage[id.id - 1]; }
+" + GetStorageHelperPieces() + @"
+    template<typename TTarget, typename TField> auto coerce_type(func_or_field<TField> const& src)
+    {
+        if constexpr (std::is_same_v<TTarget, TField>)
+        {
+            return invoke_func_or_field(src);
+        }
+        else
+        {
+            return invoke_func_or_field(src).as<TTarget>();
+        }
+    }
+
+    template<typename TTarget> TTarget const& coerce_type(TTarget const& src)
+    {
+        return src;
+    }
+
+    template<typename TTarget> auto coerce_type(winrt::Windows::Foundation::IInspectable const& src)
+    {
+        return src.as<TTarget>();
+    }
+
+    struct SpriteShapeProperties
+    {
+        float3x2 Transformation;
+        CompositionStrokeCap StrokeDashCap;
+        float StrokeDashOffset;
+        CompositionStrokeCap StrokeStartCap;
+        CompositionStrokeCap StrokeEndCap;
+        CompositionStrokeLineJoin StrokeLineJoin;
+        float StrokeMiterLimit;
+        float StrokeThickness;
+        bool IsStrokeNonScaling;
+        float2 CenterPoint;
+        float2 Offset;
+        float RotationAngleInDegrees;
+        float2 Scale;
+        float const* dashes;
+        uint32_t dashCount;
+        func_or_field<CompositionGeometry> geometry;
+        func_or_field<CompositionBrush> fillBrush;
+        func_or_field<CompositionBrush> strokeBrush;
+        SpriteFields Fields;
+    };
+
+    __declspec(noinline) CompositionShape MakeAndApplyProperties(
+        SpriteShapeProperties const& props)
+    {
+        CompositionSpriteShape result{ nullptr };
+        if (auto g = invoke_func_or_field(props.geometry))
+        {
+            result = _c.CreateSpriteShape(g);
+        }
+        else
+        {
+            result = _c.CreateSpriteShape();
+        }
+
+        if (auto b = invoke_func_or_field(props.fillBrush))
+        {
+            result.FillBrush(b);
+        }
+
+        if (auto s = invoke_func_or_field(props.strokeBrush))
+        {
+            result.StrokeBrush(s);
+        }
+            
+        if (HasFlag(props.Fields, SpriteFields::Transformation))
+        {
+            result.TransformMatrix(props.Transformation);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeDashCap))
+        {
+            result.StrokeDashCap(props.StrokeDashCap);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeDashOffset))
+        {
+            result.StrokeDashOffset(props.StrokeDashOffset);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeStartCap))
+        {
+            result.StrokeStartCap(props.StrokeStartCap);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeEndCap))
+        {
+            result.StrokeEndCap(props.StrokeEndCap);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeMiterLimit))
+        {
+            result.StrokeMiterLimit(props.StrokeMiterLimit);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeThickness))
+        {
+            result.StrokeThickness(props.StrokeThickness);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::IsStrokeNonScaling))
+        {
+            result.IsStrokeNonScaling(props.IsStrokeNonScaling);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::StrokeLineJoin))
+        {
+            result.StrokeLineJoin(props.StrokeLineJoin);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::CenterPoint))
+        {
+            result.CenterPoint(props.CenterPoint);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::Offset))
+        {
+            result.Offset(props.Offset);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::RotationInDegrees))
+        {
+            result.RotationAngleInDegrees(props.RotationAngleInDegrees);
+        }
+
+        if (HasFlag(props.Fields, SpriteFields::Scale))
+        {
+            result.Scale(props.Scale);
+        }
+
+        if (props.dashCount)
+        {
+            result.StrokeDashArray().ReplaceAll({props.dashes, props.dashCount});
+        }
+
+        return result;
+    }
+
+    struct CompositionBrushProps {
+        struct SourceParameter {
+            const wchar_t* name;
+            func_or_field<CompositionBrush> brush;
+        };
+
+        func_or_field<CompositionEffectFactory> factory;
+        SourceParameter const *sources;
+        int sourceCount;
+    };
+
+    CompositionBrush MakeEffectBrush(CompositionBrushProps const& props)
+    {
+        auto factory = invoke_func_or_field(props.factory);
+        auto result = factory.CreateBrush();
+        for (int i = 0; i < props.sourceCount; ++i)
+        {
+            result.SetSourceParameter(props.sources[i].name, invoke_func_or_field(props.sources[i].brush));
+        }
+        return result;
+    }
+
+    template<typename TValue> struct KeyFrameStep {
+        float progressKey;
+        std::variant<TValue, const wchar_t*> data;
+        func_or_field<CompositionEasingFunction> func;
+    };
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float2>* steps, int stepCount)
+    {
+        auto result = _c.CreateVector2KeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<float2>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float3>* steps, int stepCount)
+    {
+        auto result = _c.CreateVector3KeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<float3>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float>* steps, int stepCount)
+    {
+        auto result = _c.CreateScalarKeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<float>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<Color>* steps, int stepCount)
+    {
+        auto result = _c.CreateColorKeyFrameAnimation();
+        result.InterpolationColorSpace(CompositionColorSpace::Rgb);
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<Color>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<func_or_field<CompositionPath>>* steps, int stepCount)
+    {
+        auto result = _c.CreatePathKeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, invoke_func_or_field(std::get<func_or_field<CompositionPath>>(step.data)), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<float4>* steps, int stepCount)
+    {
+        auto result = _c.CreateVector4KeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data), invoke_func_or_field(step.func));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<float4>(step.data), invoke_func_or_field(step.func));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionAnimation ConfigureAnimationKeyFrames(const TimeSpan* duration, const KeyFrameStep<bool>* steps, int stepCount)
+    {
+        auto result = _c.CreateBooleanKeyFrameAnimation();
+        auto kfAnim = IKeyFrameAnimation{ result };
+
+        if (duration)
+        {
+            kfAnim.Duration(*duration);
+        }
+
+        for (int i = 0; i < stepCount; ++i)
+        {
+            auto const& step = steps[i];
+            if (std::holds_alternative<const wchar_t*>(step.data))
+            {
+                kfAnim.InsertExpressionKeyFrame(step.progressKey, std::get<const wchar_t*>(step.data));
+            }
+            else
+            {
+                result.InsertKeyFrame(step.progressKey, std::get<bool>(step.data));
+            }
+        }
+
+        return result;
+    }
+
+    __declspec(noinline) CompositionPath MakeCompositionPath(winrt::com_ptr<CanvasGeometry> const& src)
+    {
+        return CompositionPath { *src };
+    }
+
+    __declspec(noinline) CompositionPath MakeCompositionPath(CanvasGeometry const& src)
+    {
+        return CompositionPath { src };
+    }
+
+    __declspec(noinline) CompositionPath MakeCompositionPath(func_or_field<winrt::com_ptr<CanvasGeometry>> const& src)
+    {
+        return MakeCompositionPath(invoke_func_or_field(src));
+    }
+
+    __declspec(noinline) CompositionGeometry CreateEllipseGeometry(std::pair<float2, float2> const& center_point)
+    {
+        auto result = _c.CreateEllipseGeometry();
+        result.Center(center_point.first);
+        result.Radius(center_point.second);
+        return result;
+    }
+
+    __declspec(noinline) CompositionGeometry MakePathGeometry(func_or_field<CompositionPath> const& path)
+    {
+        return _c.CreatePathGeometry(invoke_func_or_field(path));
+    }
+
+    __declspec(noinline) CompositionGeometry MakePathGeometry(func_or_field<winrt::com_ptr<CanvasGeometry>> const& geoMaker)
+    {
+        return _c.CreatePathGeometry(CompositionPath { *invoke_func_or_field(geoMaker) });
+    }
+
+    __declspec(noinline) CompositionGeometry MakePathGeometry()
+    {
+        return _c.CreatePathGeometry();
+    }
+
+    __declspec(noinline) void StartProgressBoundAnimation(
+        CompositionObject const& target,
+        const wchar_t* animatedPropertyName,
+        func_or_field<CompositionAnimation> const& animation,
+        func_or_field<ExpressionAnimation> const& controllerProgressExpression)
+    {
+        target.StartAnimation(animatedPropertyName, invoke_func_or_field(animation));
+        const auto controller = target.TryGetAnimationController(animatedPropertyName);
+        controller.Pause();
+        controller.StartAnimation(L""Progress"", invoke_func_or_field(controllerProgressExpression));
+    }
+
+    template<typename TTarget, typename TAnimation, typename TExpression> __declspec(noinline) void StartProgressBoundAnimation(
+        TTarget const& target,
+        const wchar_t* animatedPropertyName,
+        TAnimation const& animation,
+        TExpression const& controllerProgressExpression)
+    {
+        StartProgressBoundAnimation(coerce_type<CompositionObject>(target), animatedPropertyName, coerce_type<CompositionAnimation>(animation), coerce_type<ExpressionAnimation>(controllerProgressExpression));
+    }
+
+    __declspec(noinline) void BindProperty(CompositionObject const& target, const wchar_t* animatedPropertyName, const wchar_t* expression, const wchar_t* referenceParameterName, CompositionObject const& referencedObject)
+    {
+        _reusableExpressionAnimation.ClearAllParameters();
+        _reusableExpressionAnimation.Expression(expression);
+        _reusableExpressionAnimation.SetReferenceParameter(referenceParameterName, referencedObject);
+        target.StartAnimation(animatedPropertyName, _reusableExpressionAnimation);
+    }
+
+    template<typename TTarget, typename TReference> __declspec(noinline) void BindProperty(TTarget const& target, const wchar_t* animatedPropertyName, const wchar_t* expression, const wchar_t* referencedParameterName, TReference const& referencedObject)
+    {
+        return BindProperty(coerce_type<CompositionObject>(target), animatedPropertyName, expression, referencedParameterName, coerce_type<CompositionObject>(referencedObject));
+    }
+
+    AnimationController GetAnimationController(CompositionObject const& target, const wchar_t* propertyName, bool pauseFirst)
+    {
+        auto controller = target.TryGetAnimationController(propertyName);
+        if (pauseFirst)
+        {
+            controller.Pause();
+        }
+        return controller;
+    }
+
+    template<typename TTarget> __declspec(noinline) AnimationController GetAnimationController(TTarget const& target, const wchar_t* propertyName, bool pauseFirst)
+    {
+        return GetAnimationController(coerce_type<CompositionObject>(target), propertyName, pauseFirst);
+    }
+
+    template<typename Q> AnimationController GetAnimationController(func_or_field<Q> const& target, const wchar_t* propertyName, bool pauseFirst)
+    {
+        return GetAnimationController(invoke_func_or_field(target), propertyName, pauseFirst);
+    }
+
+    struct BoundAnimation {
+        const wchar_t* property;
+        func_or_field<CompositionAnimation> animation;
+        func_or_field<ExpressionAnimation> expression;
+    };
+
+    template<typename Q> __declspec(noinline) void StartProgressBoundAnimation(func_or_field<Q> const& target, const BoundAnimation& animation)
+    {
+        return StartProgressBoundAnimation(invoke_func_or_field(target), animation);
+    }
+
+    __declspec(noinline) void StartProgressBoundAnimation(CompositionObject const& target, const BoundAnimation& animation)
+    {
+        return StartProgressBoundAnimation(target, animation.property, animation.animation, animation.expression);
+    }
+
+    __declspec(noinline) void StartProgressBoundAnimation(winrt::Windows::Foundation::IInspectable const& target, const BoundAnimation& animation)
+    {
+        return StartProgressBoundAnimation(target.as<CompositionObject>(), animation);
+    }
+    __declspec(noinline) void StartAnimation(CompositionObject const& target, const wchar_t* propertyName, CompositionAnimation const& animation)
+    {
+        target.StartAnimation(propertyName, animation);
+    }
+
+    template<typename TTarget, typename TAnim> __declspec(noinline) void StartAnimation(TTarget const& target, const wchar_t* propertyName, TAnim const& animation)
+    {
+        return StartAnimation(coerce_type<CompositionObject>(target), propertyName, coerce_type<CompositionAnimation>(animation));
+    }
+
+    __declspec(noinline) void StopAnimation(CompositionObject const& target, const wchar_t* propertyName)
+    {
+        target.StopAnimation(propertyName);
+    }
+
+    template<typename TTarget> __declspec(noinline) void StopAnimation(TTarget const& target, const wchar_t* propertyName)
+    {
+        return StopAnimation(coerce_type<CompositionObject>(target), propertyName);
+    }
+
+    template<typename TThing> void AddCompositionShapes(
+        TThing const& container,
+        const func_or_field<CompositionShape>* toAdd,
+        int toAddCount)
+    {
+        auto shapes = container.Shapes();
+        for (int i = 0; i < toAddCount; i++)
+        {
+            shapes.Append(invoke_func_or_field(toAdd[i]));
+        }
+    }
+
+    __declspec(noinline) CompositionBrush MakeSurfaceBrush(func_or_field<CompositionVisualSurface> const& target, bool initAfter)
+    {
+        CompositionSurfaceBrush result{nullptr};
+        CompositionVisualSurface targetSurface = invoke_func_or_field(target);
+
+        if (initAfter)
+        {
+            result = _c.CreateSurfaceBrush();
+            if (targetSurface)
+            {
+                result.Surface(targetSurface);
+            }
+        }
+        else
+        {
+            result = _c.CreateSurfaceBrush(targetSurface);
+        }
+
+        return result;
+    }
+
+    struct SpriteVisualConfig {
+        func_or_field<CompositionBrush> Brush;
+        func_or_field<CompositionShadow> Shadow;
+    };
+    __declspec(noinline) SpriteVisual CreateSpriteVisual(SpriteVisualConfig const& props) {
+        auto result = _c.CreateSpriteVisual();
+        if (auto b = invoke_func_or_field(props.Brush)) {
+            result.Brush(b);
+        }
+        if (auto s = invoke_func_or_field(props.Shadow)) {
+            result.Shadow(s);
+        }
+        return result;
+    }
+    __declspec(noinline) void ApplyContainerVisuals(ContainerVisual const& target, const func_or_field<Visual>* visuals, size_t visualCount)
+    {
+        auto children = target.Children();
+        for (size_t i = 0; i < visualCount; ++i)
+        {
+            children.InsertAtTop(invoke_func_or_field(visuals[i]));
+        }
+    }
+
+    __declspec(noinline) void ApplyContainerVisuals(winrt::Windows::Foundation::IInspectable const& target, const func_or_field<Visual>* visuals, size_t visualCount)
+    {
+        return ApplyContainerVisuals(target.as<ContainerVisual>(), visuals, visualCount);
+    }
+
+    enum class VisualConfigFlags : uint32_t {
+        BorderMode = (1 << 0),
+        CenterPoint = (1 << 2),
+        IsVisible = (1 << 3),
+        Offset = (1 << 4),
+        Opacity = (1 << 5),
+        RotationAngleInDegrees = (1 << 6),
+        RotationAxis = (1 << 7),
+        Scale = (1 << 8),
+        Size = (1 << 9)    
+    };
+    struct VisualConfig {
+        CompositionBorderMode BorderMode;
+        float3 CenterPoint;
+        func_or_field<CompositionClip> Clip;
+        bool IsVisible;
+        float3 Offset;
+        float Opacity;
+        float RotationAngleInDegrees;
+        float3 RotationAxis;
+        float3 Scale;
+        float2 Size;
+        float4x4 const* TransformMatrix;
+        VisualConfigFlags Flags;
+    };
+    #define TEST_FLAG_AND_SET(pn) if (HasFlag(props.Flags, decltype(props.Flags)::##pn)) target.##pn(props.##pn)
+    void ApplyVisualConfig(Visual const& target, const VisualConfig& props) {
+        TEST_FLAG_AND_SET(BorderMode);
+        TEST_FLAG_AND_SET(CenterPoint);
+        if (auto clip = invoke_func_or_field(props.Clip)) {
+            target.Clip(clip);
+        }
+        TEST_FLAG_AND_SET(IsVisible);
+        TEST_FLAG_AND_SET(Offset);
+        TEST_FLAG_AND_SET(Opacity);
+        TEST_FLAG_AND_SET(RotationAngleInDegrees);
+        TEST_FLAG_AND_SET(RotationAxis);
+        TEST_FLAG_AND_SET(Scale);
+        TEST_FLAG_AND_SET(Size);
+        if (props.TransformMatrix) {
+            target.TransformMatrix(*props.TransformMatrix);
+        }
+    }
+    void ApplyVisualConfig(winrt::Windows::Foundation::IInspectable const& target, const VisualConfig& props) {
+        return ApplyVisualConfig(target.as<Visual>(), props);
+    }
+    struct GeometryConfig {
+        enum class ConfigFlags : uint32_t {
+            TrimEnd = (1 << 0),
+            TrimStart = (1 << 1),
+            TrimOffset = (1 << 2),
+        };
+        float TrimEnd;
+        float TrimStart;
+        float TrimOffset;
+        ConfigFlags Flags;
+    };
+    void ApplyGeometryConfig(CompositionGeometry const& target, GeometryConfig const& props) {
+        TEST_FLAG_AND_SET(TrimEnd);
+        TEST_FLAG_AND_SET(TrimStart);
+        TEST_FLAG_AND_SET(TrimOffset);
+    }
+    __declspec(noinline) void ApplyGeometryConfig(winrt::Windows::Foundation::IInspectable const& target, GeometryConfig const& props) {
+        return ApplyGeometryConfig(target.as<CompositionGeometry>(), props);
+            }
+    struct EllipseConfig {
+        float2 Center;
+        float2 Radius;
+        };
+    CompositionEllipseGeometry CreateEllipseGeometry(EllipseConfig const& props) {
+        auto target = _c.CreateEllipseGeometry();
+        target.Center(props.Center);
+        target.Radius(props.Radius);
+        return target;
+        }
+    struct GradientBrushConfig {
+        enum class ConfigFlags {
+            AnchorPoint = (1 << 0),
+            CenterPoint = (1 << 1),
+            ColorStops = (1 << 2),
+            ExtendMode = (1 << 3),
+            InterpolationSpace = (1 << 4),
+            MappingMode = (1 << 5),
+            Offset = (1 << 6),
+            RotationAngleInDegrees = (1 << 8),
+            Scale = (1 << 9),
+            TransformMatrix = (1 << 10),
+        };
+        float2 AnchorPoint;
+        float2 CenterPoint;
+        CompositionGradientExtendMode ExtendMode;
+        CompositionColorSpace InterpolationSpace;
+        CompositionMappingMode MappingMode;
+        float2 Offset;
+        float RotationAngleInDegrees;
+        float2 Scale;
+        float3x2 TransformMatrix;
+        func_or_field<CompositionColorGradientStop> const* ColorStops;
+        uint32_t ColorStopCount;
+        ConfigFlags Flags;
+    };
+    __declspec(noinline) void ApplyGradientBrushConfig(CompositionGradientBrush const& target, GradientBrushConfig const& props)
+    {
+        TEST_FLAG_AND_SET(AnchorPoint);
+        TEST_FLAG_AND_SET(CenterPoint);
+        TEST_FLAG_AND_SET(ExtendMode);
+        TEST_FLAG_AND_SET(InterpolationSpace);
+        TEST_FLAG_AND_SET(MappingMode);
+        TEST_FLAG_AND_SET(Offset);
+        TEST_FLAG_AND_SET(RotationAngleInDegrees);
+        TEST_FLAG_AND_SET(Scale);
+        TEST_FLAG_AND_SET(TransformMatrix);
+        if (props.ColorStopCount)
+        {
+            auto stops = target.ColorStops();
+            for (uint32_t i = 0; i < props.ColorStopCount; ++i)
+            {
+                stops.Append(invoke_func_or_field(props.ColorStops[i]));
+            }
+        }
+    }
+    __declspec(noinline) void ApplyGradientBrushConfig(winrt::Windows::Foundation::IInspectable const& target, GradientBrushConfig const& props)
+                {
+        return ApplyGradientBrushConfig(target.as<CompositionGradientBrush>(), props);
+                }
+    struct VisualSurfaceConfig {
+        enum class ConfigFlags : uint32_t {
+            SourceVisual = (1 << 0),
+            SourceSize = (1 << 1),
+            SourceOffset = (1 << 2),
+        };
+        func_or_field<Visual> SourceVisual;
+        float2 SourceSize;
+        float2 SourceOffset;
+        ConfigFlags Flags;
+    };
+    __declspec(noinline) void ApplyVisualSurfaceConfig(CompositionVisualSurface const& target, VisualSurfaceConfig const& props) {
+        if (auto visual = invoke_func_or_field(props.SourceVisual)) {
+            target.SourceVisual(visual);
+        }
+        TEST_FLAG_AND_SET(SourceSize);
+        TEST_FLAG_AND_SET(SourceOffset);
+    }
+};
+";
+
         /// <inheritdoc/>
         // Called by the base class to write the start of the cpp file (i.e. everything up to the body of the Instantiator class).
         protected override void WriteImplementationFileStart(CodeBuilder builder)
         {
             builder.WriteLine("#include \"pch.h\"");
+            builder.WriteLine("#include <variant>");
             builder.WriteLine($"#include \"{_headerFileName}\"");
 
             // {_cppwinrtGeneratedFileNameBase}.cpp is needed for UWP, but is not usually generated by
@@ -681,26 +1520,51 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             builder.WriteLine($"namespace winrt::{_s.Namespace(SourceInfo.Namespace)}::implementation");
             builder.OpenScope();
 
-            if (SourceInfo.UsesCanvasEffects ||
-                SourceInfo.UsesCanvasGeometry)
-            {
                 // Write CanvasGeometry to allow it's use in function definitions.
-                builder.WriteLine(CanvasGeometryClass);
-            }
+            builder.WriteManyLines(CanvasGeometryClass);
 
-            if (SourceInfo.UsesCompositeEffect)
-            {
                 // Write the composite effect class that will allow the use
                 // of this effect without win2d.
-                builder.WriteLine(CompositeEffectClass);
-            }
+            builder.WriteManyLines(CompositeEffectClass);
 
-            if (SourceInfo.UsesGaussianBlurEffect)
-            {
                 // Write the Gaussian blur effect class that will allow the use
                 // of this effect without win2d.
-                builder.WriteLine(GaussianBlurEffectClass);
+            builder.WriteManyLines(GaussianBlurEffectClass);
+
+            builder.WriteManyLines(AnimationBaseTypeClass);
+        }
+
+        private string GetStorageHelperPieces()
+        {
+            CodeBuilder builder = new CodeBuilder();
+            var types = new[]
+            {
+                "CompositionShape",
+                "CompositionGeometry",
+                "CompositionPath",
+                "Visual",
+                "CompositionEasingFunction",
+                "CompositionAnimation",
+                "CompositionBrush",
+                "ExpressionAnimation",
+                "CompositionEffectFactory",
+                "CompositionVisualSurface",
+                "CompositionShadow",
+                "CompositionClip",
+                "CompositionColorGradientStop",
+            };
+
+            foreach (var type in types)
+            {
+                builder.WriteManyLines($@"
+std::vector<{type}> m_{type}Storage;
+virtual {type} call_method(func_or_field<{type}> const&) {{ return nullptr; }}
+auto const& store_field(func_or_field<{type}> const& id, {type} const& value) {{ return m_{type}Storage[id.id - 1] = value; }}
+auto& read_field(func_or_field<{type}> const& id) {{ return m_{type}Storage[id.id - 1]; }}
+{type} invoke_func_or_field(func_or_field<{type}> const& id) {{ return common_invoke(id, m_{type}Storage); }}");
             }
+
+            return builder.ToString();
         }
 
         /// <inheritdoc/>
@@ -761,29 +1625,9 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         }
 
         /// <inheritdoc/>
-        protected override string WriteCompositeEffectFactory(CodeBuilder builder, CompositeEffect effect)
-        {
-            var effectVariable = "compositeEffect";
-            builder.WriteLine($"auto {effectVariable} = winrt::make_self<CompositeEffect>();");
-            builder.WriteLine($"{effectVariable}->Mode({_s.CanvasCompositeMode(effect.Mode)});");
-            foreach (var source in effect.Sources)
-            {
-                builder.WriteLine($"{effectVariable}->AddSource(CompositionEffectSourceParameter(L\"{source.Name}\"));");
-            }
+        protected override string WriteCompositeEffectFactory(CodeBuilder builder, CompositeEffect effect) => throw new InvalidOperationException("should no longer be used");
 
-            return $"*{effectVariable}";
-        }
-
-        protected override string WriteGaussianBlurEffectFactory(CodeBuilder builder, GaussianBlurEffect effect)
-        {
-            var effectVariable = "gaussianBlurEffect";
-            builder.WriteLine($"auto {effectVariable} = winrt::make_self<GaussianBlurEffect>();");
-            builder.WriteLine($"{effectVariable}->BlurAmount({_s.Float(effect.BlurAmount)});");
-
-            builder.WriteLine($"{effectVariable}->Source(CompositionEffectSourceParameter(L\"{effect.Sources.First().Name}\"));");
-
-            return $"*{effectVariable}";
-        }
+        protected override string WriteGaussianBlurEffectFactory(CodeBuilder builder, GaussianBlurEffect effect) => throw new InvalidOperationException("should no longer be used");
 
         /// <inheritdoc/>
         protected override void WriteByteArrayField(CodeBuilder builder, string fieldName, IReadOnlyList<byte> bytes)
@@ -960,6 +1804,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         void WriteMarkersPropertyDecl(CodeBuilder builder)
         {
             builder.WriteComment("Returns a map from marker names to corresponding progress values.");
+            builder.WriteLine("winrt::Windows::Foundation::Collections::IMapView<hstring, double> _markers {nullptr};");
             builder.WriteLine("winrt::Windows::Foundation::Collections::IMapView<hstring, double> Markers();");
         }
 
@@ -970,20 +1815,34 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         {
             builder.WriteLine($"winrt::Windows::Foundation::Collections::IMapView<hstring, double> {_sourceClassName}::Markers()");
             builder.OpenScope();
-            builder.WriteLine("return winrt::single_threaded_map<winrt::hstring, double>(");
-            builder.Indent();
-            builder.WriteLine("std::map<winrt::hstring, double>");
 
-            builder.OpenScope();
-            foreach (var marker in SourceInfo.Markers)
+            if (SourceInfo.Markers.Any())
             {
-                builder.WriteLine($"{{ {_s.String(marker.Name)}, {_s.Double(marker.StartProgress)} }},");
+                builder.WriteLine("constexpr static const std::pair<const wchar_t*, double> marks[] =");
+
+                builder.OpenScope();
+                foreach (var marker in SourceInfo.Markers)
+                {
+                    builder.WriteLine($"{{ {_s.String(marker.Name)}, {_s.Double(marker.StartProgress)} }},");
+                }
+
+                builder.CloseScopeWithSemicolon();
+                builder.WriteLine();
+                builder.WriteLine("if (!_markers)");
+                builder.OpenScope();
+                builder.WriteLine("_markers = winrt::single_threaded_map<winrt::hstring, double>(std::map<winrt::hstring, double>(std::begin(marks), std::end(marks))).GetView();");
+                builder.CloseScope();
+            }
+            else
+            {
+                builder.WriteLine("if (!_markers)");
+                builder.OpenScope();
+                builder.WriteLine("_markers = winrt::single_threaded_map<winrt::hstring, double>().GetView();");
+                builder.CloseScope();
             }
 
-            builder.CloseScope();
-
-            builder.UnIndent();
-            builder.WriteLine(").GetView();");
+            builder.WriteLine();
+            builder.WriteLine("return _markers;");
             builder.CloseScope();
         }
 
@@ -1281,6 +2140,10 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             }
         }
 
+        private List<string> _constructorLines = new List<string>();
+
+        internal void AddConstructorLine(string s) => _constructorLines.Add(s);
+
         /// <inheritdoc/>
         // Called by the base class to write the end of the AnimatedVisual class.
         protected override void WriteAnimatedVisualEnd(
@@ -1289,17 +2152,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             CodeBuilder createAnimations,
             CodeBuilder destroyAnimations)
         {
-            if (SourceInfo.UsesCanvasEffects ||
-                SourceInfo.UsesCanvasGeometry)
-            {
-                // Utility method for D2D geometries.
-                builder.WriteLine("static IGeometrySource2D CanvasGeometryToIGeometrySource2D(winrt::com_ptr<CanvasGeometry> geo)");
-                builder.OpenScope();
-                builder.WriteLine("return geo.as<IGeometrySource2D>();");
-                builder.CloseScope();
-                builder.WriteLine();
-            }
-
             // Write the constructor for the AnimatedVisual class.
             builder.UnIndent();
             builder.WriteLine("public:");
@@ -1310,7 +2162,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             builder.Indent();
 
             // Initializer list.
-            builder.WriteLine(": _c{compositor}");
+            builder.WriteLine(": AnimationBaseType{compositor}");
             if (SourceInfo.IsThemed)
             {
                 builder.WriteLine($", {SourceInfo.ThemePropertiesFieldName}{{themeProperties}}");
@@ -1322,9 +2174,6 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine($", {n.FieldName}({_s.CamelCase(n.Name)})");
             }
 
-            // Instantiate the reusable ExpressionAnimation.
-            builder.WriteLine($", {SourceInfo.ReusableExpressionAnimationFieldName}(compositor.CreateExpressionAnimation())");
-
             builder.UnIndent();
 
             builder.OpenScope();
@@ -1334,6 +2183,8 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.WriteLine("winrt::check_hresult(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, _d2dFactory.put()));");
             }
 
+            builder.WriteManyLines(_constructorLines);
+
             // Instantiate the root. This will cause the whole Visual tree to be built and animations started.
             builder.WriteLine("const auto _ = Root();");
             builder.CloseScope();
@@ -1341,23 +2192,25 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             builder.WriteLine();
             builder.WriteLine("void Close()");
             builder.OpenScope();
-            builder.WriteLine("if (_root)");
+            builder.WriteLine("if (auto r = m_VisualStorage[_rootId.id - 1])");
             builder.OpenScope();
-            builder.WriteLine("_root.Close();");
+            builder.WriteLine("r.Close();");
             builder.CloseScope();
             builder.CloseScope();
 
             // Write the members on IAnimatedVisual.
             builder.WriteLine();
+            builder.WriteLine($"constexpr static const TimeSpan c_duration {{ {SourceInfo.DurationTicksFieldName} }};");
+            builder.WriteLine();
             {
                 var propertyImplBuilder = new CodeBuilder();
-                propertyImplBuilder.WriteLine($"return TimeSpan{{ {SourceInfo.DurationTicksFieldName} }};");
+                propertyImplBuilder.WriteLine($"return c_duration;");
                 WritePropertyImpl(builder, "TimeSpan", "Duration", propertyImplBuilder);
             }
 
             {
                 var propertyImplBuilder = new CodeBuilder();
-                propertyImplBuilder.WriteLine("return _root;");
+                propertyImplBuilder.WriteLine("return m_VisualStorage[_rootId.id - 1];");
                 WritePropertyImpl(builder, nameof(Visual), "RootVisual", propertyImplBuilder);
             }
 
@@ -1365,6 +2218,26 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 var propertyImplBuilder = new CodeBuilder();
                 propertyImplBuilder.WriteLine($"return {_s.Vector2(SourceInfo.CompositionDeclaredSize)};");
                 WritePropertyImpl(builder, "float2", "Size", propertyImplBuilder);
+            }
+
+            if (SourceInfo.UsesCanvasEffects || SourceInfo.UsesCanvasGeometry)
+            {
+                builder.WriteManyLines(@"
+winrt::com_ptr<CanvasGeometry> MakeGeometry(D2D1_FILL_MODE fill, const func_or_field<winrt::com_ptr<CanvasGeometry>>* canvases, uint32_t canvasCount)
+{
+    std::vector<winrt::com_ptr<ID2D1Geometry>> geometries;
+
+    for (uint32_t i = 0; i < canvasCount; ++i)
+    {
+        geometries.emplace_back(invoke_func_or_field(canvases[i])->Geometry());
+    }
+
+    winrt::com_ptr<ID2D1GeometryGroup> group{ nullptr };
+    winrt::check_hresult(_d2dFactory->CreateGeometryGroup(fill, reinterpret_cast<ID2D1Geometry**>(geometries.data()), canvasCount, group.put()));
+
+    return winrt::make_self<CanvasGeometry>(group);
+}
+");
             }
 
             if (info.ImplementCreateAndDestroyMethods)
@@ -1381,6 +2254,19 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
                 builder.CloseScope();
                 builder.WriteLine();
             }
+
+            builder.WriteLine("__declspec(noinline) CompositionEasingFunction CreateCubicBezierEasingFunction(int index)");
+            builder.OpenScope();
+            builder.WriteLine("constexpr static const std::pair<float2, float2> bezier_params[] =");
+            builder.OpenScope();
+            foreach (var (p, id) in _cubicBeziers)
+            {
+                builder.WriteLine($"{{ {_s.Vector2(p.Item1)}, {_s.Vector2(p.Item2)} }},");
+            }
+
+            builder.CloseScopeWithSemicolon();
+            builder.WriteLine("return _c.CreateCubicBezierEasingFunction(bezier_params[index].first, bezier_params[index].second);");
+            builder.CloseScope();
 
             WriteIsRuntimeCompatibleMethod(builder, info);
 
@@ -1404,65 +2290,57 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         /// <inheritdoc/>
         protected override void WriteCanvasGeometryPathFactory(CodeBuilder builder, CanvasGeometry.Path obj, string typeName, string fieldName)
         {
-            // D2D Setup
-            builder.WriteLine("winrt::com_ptr<ID2D1PathGeometry> path{ nullptr };");
-            builder.WriteLine("winrt::check_hresult(_d2dFactory->CreatePathGeometry(path.put()));");
-            builder.WriteLine("winrt::com_ptr<ID2D1GeometrySink> sink{ nullptr };");
-            builder.WriteLine("winrt::check_hresult(path->Open(sink.put()));");
-
-            if (obj.FilledRegionDetermination != CanvasFilledRegionDetermination.Alternate)
+            if (obj.Commands.Any())
             {
-                builder.WriteLine($"sink->SetFillMode({_s.FilledRegionDetermination(obj.FilledRegionDetermination)});");
-            }
+                builder.WriteLine("constexpr static const geometry_step steps[] = {");
+                builder.Indent();
 
-            foreach (var command in obj.Commands)
-            {
-                switch (command.Type)
+                foreach (var command in obj.Commands)
                 {
-                    case CanvasPathBuilder.CommandType.BeginFigure:
-                        // Assume D2D1_FIGURE_BEGIN_FILLED
-                        builder.WriteLine($"sink->BeginFigure({_s.Vector2(((CanvasPathBuilder.Command.BeginFigure)command).StartPoint)}, D2D1_FIGURE_BEGIN_FILLED);");
-                        break;
-                    case CanvasPathBuilder.CommandType.EndFigure:
-                        builder.WriteLine($"sink->EndFigure({_s.CanvasFigureLoop(((CanvasPathBuilder.Command.EndFigure)command).FigureLoop)});");
-                        break;
-                    case CanvasPathBuilder.CommandType.AddLine:
-                        builder.WriteLine($"sink->AddLine({_s.Vector2(((CanvasPathBuilder.Command.AddLine)command).EndPoint)});");
-                        break;
-                    case CanvasPathBuilder.CommandType.AddCubicBezier:
-                        var cb = (CanvasPathBuilder.Command.AddCubicBezier)command;
-                        builder.WriteLine($"sink->AddBezier({{ {_s.Vector2(cb.ControlPoint1)}, {_s.Vector2(cb.ControlPoint2)}, {_s.Vector2(cb.EndPoint)} }});");
-                        break;
-                    default:
-                        throw new InvalidOperationException();
+                    switch (command.Type)
+                    {
+                        case CanvasPathBuilder.CommandType.BeginFigure:
+                            // Assume D2D1_FIGURE_BEGIN_FILLED
+                            builder.WriteLine($"sink_figure_begin {{ {_s.Vector2(((CanvasPathBuilder.Command.BeginFigure)command).StartPoint)}, D2D1_FIGURE_BEGIN_FILLED }}, ");
+                            break;
+                        case CanvasPathBuilder.CommandType.EndFigure:
+                            builder.WriteLine($"sink_figure_end {{ {_s.CanvasFigureLoop(((CanvasPathBuilder.Command.EndFigure)command).FigureLoop)} }},");
+                            break;
+                        case CanvasPathBuilder.CommandType.AddLine:
+                            builder.WriteLine($"sink_line_segment {{ {_s.Vector2(((CanvasPathBuilder.Command.AddLine)command).EndPoint)} }},");
+                            break;
+                        case CanvasPathBuilder.CommandType.AddCubicBezier:
+                            var cb = (CanvasPathBuilder.Command.AddCubicBezier)command;
+                            builder.WriteLine($"sink_bezier_segment {{ {{ {_s.Vector2(cb.ControlPoint1)}, {_s.Vector2(cb.ControlPoint2)}, {_s.Vector2(cb.EndPoint)} }} }},");
+                            break;
+                    }
                 }
+
+                builder.UnIndent();
+                builder.WriteLine("};");
+                builder.WriteLine("const int stepCount = _countof(steps);");
+            }
+            else
+            {
+                builder.WriteLine("const geometry_step* steps = nullptr;");
+                builder.WriteLine("int stepCount = 0;");
             }
 
-            builder.WriteLine("winrt::check_hresult(sink->Close());");
-            builder.WriteLine($"auto result = {FieldAssignment(fieldName)}winrt::make_self<CanvasGeometry>(path);");
+            builder.WriteLine($"auto result = {FieldAssignment(fieldName)}CanvasGeometry::Make(_d2dFactory, {_s.FilledRegionDetermination(obj.FilledRegionDetermination)}, steps, stepCount);");
         }
 
         /// <inheritdoc/>
         protected override void WriteCanvasGeometryGroupFactory(CodeBuilder builder, CanvasGeometry.Group obj, string typeName, string fieldName)
         {
-            builder.WriteLine($"winrt::com_ptr<ID2D1Geometry> geometries[{obj.Geometries.Length}]");
+            builder.WriteLine("constexpr static const func_or_field<winrt::com_ptr<CanvasGeometry>> geometries[] =");
             builder.OpenScope();
             for (var i = 0; i < obj.Geometries.Length; i++)
             {
-                var geometry = obj.Geometries[i];
-                builder.WriteLine($"{CallFactoryFor(geometry)}.get()->Geometry(),");
+                builder.WriteLine($"{CallFactoryFor(obj.Geometries[i])},");
             }
 
             builder.CloseScopeWithSemicolon();
-            builder.WriteLine("winrt::com_ptr<ID2D1GeometryGroup> group{ nullptr };");
-            builder.WriteLine("winrt::check_hresult(_d2dFactory->CreateGeometryGroup(");
-            builder.Indent();
-            builder.WriteLine($"{_s.FilledRegionDetermination(obj.FilledRegionDetermination)},");
-            builder.WriteLine("(ID2D1Geometry**)(&geometries),");
-            builder.WriteLine($"{obj.Geometries.Length},");
-            builder.WriteLine("group.put()));");
-            builder.UnIndent();
-            builder.WriteLine($"auto result = {FieldAssignment(fieldName)}winrt::make_self<CanvasGeometry>(group);");
+            builder.WriteLine($"auto result = {FieldAssignment(fieldName)} MakeGeometry({_s.FilledRegionDetermination(obj.FilledRegionDetermination)}, geometries, _countof(geometries));");
         }
 
         // Writes code that is only included if the given file exists.
@@ -1496,11 +2374,11 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
 
         IEnumerable<string> GetConstructorParameters(IAnimatedVisualInfo info)
         {
-            yield return "Compositor compositor";
+            yield return "Compositor const& compositor";
 
             if (SourceInfo.IsThemed)
             {
-                yield return "CompositionPropertySet themeProperties";
+                yield return "CompositionPropertySet const& themeProperties";
             }
 
             foreach (var loadedImageSurfaceNode in info.LoadedImageSurfaceNodes)
@@ -1560,19 +2438,39 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         }
 
         static string CanvasGeometryClass =>
-@"class CanvasGeometry : public winrt::implements<CanvasGeometry,
+@"
+struct sink_bezier_segment {
+    D2D1_BEZIER_SEGMENT bezier;
+};
+
+struct sink_line_segment {
+    D2D1_POINT_2F endpoint;
+};
+
+struct sink_figure_begin {
+    D2D1_POINT_2F startPoint;
+    D2D1_FIGURE_BEGIN figureBegin;
+};
+
+struct sink_figure_end {
+    D2D1_FIGURE_END figureEnd;
+};
+
+using geometry_step = std::variant<sink_figure_begin, sink_figure_end, sink_line_segment, sink_bezier_segment>;
+
+    class CanvasGeometry : public winrt::implements<CanvasGeometry,
         IGeometrySource2D,
         ::ABI::Windows::Graphics::IGeometrySource2DInterop>
     {
         winrt::com_ptr<ID2D1Geometry> _geometry{ nullptr };
 
     public:
-        CanvasGeometry(winrt::com_ptr<ID2D1Geometry> geometry)
-            : _geometry{ geometry }
+        CanvasGeometry(winrt::com_ptr<ID2D1Geometry>&& geometry)
+            : _geometry{ std::move(geometry) }
         { }
 
         // IGeometrySource2D.
-        winrt::com_ptr<ID2D1Geometry> Geometry() { return _geometry; }
+        winrt::com_ptr<ID2D1Geometry> const& Geometry() { return _geometry; }
 
         // IGeometrySource2DInterop.
         IFACEMETHODIMP GetGeometry(ID2D1Geometry** value) noexcept(true) override
@@ -1586,6 +2484,60 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         {
             return E_NOTIMPL;
         }
+
+        winrt::com_ptr<CanvasGeometry> static Make(
+            winrt::com_ptr<ID2D1Factory> const& factory,
+            D2D1_FILL_MODE mode,
+            const geometry_step* steps,
+            size_t stepCount)
+        {
+            winrt::com_ptr<ID2D1PathGeometry> path;
+            winrt::com_ptr<ID2D1GeometrySink> sink;
+
+            winrt::check_hresult(factory->CreatePathGeometry(path.put()));
+            winrt::check_hresult(path->Open(sink.put()));
+
+            if (mode != D2D1_FILL_MODE_ALTERNATE)
+            {
+                sink->SetFillMode(mode);
+            }
+
+            auto visitor = [&sink](auto&& arg)
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, sink_figure_begin>)
+                {
+                    sink->BeginFigure(arg.startPoint, arg.figureBegin);
+                }
+                else if constexpr (std::is_same_v<T, sink_figure_end>)
+                {
+                    sink->EndFigure(arg.figureEnd);
+                }
+                else if constexpr (std::is_same_v<T, sink_bezier_segment>)
+                {
+                    sink->AddBezier(&arg.bezier);
+                }
+                else if constexpr (std::is_same_v<T, sink_line_segment>)
+                {
+                    sink->AddLine(arg.endpoint);
+                }
+                else
+                {
+                    static_assert(""unhandled type"");
+                }
+            };
+
+            auto end = steps + stepCount;
+            while (steps != end) 
+            {
+                std::visit(visitor, *steps++);
+            }
+
+            winrt::check_hresult(sink->Close());
+
+            return winrt::make_self<CanvasGeometry>(std::move(path));
+        }
+
     };";
 
         static string CompositeEffectClass =>
@@ -1620,13 +2572,20 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         std::vector<winrt::Windows::Graphics::Effects::IGraphicsEffectSource> m_sources{};
 
     public:
+
+        __declspec(noinline) static CompositionEffectFactory Make(Compositor const& c, CanvasComposite mode, const wchar_t* const* sources, int sourceCount)
+        {
+            auto self = winrt::make_self<CompositeEffect>();
+            self->m_mode = mode;
+            for (int i = 0; i < sourceCount; ++i)
+            {
+                self->m_sources.emplace_back(CompositionEffectSourceParameter{ sources[i] });
+            }
+            return c.CreateEffectFactory(*self);
+        }
+
         void Mode(CanvasComposite mode) { m_mode = mode; }
         CanvasComposite Mode(){ return m_mode; }
-
-        void AddSource(winrt::Windows::Graphics::Effects::IGraphicsEffectSource source)
-        {
-            m_sources.emplace_back(source);
-        }
 
         // IGraphicsEffect.
         void Name(winrt::hstring name) { m_name = name; }
@@ -1660,8 +2619,7 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
             UINT index,
             ::ABI::Windows::Graphics::Effects::IGraphicsEffectSource** source) noexcept(true) override
         {
-            if (index >= m_sources.size() ||
-                source == nullptr)
+            if ((index >= m_sources.size() || source == nullptr))
             {
                 return E_INVALIDARG;
             }
@@ -1717,6 +2675,14 @@ namespace CommunityToolkit.WinUI.Lottie.UIData.CodeGen.Cppwinrt
         winrt::Windows::Graphics::Effects::IGraphicsEffectSource m_source{};
 
     public:
+        __declspec(noinline) static CompositionEffectFactory Make(Compositor const& c, float amount, const wchar_t* name)
+        {
+            auto self = winrt::make_self<GaussianBlurEffect>();
+            self->m_blurAmount = amount;
+            self->m_source = CompositionEffectSourceParameter{name};
+            return c.CreateEffectFactory(*self);
+        }
+
         void BlurAmount(float amount) { m_blurAmount = amount; }
 
         void Source(winrt::Windows::Graphics::Effects::IGraphicsEffectSource source) { m_source = source; }
