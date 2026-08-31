@@ -223,12 +223,12 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
 
             var index = map.Count;
             map.Add(value, index);
-            Add(value, index);
+            Add(value);
             return (uint)index;
         }
 
         // Appends a newly discovered node to its category list and walks its children.
-        void Add(object value, int index)
+        void Add(object value)
         {
             switch (value)
             {

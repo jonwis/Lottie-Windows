@@ -451,8 +451,9 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer.Tests
                         Add(surfaceBrush.Surface as CompositionObject);
                         break;
                     case CompositionEffectBrush effectBrush:
-                        Add(effectBrush.GetEffectFactory());
-                        foreach (var source in effectBrush.GetEffectFactory().Effect.Sources)
+                        var effectFactory = effectBrush.GetEffectFactory();
+                        Add(effectFactory);
+                        foreach (var source in effectFactory.Effect.Sources)
                         {
                             Add(effectBrush.GetSourceParameter(source.Name));
                         }
