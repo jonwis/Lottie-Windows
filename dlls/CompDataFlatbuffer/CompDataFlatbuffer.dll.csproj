@@ -19,6 +19,7 @@
     <ProjectReference Include="..\CompMetadata\CompMetadata.dll.csproj" />
     <ProjectReference Include="..\LottieMetadata\LottieMetadata.dll.csproj" />
     <ProjectReference Include="..\WinCompData\WinCompData.dll.csproj" />
+    <ProjectReference Include="..\WinUIXamlMediaData\WinUIXamlMediaData.dll.csproj" />
   </ItemGroup>
 
 </Project>
