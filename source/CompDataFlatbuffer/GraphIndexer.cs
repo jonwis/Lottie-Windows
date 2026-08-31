@@ -51,6 +51,12 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
 
         readonly Dictionary<string, int> _strings = new Dictionary<string, int>(StringComparer.Ordinal);
 
+        // Set once the string table has been written to the buffer. Interning a new
+        // string after that point would hand out an index that is past the end of the
+        // serialized table, so it is treated as a programming error rather than being
+        // allowed to silently corrupt the output.
+        bool _stringsAreFrozen;
+
         GraphIndexer()
         {
         }
@@ -113,6 +119,12 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
 
             if (!_strings.TryGetValue(value, out var index))
             {
+                if (_stringsAreFrozen)
+                {
+                    throw new InvalidOperationException(
+                        $"The string \"{value}\" was interned after the string table was written.");
+                }
+
                 index = StringList.Count;
                 StringList.Add(value);
                 _strings.Add(value, index);
@@ -120,6 +132,13 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
 
             return (uint)index;
         }
+
+        /// <summary>
+        /// Prevents any further strings from being added. Called once the string table has
+        /// been written, so that a missed interning site fails loudly instead of producing
+        /// an out of range string index.
+        /// </summary>
+        internal void FreezeStrings() => _stringsAreFrozen = true;
 
         internal uint GetVisual(Visual? value) => Index(_visuals, value);
 

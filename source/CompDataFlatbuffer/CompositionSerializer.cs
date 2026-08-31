@@ -42,12 +42,16 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
         /// <param name="requiredUapVersion">The minimum UAP version required to instantiate the graph.</param>
         /// <param name="metadata">Metadata describing the source Lottie animation, or null.</param>
         /// <param name="propertyBindings">The property bindings exposed by the graph, or null.</param>
+        /// <param name="width">The width of the source Lottie animation.</param>
+        /// <param name="height">The height of the source Lottie animation.</param>
         /// <returns>The serialized graph.</returns>
         public static byte[] Serialize(
             Visual root,
             ushort requiredUapVersion,
             LottieCompositionMetadata? metadata = null,
-            IReadOnlyList<PropertyBinding>? propertyBindings = null)
+            IReadOnlyList<PropertyBinding>? propertyBindings = null,
+            float width = 0,
+            float height = 0)
         {
             if (root is null)
             {
@@ -59,6 +63,10 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
             // 1024 is a starting size only - the builder grows as needed.
             var builder = new FlatBufferBuilder(1024);
 
+            // Metadata strings are interned before the table is written, because the
+            // metadata is serialized last but its strings must be in the table.
+            InternMetadataStrings(graph, metadata, propertyBindings);
+
             // Strings are created first because a string cannot be created while a table
             // is under construction, and almost every table refers to one.
             var strings = new StringOffset[graph.StringList.Count];
@@ -66,6 +74,10 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
             {
                 strings[i] = builder.CreateString(graph.StringList[i]);
             }
+
+            // From here on, interning a new string would produce an index past the end of
+            // the table that was just written, so the table is closed to additions.
+            graph.FreezeStrings();
 
             // The node lists grow as the graph is walked, so they are indexed by position
             // rather than iterated, and the walk is complete before serialization starts.
@@ -85,7 +97,7 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
             var propertySets = Map(graph.PropertySetList, v => WritePropertySet(builder, graph, v));
             var controllers = Map(graph.ControllerList, v => WriteController(builder, graph, v));
 
-            var metadataOffset = WriteMetadata(builder, graph, metadata, propertyBindings);
+            var metadataOffset = WriteMetadata(builder, graph, metadata, propertyBindings, width, height);
 
             // The indices of the controllers that a host must supply, in index order.
             var customControllers = graph.ControllerList
@@ -139,6 +151,33 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
             Fb.LottieComposition.FinishLottieCompositionBuffer(builder, composition);
 
             return builder.SizedByteArray();
+        }
+
+        // Interns every string that WriteMetadata will need. Kept adjacent to
+        // WriteMetadata so that the two stay in step.
+        static void InternMetadataStrings(
+            GraphIndexer graph,
+            LottieCompositionMetadata? metadata,
+            IReadOnlyList<PropertyBinding>? propertyBindings)
+        {
+            graph.GetString(metadata?.CompositionName);
+
+            if (metadata is not null)
+            {
+                foreach (var marker in metadata.Markers)
+                {
+                    graph.GetString(marker.Name);
+                }
+            }
+
+            if (propertyBindings is not null)
+            {
+                foreach (var binding in propertyBindings)
+                {
+                    graph.GetString(binding.BindingName);
+                    graph.GetString(binding.DisplayName);
+                }
+            }
         }
 
         static TResult[] Map<T, TResult>(List<T> source, Func<T, TResult> selector)
@@ -947,7 +986,9 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
             FlatBufferBuilder builder,
             GraphIndexer graph,
             LottieCompositionMetadata? metadata,
-            IReadOnlyList<PropertyBinding>? propertyBindings)
+            IReadOnlyList<PropertyBinding>? propertyBindings,
+            float width,
+            float height)
         {
             var bindings = propertyBindings ?? Array.Empty<PropertyBinding>();
             var bindingOffsets = new Offset<Fb.PropertyBinding>[bindings.Count];
@@ -990,7 +1031,13 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
                 Fb.Marker.StartMarker(builder);
                 Fb.Marker.AddName(builder, graph.GetString(marker.Name));
                 Fb.Marker.AddProgress(builder, (float)marker.Frame.Progress);
-                Fb.Marker.AddDurationProgress(builder, (float)(marker.Duration.Frames / Math.Max(1, marker.Duration.FPS)));
+
+                // Marker durations are stored as a proportion of the whole animation, to
+                // match Frame.Progress, so that a player needs no frame rate arithmetic.
+                var totalFrames = metadata!.Duration.Frames;
+                Fb.Marker.AddDurationProgress(
+                    builder,
+                    totalFrames == 0 ? 0f : (float)(marker.Duration.Frames / totalFrames));
                 markerOffsets[i] = Fb.Marker.EndMarker(builder);
             }
 
@@ -1018,6 +1065,8 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
 
             Fb.Metadata.StartMetadata(builder);
             Fb.Metadata.AddName(builder, name);
+            Fb.Metadata.AddWidth(builder, width);
+            Fb.Metadata.AddHeight(builder, height);
             Fb.Metadata.AddDurationTicks(builder, metadata is null ? 0L : metadata.Duration.Time.Ticks);
             Fb.Metadata.AddFramesPerSecond(builder, (float)(metadata?.Duration.FPS ?? 0));
 
