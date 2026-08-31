@@ -28,5 +28,15 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
             : base(message)
         {
         }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FlatBufferFormatException"/> class.
+        /// </summary>
+        /// <param name="message">A description of what was wrong with the buffer.</param>
+        /// <param name="innerException">The failure that revealed the problem.</param>
+        public FlatBufferFormatException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
     }
 }

@@ -40,6 +40,11 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
 #endif
     sealed class CompositionDeserializer
     {
+        // The smallest buffer that could possibly be a composition: a root offset
+        // followed by the four byte file identifier. Checked before the identifier is
+        // read so that a short buffer is reported as a format error.
+        const int MinimumBufferLength = 8;
+
         readonly Compositor _compositor = new Compositor();
         readonly Fb.LottieComposition _root;
         readonly string[] _strings;
@@ -101,25 +106,46 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
             // The buffer is untrusted, so it is fully verified before any of it is read.
             var buffer = new ByteBuffer(bytes.ToArray());
 
-            // This checks the file identifier as well as the structure, so a buffer that
-            // is not a composition at all is rejected here.
-            if (!Fb.LottieComposition.VerifyLottieComposition(buffer))
+            if (bytes.Length < MinimumBufferLength ||
+                !Fb.LottieComposition.LottieCompositionBufferHasIdentifier(buffer))
             {
-                throw new FlatBufferFormatException("The buffer is not a valid composition.");
+                throw new FlatBufferFormatException("The buffer is not a composition.");
             }
 
-            var root = Fb.LottieComposition.GetRootAsLottieComposition(buffer);
-
-            if (root.SchemaVersion > Format.Version)
+            // Verification proves that the buffer is structurally sound, but it cannot
+            // prove that the indices stored in it point at the right things. Neither the
+            // verifier nor the reader reports a malformed buffer purely by returning
+            // false; both also throw. Everything is therefore done inside this handler so
+            // that a corrupt buffer always surfaces as a format error and never as an
+            // exception that a caller could not have anticipated. Reading past the end of
+            // the buffer is not a safety problem because ByteBuffer is bounds checked;
+            // the only thing being corrected here is the type of the exception.
+            try
             {
-                throw new FlatBufferFormatException(
-                    $"Schema version {root.SchemaVersion} is newer than the supported version {Format.Version}.");
+                if (!Fb.LottieComposition.VerifyLottieComposition(buffer))
+                {
+                    throw new FlatBufferFormatException("The buffer is not a valid composition.");
+                }
+
+                var root = Fb.LottieComposition.GetRootAsLottieComposition(buffer);
+
+                if (root.SchemaVersion > Format.Version)
+                {
+                    throw new FlatBufferFormatException(
+                        $"Schema version {root.SchemaVersion} is newer than the supported version {Format.Version}.");
+                }
+
+                var deserializer = new CompositionDeserializer(root);
+                var rootVisual = deserializer.GetVisual(root.RootVisual);
+
+                return rootVisual ?? throw new FlatBufferFormatException("The composition has no root visual.");
             }
-
-            var deserializer = new CompositionDeserializer(root);
-            var rootVisual = deserializer.GetVisual(root.RootVisual);
-
-            return rootVisual ?? throw new FlatBufferFormatException("The composition has no root visual.");
+            catch (Exception e) when (e is ArgumentException or IndexOutOfRangeException or
+                                          InvalidOperationException or OverflowException or
+                                          FormatException or NullReferenceException)
+            {
+                throw new FlatBufferFormatException("The buffer is malformed.", e);
+            }
         }
 
         // ---------------------------------------------------------------------
@@ -180,6 +206,15 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer
                 var customController = controllerIndex != Format.NullIndex && IsCustomController(controllerIndex)
                     ? GetController(controllerIndex)
                     : null;
+
+                // An expression animation is driven by its inputs and so cannot have a
+                // controller. StartAnimation only asserts this, so it is checked here in
+                // order to reject the buffer rather than build an unusable graph.
+                if (customController is not null && animation is ExpressionAnimation)
+                {
+                    throw new FlatBufferFormatException(
+                        $"Animator '{property}' gives a controller to an expression animation.");
+                }
 
                 var created = target.StartAnimation(property, animation, customController);
 
