@@ -114,7 +114,8 @@ shared geometry remains shared and cycles are rejected.
 **Untrusted input.** A buffer may have come from a file or a download. It is checked
 for the `LCMP` identifier, run through the FlatBuffers verifier, and every index
 read out of it is range checked. A malformed buffer throws
-`winrt::hresult_invalid_argument`; it never reads outside the buffer.
+`winrt::hresult_invalid_argument`; it never reads outside the buffer. The declared
+Universal API contract is checked before graph hydration.
 
 ## Dependencies
 

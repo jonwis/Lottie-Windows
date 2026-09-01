@@ -48,6 +48,7 @@
 
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/Windows.Foundation.Metadata.h>
 #include <winrt/Windows.Foundation.Numerics.h>
 #include <winrt/Windows.Graphics.Effects.h>
 #include <winrt/Windows.Storage.Streams.h>
@@ -2135,6 +2136,15 @@ namespace CommunityToolkit::WinUI::Lottie
         // A newer schema may store things in fields this build does not read, so a
         // buffer that declares one is refused rather than silently misinterpreted.
         if (root->schema_version() > SupportedSchemaVersion)
+        {
+            ThrowUnsupported();
+        }
+
+        auto const requiredUapVersion = root->required_uap_version();
+        if (requiredUapVersion != 0 &&
+            !winrt::Windows::Foundation::Metadata::ApiInformation::IsApiContractPresent(
+                L"Windows.Foundation.UniversalApiContract",
+                requiredUapVersion))
         {
             ThrowUnsupported();
         }
