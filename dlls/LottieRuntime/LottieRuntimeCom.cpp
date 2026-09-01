@@ -11,7 +11,10 @@
 #include "LottieRuntimeCom.h"
 #include "LottieRuntime.h"
 
+#include <DispatcherQueue.h>
+
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.System.h>
 #include <winrt/Windows.UI.Composition.h>
 
 using namespace winrt::Windows::UI::Composition;
@@ -19,11 +22,8 @@ using namespace winrt::Windows::UI::Composition;
 
 namespace
 {
-    // The loader owns the Compositor it hands nodes out of. A caller that wants to
-    // parent the resulting Visual into its own tree does so through the WinRT
-    // interfaces it queried result for; it never needs to supply a Compositor of
-    // its own, because there is nothing it could usefully do with one that this
-    // object does not already do internally.
+    // The loader creates its Compositor on the first load. Desktop threads need a
+    // DispatcherQueue before Windows.UI.Composition can activate a Compositor.
     struct LottieCompositionLoader : winrt::implements<LottieCompositionLoader, ILottieCompositionLoader>
     {
         STDMETHODIMP LoadComposition(UINT32 length, BYTE const* buffer, REFIID riid, void** result) noexcept override
@@ -42,6 +42,24 @@ namespace
 
             try
             {
+                if (!m_compositor)
+                {
+                    if (!winrt::Windows::System::DispatcherQueue::GetForCurrentThread())
+                    {
+                        DispatcherQueueOptions const options{
+                            sizeof(DispatcherQueueOptions),
+                            DQTYPE_THREAD_CURRENT,
+                            DQTAT_COM_NONE,
+                        };
+
+                        winrt::check_hresult(CreateDispatcherQueueController(
+                            options,
+                            reinterpret_cast<PDISPATCHERQUEUECONTROLLER*>(winrt::put_abi(m_dispatcherQueueController))));
+                    }
+
+                    m_compositor = Compositor();
+                }
+
                 auto const span = std::span(reinterpret_cast<std::byte const*>(buffer), length);
                 auto const visual = CommunityToolkit::WinUI::Lottie::LoadComposition(m_compositor, span);
                 return visual.as<::IUnknown>()->QueryInterface(riid, result);
@@ -53,7 +71,8 @@ namespace
         }
 
     private:
-        Compositor m_compositor;
+        winrt::Windows::System::DispatcherQueueController m_dispatcherQueueController{ nullptr };
+        Compositor m_compositor{ nullptr };
     };
 
     // A minimal class factory: this DLL only ever creates LottieCompositionLoader,

@@ -60,7 +60,7 @@
       <StringPooling>true</StringPooling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>d2d1.lib;dxguid.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>CoreMessaging.lib;d2d1.lib;dxguid.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>LottieRuntime.def</ModuleDefinitionFile>
 
       <!-- Discards the code for any node type the application never reaches. -->
