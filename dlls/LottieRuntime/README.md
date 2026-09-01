@@ -2,23 +2,22 @@
 
 A native runtime interpreter for Lottie animations.
 
-`LottieRuntime` builds a Windows.UI.Composition visual tree from a serialized
-composition, at runtime, without a JSON parser and without generated code. It is a
-header and a source file, so it can be built as a DLL that several applications
-share, or compiled straight into one.
+`LottieRuntime` builds a `Windows.UI.Composition` visual tree from a serialized
+composition. The DLL consumes FlatBuffer data through a classic COM interface.
+Applications can also link the implementation directly.
 
 ## How it fits in
 
 Lottie-Windows already turns a Lottie file into a `WinCompData` graph, which is a
-description of a composition tree. There were two things that could consume that
-graph:
+description of a composition tree. Three consumers use that graph:
 
 | Consumer | When it runs | Cost |
 | --- | --- | --- |
 | `Instantiator` | Runtime, in the app | Ships the whole JSON reader and translator |
 | `LottieGen` code generators | Build time | No runtime cost, but one class per animation |
+| `LottieRuntime` | Runtime, in the app | One interpreter shared by every animation |
 
-This adds a third. `CompositionSerializer` writes the `WinCompData` graph into a
+`CompositionSerializer` writes the `WinCompData` graph into a
 FlatBuffer at build time, and `LottieRuntime` reads that buffer at runtime. The
 animation stays data, so it can be swapped, downloaded or themed without a rebuild,
 and the code that reads it is the same size no matter how many animations an
@@ -57,24 +56,35 @@ LottieGen -InputFile animation.json -Language flatbuffer -OutputFolder .
 This writes `Animation.lcomp`. The format is described by
 [`source/LottieFlatbuffer/lottie_comp.fbs`](../../source/LottieFlatbuffer/lottie_comp.fbs).
 
-## Using it
+## Using the DLL
 
 ```cpp
-#include <LottieRuntime.h>
+#include <LottieRuntimeCom.h>
 
 auto bytes = ReadFileBytes(L"Animation.lcomp");
-auto root = CommunityToolkit::WinUI::Lottie::LoadComposition(compositor, bytes);
+winrt::com_ptr<ILottieCompositionLoader> loader;
+winrt::check_hresult(CoCreateInstance(
+    CLSID_LottieCompositionLoader,
+    nullptr,
+    CLSCTX_INPROC_SERVER,
+    __uuidof(ILottieCompositionLoader),
+    loader.put_void()));
 
-// Drive the animation by animating one scalar from 0 to 1.
-auto progress = CommunityToolkit::WinUI::Lottie::ProgressPropertySet(root);
-progress.StartAnimation(L"Progress", playAnimation);
-
-ElementCompositionPreview::SetElementChildVisual(element, root);
+winrt::Windows::UI::Composition::Visual root{ nullptr };
+winrt::check_hresult(loader->LoadComposition(
+    static_cast<UINT32>(bytes.size()),
+    reinterpret_cast<BYTE const*>(bytes.data()),
+    winrt::guid_of<decltype(root)>(),
+    winrt::put_abi(root)));
 ```
 
-`LoadComposition` returns a `Visual`, which is the least derived type that describes
-the root. A caller that parents the tree and drives its progress never needs more
-than that.
+`LottieRuntime.manifest` declares the private COM assembly. Activate that manifest
+before `CoCreateInstance`; `LottieRuntime.exe` contains the complete activation
+sequence. No system registration is required. The calling thread must own a
+`DispatcherQueue` that outlives the returned visual tree.
+
+`LottieRuntime.h` is the C++ API for applications linking the implementation
+directly. It is not exported by `LottieRuntime.dll`.
 
 ## Design
 
@@ -93,13 +103,13 @@ the state shared by every node is applied by a single function that takes
 `CompositionObject`. Everything is in one translation unit, so `/OPT:REF` discards
 the code for whatever an application never reaches.
 
-**Runtime cost second.** Each node is realized at most once. Lookups are a bounds
-check and an array index; there is no hash table anywhere. The buffer is read in
-place, so no intermediate object model is built.
+**Runtime cost second.** Each node and string is realized at most once. Lookups use
+O(1) bounds-checked array indexing into the FlatBuffer's node vectors. The buffer
+is read in place; no intermediate object model is built.
 
-**Transient memory third.** The only allocations are the caches, which are exactly
-as long as the buffer's node vectors, and the D2D geometries, which are released as
-soon as they have been given to a `CompositionPath`.
+**Transient memory third.** Realization caches are dense vectors matching the
+FlatBuffer's node vectors. D2D geometries are cached while the graph is built so
+shared geometry remains shared and cycles are rejected.
 
 **Untrusted input.** A buffer may have come from a file or a download. It is checked
 for the `LCMP` identifier, run through the FlatBuffers verifier, and every index
@@ -113,23 +123,51 @@ two effects the translator emits. There is no dependency on Win2D: the interpret
 implements `IGeometrySource2DInterop` and `IGraphicsEffectD2D1Interop` itself, which
 is a few dozen lines and avoids pulling a large component into every application.
 
-Requires the FlatBuffers C++ runtime headers (headers only, no library) from
-[flatbuffers 25.2.10](https://github.com/google/flatbuffers/releases/tag/v25.2.10),
-which must match the `flatc` used to generate `Generated/lottie_comp_generated.h`.
+The FlatBuffers C++ headers come from the pinned `external/flatbuffers` submodule.
+The checked-in C++ binding is generated by `flatc` from that commit. The checked-in
+C# binding remains on `Google.FlatBuffers` 25.2.10 from Microsoft's configured
+NuGet source. `build/RegenerateFlatbuffers.ps1` validates both generator versions.
 
-## Limitations
+## Incorporate it in a build
 
-`LoadedImageSurface` is a Windows.UI.Xaml.Media type, so an interpreter that is
-usable outside XAML cannot create one. An animation that embeds a raster image
-throws `winrt::hresult_not_implemented`. Custom animation controllers are rejected
-for the same reason the managed `Instantiator` rejects them: the composition engine
-has no way to express one.
+`LottieGen.nupkg` contains the complete native source set under
+`LottieRuntime/`.
+
+### C++/WinRT
+
+Add `LottieRuntime.cpp` to the consuming native project. Add `LottieRuntime/`
+and `LottieRuntime/flatbuffers/include/` to its include paths. Build as C++20
+and link:
+
+```text
+d2d1.lib
+dxguid.lib
+shcore.lib
+shlwapi.lib
+windowsapp.lib
+```
+
+Include `LottieRuntime.h` and call `LoadComposition` with the application's
+`Compositor`. This direct-link path does not use COM activation.
+
+### Managed applications
+
+Add the packaged `LottieRuntime.vcxproj` to the solution. The project builds
+`LottieRuntime.dll`, including the `ILottieCompositionLoader` implementation.
+Copy both files into every managed application output directory:
+
+```text
+LottieRuntime.dll
+LottieRuntime.manifest
+```
+
+The managed application activates `LottieRuntime.manifest`, calls
+`CoCreateInstance(CLSID_LottieCompositionLoader)`, and invokes
+`ILottieCompositionLoader::LoadComposition`. The calling thread owns the
+`DispatcherQueue` for the lifetime of the returned visual tree.
 
 ## Status
 
-**This code has not been compiled.** It was written on a Linux host, where neither
-MSVC nor the Windows SDK is available, so it has never been through a compiler and
-must be treated as unverified. Its behaviour is specified by `Instantiator.cs` and
-by `CompositionDeserializer.cs`, both of which are exercised by the tests in
-`tests/CompDataFlatbuffer.Tests`, so the shape of what it does is well tested even
-though this particular expression of it is not.
+Debug and Release x64 builds are supported. `LottieRuntime.exe` validates, dumps,
+or displays a composition through registration-free activation.
+`tests/CompDataFlatbuffer.Tests` verifies serializer round trips.

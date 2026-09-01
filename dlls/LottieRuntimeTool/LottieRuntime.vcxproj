@@ -21,7 +21,8 @@
 
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9A7B4C2E-1F3D-4B7A-9C3E-2D5A8F0B2E48}</ProjectGuid>
-    <RootNamespace>LottieRuntimeDump</RootNamespace>
+    <RootNamespace>LottieRuntime</RootNamespace>
+    <TargetName>LottieRuntime</TargetName>
     <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
@@ -49,25 +50,32 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>CoreMessaging.lib;ole32.lib;shlwapi.lib;user32.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 
   <ItemGroup>
-    <ClCompile Include="LottieRuntimeDump.cpp" />
+    <ClCompile Include="LottieRuntime.cpp" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\LottieRuntime\LottieRuntime.vcxproj">
       <Project>{6E0A5B4C-2F1D-4B7A-9C3E-1D5A8F0B2E47}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
 
-  <Target Name="CopyLottieRuntimeDll" AfterTargets="Build">
+  <Target Name="CopyLottieRuntimeFiles" AfterTargets="Build">
+    <MSBuild
+        Projects="..\LottieRuntime\LottieRuntime.vcxproj"
+        Targets="GetTargetPath"
+        Properties="Configuration=$(Configuration);Platform=$(Platform)">
+      <Output TaskParameter="TargetOutputs" ItemName="_LottieRuntimeTarget" />
+    </MSBuild>
     <ItemGroup>
-      <LottieRuntimeDll Include="$(MSBuildThisFileDirectory)..\LottieRuntime\$(Platform)\$(Configuration)\LottieRuntime.dll" />
+      <LottieRuntimeManifest Include="$(MSBuildThisFileDirectory)..\LottieRuntime\LottieRuntime.manifest" />
     </ItemGroup>
-    <Copy SourceFiles="@(LottieRuntimeDll)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_LottieRuntimeTarget);@(LottieRuntimeManifest)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
