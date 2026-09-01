@@ -16,13 +16,11 @@
 //    takes the least derived type. Everything lives in one translation unit so that
 //    the linker can discard what an application does not reach.
 //
-//  * Runtime cost second. Every node is realized at most once and is then found by
-//    indexing an array, never by hashing. The buffer is read in place; nothing is
-//    copied out of it.
+//  * Runtime cost second. Nodes and strings are realized once, then found by indexing
+//    dense arrays. The FlatBuffer remains the object model.
 //
-//  * Transient memory third. The only allocations are the realization caches, which
-//    are exactly as large as the node vectors in the buffer, and the D2D geometries,
-//    which are released as soon as they have been handed to a CompositionPath.
+//  * Transient memory third. Cache sizes come directly from the buffer. D2D geometry
+//    remains cached during interpretation so shared subgraphs stay shared.
 //
 // Calls are made through the least derived interface that has the member being used.
 // A node is only ever known by its concrete type inside the function that creates it;
@@ -31,8 +29,7 @@
 // to ask what a node actually is, because the buffer already said, and the answer was
 // consumed at the moment of creation.
 
-// <unknwn.h> must be included before any C++/WinRT header, and LottieRuntime.h
-// pulls one in (winrt/Windows.UI.Composition.h), so it has to come first here.
+// C++/WinRT requires <unknwn.h> before projected headers.
 #include <unknwn.h>
 
 #include "LottieRuntime.h"
@@ -390,6 +387,12 @@ namespace
         // -----------------------------------------------------------------------
         void Initialize(CompositionObject const& target, Fb::CompObj const* source)
         {
+            InitializeProperties(target, source);
+            StartAnimations(target, source);
+        }
+
+        void InitializeProperties(CompositionObject const& target, Fb::CompObj const* source)
+        {
             if (source == nullptr)
             {
                 return;
@@ -408,7 +411,6 @@ namespace
                 RealizePropertySet(properties, target.Properties());
             }
 
-            StartAnimations(target, source);
         }
 
         void StartAnimations(CompositionObject const& target, Fb::CompObj const* source)
@@ -433,18 +435,28 @@ namespace
                 auto animation = GetAnimation(animator->animation());
                 Check(animation != nullptr);
 
-                // A custom controller is one that drives a property that is not its
-                // own, which the composition engine has no way to express. The
-                // managed instantiator rejects these too.
                 auto controllerIndex = animator->controller();
-                if (controllerIndex != NullIndex && IsCustomController(controllerIndex))
+                auto customController =
+                    controllerIndex != NullIndex && IsCustomController(controllerIndex)
+                    ? GetController(controllerIndex)
+                    : nullptr;
+
+                if (customController != nullptr &&
+                    animation.try_as<ExpressionAnimation>() != nullptr)
                 {
-                    ThrowUnsupported();
+                    ThrowMalformed();
                 }
 
-                target.StartAnimation(property, animation);
+                if (customController != nullptr)
+                {
+                    target.StartAnimation(property, animation, customController);
+                }
+                else
+                {
+                    target.StartAnimation(property, animation);
+                }
 
-                if (controllerIndex != NullIndex)
+                if (controllerIndex != NullIndex && customController == nullptr)
                 {
                     RealizeController(controllerIndex, target, property);
                 }
@@ -559,17 +571,11 @@ namespace
         // -----------------------------------------------------------------------
         // Controllers.
         // -----------------------------------------------------------------------
-        void RealizeController(uint32_t index, CompositionObject const& target, winrt::hstring const& property)
+        void RealizeController(uint32_t index, AnimationController const& controller)
         {
             Check(index < m_controllers.size());
 
             if (m_controllers[index] != nullptr)
-            {
-                return;
-            }
-
-            auto controller = target.TryGetAnimationController(property);
-            if (controller == nullptr)
             {
                 return;
             }
@@ -584,6 +590,37 @@ namespace
             }
 
             Initialize(controller, source->base());
+        }
+
+        void RealizeController(
+            uint32_t index,
+            CompositionObject const& target,
+            winrt::hstring const& property)
+        {
+            auto controller = target.TryGetAnimationController(property);
+            Check(controller != nullptr);
+            RealizeController(index, controller);
+        }
+
+        AnimationController GetController(uint32_t index)
+        {
+            Check(index < m_controllers.size());
+            auto const* source = At(m_root.controllers(), index);
+
+            if (m_controllers[index] == nullptr)
+            {
+                if (source->is_custom())
+                {
+                    RealizeController(index, m_compositor.CreateAnimationController());
+                }
+                else
+                {
+                    GetObjectReference(source->target_object());
+                }
+            }
+
+            Check(m_controllers[index] != nullptr);
+            return m_controllers[index];
         }
 
         // -----------------------------------------------------------------------
@@ -623,10 +660,7 @@ namespace
                 Check(result != nullptr);
                 return result;
             }
-            case Fb::ObjectCategory::Controller:
-                // A controller is realized by the animator that produces it, so it
-                // can never be the target of a reference.
-                ThrowMalformed();
+            case Fb::ObjectCategory::Controller: return GetController(index);
             default:
                 ThrowMalformed();
             }
@@ -724,6 +758,7 @@ namespace
             m_visuals[index] = container;
 
             ApplyVisualProperties(container, source);
+            InitializeProperties(container, source->base());
 
             if (auto const* children = source->children(); children != nullptr)
             {
@@ -736,7 +771,7 @@ namespace
                 }
             }
 
-            Initialize(container, source->base());
+            StartAnimations(container, source->base());
 
             return container;
         }
