@@ -51,8 +51,12 @@
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.Numerics.h>
 #include <winrt/Windows.Graphics.Effects.h>
+#include <winrt/Windows.Storage.Streams.h>
 #include <winrt/Windows.UI.h>
 #include <winrt/Windows.UI.Composition.h>
+
+#undef GetCurrentTime
+#include <winrt/Windows.UI.Xaml.Media.h>
 
 #include "Generated/lottie_comp_generated.h"
 
@@ -211,7 +215,11 @@ namespace
     // and what to set on it. Implementing that directly avoids taking a dependency
     // on Win2D for the two effects the translator emits.
     // ---------------------------------------------------------------------------
-    struct Effect : winrt::implements<Effect, winrt::Windows::Graphics::Effects::IGraphicsEffect, ABI::Windows::Graphics::Effects::IGraphicsEffectD2D1Interop>
+    struct Effect : winrt::implements<
+        Effect,
+        winrt::Windows::Graphics::Effects::IGraphicsEffect,
+        winrt::Windows::Graphics::Effects::IGraphicsEffectSource,
+        ABI::Windows::Graphics::Effects::IGraphicsEffectD2D1Interop>
     {
         Effect(GUID const& id, winrt::Windows::Foundation::IInspectable property) :
             m_id(id),
@@ -316,10 +324,14 @@ namespace
         Interpreter(Compositor const& compositor, Fb::LottieComposition const& root) :
             m_compositor(compositor),
             m_root(root),
+            m_strings(Count(root.strings())),
+            m_stringCached(Count(root.strings())),
             m_visuals(Count(root.visuals()), nullptr),
             m_shapes(Count(root.shapes()), nullptr),
             m_geometries(Count(root.geometries()), nullptr),
             m_paths(Count(root.canvas_geometries()), nullptr),
+            m_canvasGeometries(Count(root.canvas_geometries())),
+            m_canvasGeometryStates(Count(root.canvas_geometries())),
             m_brushes(Count(root.brushes()), nullptr),
             m_gradientStops(Count(root.gradient_stops()), nullptr),
             m_viewBoxes(Count(root.view_boxes()), nullptr),
@@ -348,7 +360,7 @@ namespace
             return vector == nullptr ? 0 : vector->size();
         }
 
-        winrt::hstring GetString(uint32_t index) const
+        winrt::hstring GetString(uint32_t index)
         {
             if (index == NullIndex)
             {
@@ -357,12 +369,17 @@ namespace
 
             auto const* strings = m_root.strings();
             Check(strings != nullptr && index < strings->size());
-            auto const* value = strings->Get(index);
-            Check(value != nullptr);
+            if (!m_stringCached[index])
+            {
+                auto const* value = strings->Get(index);
+                Check(value != nullptr);
 
-            // The buffer holds UTF-8 and WinRT wants UTF-16, so this is the one place
-            // where text is copied out of the buffer.
-            return winrt::to_hstring(std::string_view(value->c_str(), value->size()));
+                m_strings[index] =
+                    winrt::to_hstring(std::string_view(value->c_str(), value->size()));
+                m_stringCached[index] = true;
+            }
+
+            return m_strings[index];
         }
 
         // -----------------------------------------------------------------------
@@ -396,6 +413,11 @@ namespace
 
         void StartAnimations(CompositionObject const& target, Fb::CompObj const* source)
         {
+            if (source == nullptr)
+            {
+                return;
+            }
+
             auto const* animators = source->animators();
             if (animators == nullptr)
             {
@@ -471,14 +493,25 @@ namespace
                         target.InsertScalar(name, value->scalar());
                         break;
                     case Fb::PropertyValueType::Vector2:
-                        target.InsertVector2(name, { Vector(value)->x(), Vector(value)->y() });
+                    {
+                        auto const* vector = Vector(value);
+                        target.InsertVector2(name, { vector->x(), vector->y() });
                         break;
+                    }
                     case Fb::PropertyValueType::Vector3:
-                        target.InsertVector3(name, { Vector(value)->x(), Vector(value)->y(), Vector(value)->z() });
+                    {
+                        auto const* vector = Vector(value);
+                        target.InsertVector3(name, { vector->x(), vector->y(), vector->z() });
                         break;
+                    }
                     case Fb::PropertyValueType::Vector4:
-                        target.InsertVector4(name, { Vector(value)->x(), Vector(value)->y(), Vector(value)->z(), Vector(value)->w() });
+                    {
+                        auto const* vector = Vector(value);
+                        target.InsertVector4(
+                            name,
+                            { vector->x(), vector->y(), vector->z(), vector->w() });
                         break;
+                    }
                     case Fb::PropertyValueType::None:
                         break;
                     default:
@@ -636,6 +669,11 @@ namespace
                     sprite.Brush(GetBrush(brush));
                 }
 
+                if (auto shadow = source->shadow(); shadow != NullIndex)
+                {
+                    sprite.Shadow(GetShadow(shadow));
+                }
+
                 container = sprite;
                 break;
             }
@@ -680,6 +718,8 @@ namespace
                 ThrowMalformed();
             }
 
+            // Any case that resolves referenced objects must populate m_visuals
+            // first. The assignment below only precedes the child walk.
             // Cached before the children are walked, so that a cycle terminates.
             m_visuals[index] = container;
 
@@ -815,6 +855,8 @@ namespace
                 ThrowMalformed();
             }
 
+            // Any case that resolves referenced objects must populate m_shapes
+            // first. The assignment below cannot terminate recursive graphs.
             m_shapes[index] = result;
 
             ApplyShapeProperties(result, source);
@@ -1047,6 +1089,28 @@ namespace
         }
 
         winrt::com_ptr<ID2D1Geometry> BuildGeometry(uint32_t index)
+        {
+            Check(index < m_canvasGeometries.size());
+
+            switch (m_canvasGeometryStates[index])
+            {
+            case CanvasGeometryState::Realized:
+                return m_canvasGeometries[index];
+            case CanvasGeometryState::Realizing:
+                ThrowMalformed();
+            case CanvasGeometryState::Unrealized:
+                break;
+            }
+
+            m_canvasGeometryStates[index] = CanvasGeometryState::Realizing;
+            auto result = BuildGeometryCore(index);
+            Check(result != nullptr);
+            m_canvasGeometries[index] = result;
+            m_canvasGeometryStates[index] = CanvasGeometryState::Realized;
+            return result;
+        }
+
+        winrt::com_ptr<ID2D1Geometry> BuildGeometryCore(uint32_t index)
         {
             auto const* source = At(m_root.canvas_geometries(), index);
 
@@ -1344,6 +1408,8 @@ namespace
                 ThrowMalformed();
             }
 
+            // Any case that resolves referenced objects must populate m_brushes
+            // first. The assignment below cannot terminate recursive graphs.
             m_brushes[index] = result;
 
             Initialize(result, source->base());
@@ -1484,6 +1550,8 @@ namespace
                 ThrowMalformed();
             }
 
+            // Any case that resolves referenced objects must populate m_clips
+            // first. The assignment below cannot terminate recursive graphs.
             m_clips[index] = result;
 
             if (auto const* value = source->center_point())
@@ -1610,12 +1678,35 @@ namespace
                 break;
             }
             case Fb::SurfaceKind::LoadedImageFromUri:
+            {
+                auto const uri = source->uri();
+                Check(uri != NullIndex);
+                m_surfaces[index] =
+                    winrt::Windows::UI::Xaml::Media::LoadedImageSurface::StartLoadFromUri(
+                        winrt::Windows::Foundation::Uri(GetString(uri)));
+                break;
+            }
             case Fb::SurfaceKind::LoadedImageFromStream:
-                // LoadedImageSurface lives in Windows.UI.Xaml.Media, so an
-                // interpreter that is usable outside XAML cannot create one. The
-                // translator only emits these for animations that embed an image,
-                // which the Lottie feature set this interpreter targets excludes.
-                ThrowUnsupported();
+            {
+                auto const* bytes = source->bytes();
+                Check(bytes != nullptr);
+
+                winrt::Windows::Storage::Streams::InMemoryRandomAccessStream stream;
+                winrt::Windows::Storage::Streams::DataWriter writer(
+                    stream.GetOutputStreamAt(0));
+                writer.WriteBytes(
+                    winrt::array_view<uint8_t const>(
+                        bytes->data(),
+                        bytes->data() + bytes->size()));
+                writer.StoreAsync().get();
+                writer.FlushAsync().get();
+                stream.Seek(0);
+
+                m_surfaces[index] =
+                    winrt::Windows::UI::Xaml::Media::LoadedImageSurface::StartLoadFromStream(
+                        stream);
+                break;
+            }
             default:
                 ThrowMalformed();
             }
@@ -1951,14 +2042,25 @@ namespace
         Compositor const& m_compositor;
         Fb::LottieComposition const& m_root;
 
+        enum class CanvasGeometryState : uint8_t
+        {
+            Unrealized,
+            Realizing,
+            Realized,
+        };
+
         // The caches. Each is exactly as long as the matching vector in the buffer,
         // so a lookup is a bounds check and an index. Each holds the least derived
         // type that any reference to that category needs, which is what stops a
         // realized node from ever having to be cast back to what it was.
+        std::vector<winrt::hstring> m_strings;
+        std::vector<uint8_t> m_stringCached;
         std::vector<Visual> m_visuals;
         std::vector<CompositionShape> m_shapes;
         std::vector<CompositionGeometry> m_geometries;
         std::vector<CompositionPath> m_paths;
+        std::vector<winrt::com_ptr<ID2D1Geometry>> m_canvasGeometries;
+        std::vector<CanvasGeometryState> m_canvasGeometryStates;
         std::vector<CompositionBrush> m_brushes;
         std::vector<CompositionColorGradientStop> m_gradientStops;
         std::vector<CompositionViewBox> m_viewBoxes;
