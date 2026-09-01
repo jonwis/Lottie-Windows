@@ -31,6 +31,10 @@
 // to ask what a node actually is, because the buffer already said, and the answer was
 // consumed at the moment of creation.
 
+// <unknwn.h> must be included before any C++/WinRT header, and LottieRuntime.h
+// pulls one in (winrt/Windows.UI.Composition.h), so it has to come first here.
+#include <unknwn.h>
+
 #include "LottieRuntime.h"
 
 #include <cstdint>
@@ -161,26 +165,21 @@ namespace
     // and the only way to give one real content is the interop interface that hands
     // out a D2D geometry. This is the smallest object that does that.
     // ---------------------------------------------------------------------------
-    struct GeometrySource : winrt::implements<
-        GeometrySource,
-        winrt::Windows::Graphics::IGeometrySource2D,
-        ABI::Windows::Graphics::IGeometrySource2DInterop>
+    struct GeometrySource : winrt::implements<GeometrySource, winrt::Windows::Graphics::IGeometrySource2D, ABI::Windows::Graphics::IGeometrySource2DInterop>
     {
-        explicit GeometrySource(winrt::com_ptr<ID2D1Geometry> geometry) :
+        GeometrySource(winrt::com_ptr<ID2D1Geometry> geometry) :
             m_geometry(std::move(geometry))
         {
         }
 
-        IFACEMETHODIMP GetGeometry(ID2D1Geometry** value) noexcept
+        IFACEMETHODIMP GetGeometry(ID2D1Geometry** value) noexcept override
         {
             m_geometry.copy_to(value);
             return S_OK;
         }
 
-        IFACEMETHODIMP TryGetGeometryUsingFactory(ID2D1Factory*, ID2D1Geometry** value) noexcept
+        IFACEMETHODIMP TryGetGeometryUsingFactory(ID2D1Factory*, ID2D1Geometry** value) noexcept override
         {
-            // The geometry is device independent and was made by this component's own
-            // factory, so there is nothing useful to return for another factory.
             *value = nullptr;
             return E_NOTIMPL;
         }
@@ -212,15 +211,8 @@ namespace
     // and what to set on it. Implementing that directly avoids taking a dependency
     // on Win2D for the two effects the translator emits.
     // ---------------------------------------------------------------------------
-    struct Effect : winrt::implements<
-        Effect,
-        winrt::Windows::Graphics::Effects::IGraphicsEffect,
-        winrt::Windows::Graphics::Effects::IGraphicsEffectSource,
-        ABI::Windows::Graphics::Effects::IGraphicsEffectD2D1Interop>
+    struct Effect : winrt::implements<Effect, winrt::Windows::Graphics::Effects::IGraphicsEffect, ABI::Windows::Graphics::Effects::IGraphicsEffectD2D1Interop>
     {
-        // Both effects the translator emits have exactly one property, and in both
-        // cases it is property zero, so one class covers both and there is no need
-        // for a property table.
         Effect(GUID const& id, winrt::Windows::Foundation::IInspectable property) :
             m_id(id),
             m_property(std::move(property))
@@ -242,19 +234,19 @@ namespace
             m_sources.push_back(source);
         }
 
-        IFACEMETHODIMP GetEffectId(GUID* id) noexcept
+        IFACEMETHODIMP GetEffectId(GUID* id) noexcept override
         {
             *id = m_id;
             return S_OK;
         }
 
-        IFACEMETHODIMP GetPropertyCount(UINT* count) noexcept
+        IFACEMETHODIMP GetPropertyCount(UINT* count) noexcept override
         {
             *count = 1;
             return S_OK;
         }
 
-        IFACEMETHODIMP GetProperty(UINT index, ABI::Windows::Foundation::IPropertyValue** value) noexcept
+        IFACEMETHODIMP GetProperty(UINT index, ABI::Windows::Foundation::IPropertyValue** value) noexcept override
         {
             *value = nullptr;
 
@@ -263,17 +255,22 @@ namespace
                 return E_BOUNDS;
             }
 
-            return m_property.as<winrt::Windows::Foundation::IPropertyValue>()
-                ->QueryInterface(__uuidof(ABI::Windows::Foundation::IPropertyValue), reinterpret_cast<void**>(value));
+            auto pv = m_property.try_as<ABI::Windows::Foundation::IPropertyValue>();
+            if (pv)
+            {
+                *value = pv.detach();
+                return S_OK;
+            }
+            return E_NOINTERFACE;
         }
 
-        IFACEMETHODIMP GetSourceCount(UINT* count) noexcept
+        IFACEMETHODIMP GetSourceCount(UINT* count) noexcept override
         {
             *count = static_cast<UINT>(m_sources.size());
             return S_OK;
         }
 
-        IFACEMETHODIMP GetSource(UINT index, ABI::Windows::Graphics::Effects::IGraphicsEffectSource** source) noexcept
+        IFACEMETHODIMP GetSource(UINT index, ABI::Windows::Graphics::Effects::IGraphicsEffectSource** source) noexcept override
         {
             *source = nullptr;
 
@@ -291,9 +288,8 @@ namespace
         IFACEMETHODIMP GetNamedPropertyMapping(
             LPCWSTR,
             UINT*,
-            ABI::Windows::Graphics::Effects::GRAPHICS_EFFECT_PROPERTY_MAPPING*) noexcept
+            ABI::Windows::Graphics::Effects::GRAPHICS_EFFECT_PROPERTY_MAPPING*) noexcept override
         {
-            // Nothing animates an effect property by name, so there is nothing to map.
             return E_INVALIDARG;
         }
 
@@ -320,21 +316,21 @@ namespace
         Interpreter(Compositor const& compositor, Fb::LottieComposition const& root) :
             m_compositor(compositor),
             m_root(root),
-            m_visuals(Count(root.visuals())),
-            m_shapes(Count(root.shapes())),
-            m_geometries(Count(root.geometries())),
-            m_paths(Count(root.canvas_geometries())),
-            m_brushes(Count(root.brushes())),
-            m_gradientStops(Count(root.gradient_stops())),
-            m_viewBoxes(Count(root.view_boxes())),
-            m_clips(Count(root.clips())),
-            m_shadows(Count(root.shadows())),
-            m_surfaces(Count(root.surfaces())),
-            m_effects(Count(root.effects())),
-            m_easings(Count(root.easings())),
-            m_animations(Count(root.animations())),
-            m_propertySets(Count(root.property_sets())),
-            m_controllers(Count(root.controllers()))
+            m_visuals(Count(root.visuals()), nullptr),
+            m_shapes(Count(root.shapes()), nullptr),
+            m_geometries(Count(root.geometries()), nullptr),
+            m_paths(Count(root.canvas_geometries()), nullptr),
+            m_brushes(Count(root.brushes()), nullptr),
+            m_gradientStops(Count(root.gradient_stops()), nullptr),
+            m_viewBoxes(Count(root.view_boxes()), nullptr),
+            m_clips(Count(root.clips()), nullptr),
+            m_shadows(Count(root.shadows()), nullptr),
+            m_surfaces(Count(root.surfaces()), nullptr),
+            m_effects(Count(root.effects()), nullptr),
+            m_easings(Count(root.easings()), nullptr),
+            m_animations(Count(root.animations()), nullptr),
+            m_propertySets(Count(root.property_sets()), nullptr),
+            m_controllers(Count(root.controllers()), nullptr)
         {
         }
 
@@ -913,7 +909,7 @@ namespace
 
             if (auto value = source->stroke_miter_limit())
             {
-                target.StrokeMiterLimit(static_cast<uint32_t>(*value));
+                target.StrokeMiterLimit(static_cast<float>(*value));
             }
 
             if (auto value = source->stroke_thickness())
