@@ -31,6 +31,10 @@
          Anything newer is reached through the buffer's required UAP version, which
          a caller checks before it loads. -->
     <WindowsTargetPlatformMinVersion>10.0.17763.0</WindowsTargetPlatformMinVersion>
+    <FlatBuffersIncludeDirectory
+        Condition="'$(FlatBuffersIncludeDirectory)'=='' and Exists('$(MSBuildThisFileDirectory)..\..\external\flatbuffers\include')">$(MSBuildThisFileDirectory)..\..\external\flatbuffers\include</FlatBuffersIncludeDirectory>
+    <FlatBuffersIncludeDirectory
+        Condition="'$(FlatBuffersIncludeDirectory)'==''">$(MSBuildThisFileDirectory)flatbuffers\include</FlatBuffersIncludeDirectory>
   </PropertyGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -45,8 +49,8 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>LOTTIERUNTIME_EXPORTS;WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory);$(MSBuildThisFileDirectory)packages\flatbuffers\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory);$(FlatBuffersIncludeDirectory);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
 
@@ -60,7 +64,7 @@
       <StringPooling>true</StringPooling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>CoreMessaging.lib;d2d1.lib;dxguid.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dxguid.lib;shcore.lib;shlwapi.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>LottieRuntime.def</ModuleDefinitionFile>
 
       <!-- Discards the code for any node type the application never reaches. -->
@@ -81,13 +85,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- LottieRuntime.manifest is a private-assembly manifest, not embedded in
-         this DLL: it is copied next to a consumer's exe (see
-         LottieRuntimeComTest.vcxproj) and named directly by an ACTCTX, which is
-         how CoCreateInstance resolves CLSID_LottieCompositionLoader without
-         HKEY_CLASSES_ROOT registration or a linker-generated /MANIFEST, which
-         would otherwise merge in a trustInfo/UAC block that only an application
-         manifest is allowed to carry. -->
+    <!-- Consumers activate this private assembly manifest instead of registering
+         the class in HKEY_CLASSES_ROOT. -->
     <None Include="LottieRuntime.manifest" />
   </ItemGroup>
 

@@ -41,6 +41,8 @@
 #include <vector>
 
 #include <d2d1_1.h>
+#include <shcore.h>
+#include <shlwapi.h>
 #include <windows.graphics.effects.interop.h>
 #include <Windows.Graphics.Interop.h>
 
@@ -1726,16 +1728,16 @@ namespace
                 auto const* bytes = source->bytes();
                 Check(bytes != nullptr);
 
-                winrt::Windows::Storage::Streams::InMemoryRandomAccessStream stream;
-                winrt::Windows::Storage::Streams::DataWriter writer(
-                    stream.GetOutputStreamAt(0));
-                writer.WriteBytes(
-                    winrt::array_view<uint8_t const>(
-                        bytes->data(),
-                        bytes->data() + bytes->size()));
-                writer.StoreAsync().get();
-                writer.FlushAsync().get();
-                stream.Seek(0);
+                winrt::com_ptr<IStream> byteStream;
+                byteStream.attach(SHCreateMemStream(bytes->data(), bytes->size()));
+                Check(byteStream != nullptr);
+
+                winrt::Windows::Storage::Streams::IRandomAccessStream stream{ nullptr };
+                winrt::check_hresult(CreateRandomAccessStreamOverStream(
+                    byteStream.get(),
+                    BSOS_DEFAULT,
+                    winrt::guid_of<decltype(stream)>(),
+                    winrt::put_abi(stream)));
 
                 m_surfaces[index] =
                     winrt::Windows::UI::Xaml::Media::LoadedImageSurface::StartLoadFromStream(

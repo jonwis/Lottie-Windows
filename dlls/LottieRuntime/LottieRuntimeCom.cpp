@@ -11,8 +11,6 @@
 #include "LottieRuntimeCom.h"
 #include "LottieRuntime.h"
 
-#include <DispatcherQueue.h>
-
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.System.h>
 #include <winrt/Windows.UI.Composition.h>
@@ -22,8 +20,8 @@ using namespace winrt::Windows::UI::Composition;
 
 namespace
 {
-    // The loader creates its Compositor on the first load. Desktop threads need a
-    // DispatcherQueue before Windows.UI.Composition can activate a Compositor.
+    // The caller owns the thread's DispatcherQueue. It must outlive every Visual
+    // returned by this loader.
     struct LottieCompositionLoader : winrt::implements<LottieCompositionLoader, ILottieCompositionLoader>
     {
         STDMETHODIMP LoadComposition(UINT32 length, BYTE const* buffer, REFIID riid, void** result) noexcept override
@@ -46,15 +44,7 @@ namespace
                 {
                     if (!winrt::Windows::System::DispatcherQueue::GetForCurrentThread())
                     {
-                        DispatcherQueueOptions const options{
-                            sizeof(DispatcherQueueOptions),
-                            DQTYPE_THREAD_CURRENT,
-                            DQTAT_COM_NONE,
-                        };
-
-                        winrt::check_hresult(CreateDispatcherQueueController(
-                            options,
-                            reinterpret_cast<PDISPATCHERQUEUECONTROLLER*>(winrt::put_abi(m_dispatcherQueueController))));
+                        return E_ILLEGAL_METHOD_CALL;
                     }
 
                     m_compositor = Compositor();
@@ -71,7 +61,6 @@ namespace
         }
 
     private:
-        winrt::Windows::System::DispatcherQueueController m_dispatcherQueueController{ nullptr };
         Compositor m_compositor{ nullptr };
     };
 

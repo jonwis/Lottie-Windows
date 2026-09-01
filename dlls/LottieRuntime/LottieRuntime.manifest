@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <!--
-    Declares the LottieCompositionLoader COM class as part of LottieRuntime.dll's
-    own identity, so any process whose activation context includes this manifest
-    (directly, or by referencing it as a dependent assembly) can CoCreateInstance
-    CLSID_LottieCompositionLoader without it ever being written to HKEY_CLASSES_ROOT.
-    This is the "registration-free COM" / isolated-application binding model.
-  -->
+  <!-- Private assembly identity for registration-free COM activation. -->
   <assemblyIdentity
       type="win32"
       name="LottieRuntime"
       version="1.0.0.0"
-      processorArchitecture="amd64" />
+      processorArchitecture="*" />
   <file name="LottieRuntime.dll">
     <comClass
         clsid="{9F7B7089-F512-4BBC-81FE-4FF12B4DA159}"

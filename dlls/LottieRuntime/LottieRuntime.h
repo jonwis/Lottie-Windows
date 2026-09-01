@@ -4,24 +4,17 @@
 
 #pragma once
 
+#include <unknwn.h>
+
 #include <cstddef>
 #include <span>
 
 #include <winrt/Windows.UI.Composition.h>
 
-// The component is usable either as a DLL or compiled straight into an application.
-// Define LOTTIERUNTIME_STATIC to build it in, and LOTTIERUNTIME_EXPORTS when building
-// the DLL itself.
-#if defined(LOTTIERUNTIME_STATIC)
-#define LOTTIERUNTIME_API
-#elif defined(LOTTIERUNTIME_EXPORTS)
-#define LOTTIERUNTIME_API __declspec(dllexport)
-#else
-#define LOTTIERUNTIME_API __declspec(dllimport)
-#endif
-
 namespace CommunityToolkit::WinUI::Lottie
 {
+    // LoadComposition is the direct-link C++ API.
+    // DLL callers use ILottieCompositionLoader from LottieRuntimeCom.h.
     // Builds the composition described by a serialized Lottie composition.
     //
     // The buffer is the output of LottieGen -Language flatbuffer, or equivalently of
@@ -35,20 +28,18 @@ namespace CommunityToolkit::WinUI::Lottie
     // returned by ProgressPropertySet, so playback is driven by animating that single
     // property.
     //
-    // The result is the least derived type that describes the root, because a caller
-    // that only parents the tree and drives its progress never needs anything more.
+    // Visual is sufficient for parenting the root and driving its progress.
     //
     // Throws winrt::hresult_error with E_INVALIDARG if the buffer is not a well formed
     // composition, and E_NOTIMPL if it requires a feature this build does not have.
-    LOTTIERUNTIME_API winrt::Windows::UI::Composition::Visual LoadComposition(
+    winrt::Windows::UI::Composition::Visual LoadComposition(
         winrt::Windows::UI::Composition::Compositor const& compositor,
         std::span<std::byte const> buffer);
 
     // The property set that drives the animation. Animating its "Progress" scalar from
     // 0 to 1 plays the animation once.
     //
-    // This is the property set of the visual returned by LoadComposition, so it is only
-    // a convenience; it exists so that callers do not have to know that detail.
-    LOTTIERUNTIME_API winrt::Windows::UI::Composition::CompositionPropertySet ProgressPropertySet(
+    // Returns the root Visual's property set.
+    winrt::Windows::UI::Composition::CompositionPropertySet ProgressPropertySet(
         winrt::Windows::UI::Composition::Visual const& root);
 }
