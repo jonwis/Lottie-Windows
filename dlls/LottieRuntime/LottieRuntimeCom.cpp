@@ -103,8 +103,17 @@ namespace
             }
         }
 
-        STDMETHODIMP LockServer(BOOL) noexcept override
+        STDMETHODIMP LockServer(BOOL lock) noexcept override
         {
+            if (lock)
+            {
+                ++winrt::get_module_lock();
+            }
+            else
+            {
+                --winrt::get_module_lock();
+            }
+
             return S_OK;
         }
     };
@@ -136,7 +145,5 @@ extern "C" HRESULT __stdcall DllGetClassObject(REFCLSID rclsid, REFIID riid, voi
 
 extern "C" HRESULT __stdcall DllCanUnloadNow()
 {
-    // The loader has no process-wide state, so it is always safe to unload; the
-    // reference-counted objects it hands out keep the DLL alive on their own.
-    return S_OK;
+    return winrt::get_module_lock() == 0 ? S_OK : S_FALSE;
 }
