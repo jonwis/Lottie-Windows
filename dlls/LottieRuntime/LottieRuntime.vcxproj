@@ -61,6 +61,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>d2d1.lib;dxguid.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>LottieRuntime.def</ModuleDefinitionFile>
 
       <!-- Discards the code for any node type the application never reaches. -->
       <OptimizeReferences>true</OptimizeReferences>
@@ -70,12 +71,31 @@
 
   <ItemGroup>
     <ClInclude Include="LottieRuntime.h" />
+    <ClInclude Include="LottieRuntimeCom.h" />
     <ClInclude Include="Generated\lottie_comp_generated.h" />
   </ItemGroup>
 
   <ItemGroup>
     <ClCompile Include="LottieRuntime.cpp" />
+    <ClCompile Include="LottieRuntimeCom.cpp" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- LottieRuntime.manifest is a private-assembly manifest, not embedded in
+         this DLL: it is copied next to a consumer's exe (see
+         LottieRuntimeComTest.vcxproj) and named directly by an ACTCTX, which is
+         how CoCreateInstance resolves CLSID_LottieCompositionLoader without
+         HKEY_CLASSES_ROOT registration or a linker-generated /MANIFEST, which
+         would otherwise merge in a trustInfo/UAC block that only an application
+         manifest is allowed to carry. -->
+    <None Include="LottieRuntime.manifest" />
+  </ItemGroup>
+
+  <ItemDefinitionGroup>
+    <Link>
+      <GenerateManifest>false</GenerateManifest>
+    </Link>
+  </ItemDefinitionGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
