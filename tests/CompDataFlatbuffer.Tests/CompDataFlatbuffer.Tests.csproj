@@ -21,6 +21,7 @@
   <Import Project="$(_SourceDir)GenericData\GenericData.projitems" Label="Shared" />
   <Import Project="$(_SourceDir)LottieData\LottieData.projitems" Label="Shared" />
   <Import Project="$(_SourceDir)LottieMetadata\LottieMetadata.projitems" Label="Shared" />
+  <Import Project="$(_SourceDir)LottieRuntime\LottieRuntime.projitems" Label="Shared" />
   <Import Project="$(_SourceDir)LottieReader\LottieReader.projitems" Label="Shared" />
   <Import Project="$(_SourceDir)LottieToWinComp\LottieToWinComp.projitems" Label="Shared" />
   <Import Project="$(_SourceDir)UIData\UIData.projitems" Label="Shared" />

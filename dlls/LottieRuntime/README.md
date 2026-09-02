@@ -153,6 +153,12 @@ Include `LottieRuntime.h` and call `LoadComposition` with the application's
 
 ### Managed applications
 
+A managed application can also use the C# interpreter in
+[`source/LottieRuntime`](../../source/LottieRuntime/README.md), which reads the same
+buffer and performs the same validation, and needs no COM activation. Use the DLL
+instead when the application should not take a Win2D dependency, or when the same
+animation is loaded from both native and managed code.
+
 Add the packaged `LottieRuntime.vcxproj` to the solution. The project builds
 `LottieRuntime.dll`, including the `ILottieCompositionLoader` implementation.
 Copy both files into every managed application output directory:

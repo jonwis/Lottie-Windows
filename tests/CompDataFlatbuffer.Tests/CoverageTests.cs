@@ -61,6 +61,23 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer.Tests
             Assert.Equal(expected, actual);
         }
 
+        [Fact]
+        public void EveryNodeTypeIsInterpreted()
+        {
+            var root = BuildGraph();
+
+            // The interpreter has a branch per node type just as the deserializer does,
+            // so it is held to the same standard: every node type that a graph can
+            // contain must come out of the buffer unchanged.
+            var expected = CompositionTreeDumper.Dump(root);
+            var actual = InterpretedTreeDumper.Dump(
+                LottieRuntime.CompositionInterpreter.LoadComposition(
+                    new Windows.UI.Composition.Compositor(),
+                    CompositionSerializer.Serialize(root, 14, null, null, 100, 100)));
+
+            Assert.Equal(expected, actual);
+        }
+
         // Builds a graph containing one of everything. It is not a sensible animation;
         // its only job is to reach every branch of the serializer and the deserializer.
         static Visual BuildGraph()
