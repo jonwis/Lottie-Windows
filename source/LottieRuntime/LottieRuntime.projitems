@@ -8,6 +8,10 @@
   <PropertyGroup Label="Configuration">
     <Import_RootNamespace>LottieRuntime</Import_RootNamespace>
   </PropertyGroup>
+  <Import
+    Project="$(MSBuildThisFileDirectory)..\CompDataFlatbuffer\CompDataFlatbufferRuntime.projitems"
+    Condition="'$(CompDataFlatbufferRuntimeImported)' != 'true'"
+    Label="Shared" />
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)CompositionInterpreter.cs" />
   </ItemGroup>

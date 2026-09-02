@@ -133,7 +133,28 @@ namespace CommunityToolkit.WinUI.Lottie.LottieRuntime
         /// <returns>The root of the visual tree.</returns>
         /// <exception cref="FlatBufferFormatException">The buffer is not a well formed composition.</exception>
         /// <exception cref="NotSupportedException">The composition needs a newer schema or a newer version of Windows.</exception>
+        public static Wc.Visual LoadComposition(Wc.Compositor compositor, byte[] bytes)
+        {
+            if (bytes is null)
+            {
+                throw new ArgumentNullException(nameof(bytes));
+            }
+
+            return LoadComposition(compositor, new ByteBuffer(bytes), bytes.Length);
+        }
+
+        /// <summary>
+        /// Builds the visual tree described by a serialized composition.
+        /// </summary>
+        /// <param name="compositor">The compositor that creates the objects.</param>
+        /// <param name="bytes">A buffer produced by <c>CompositionSerializer</c>.</param>
+        /// <returns>The root of the visual tree.</returns>
+        /// <exception cref="FlatBufferFormatException">The buffer is not a well formed composition.</exception>
+        /// <exception cref="NotSupportedException">The composition needs a newer schema or a newer version of Windows.</exception>
         public static Wc.Visual LoadComposition(Wc.Compositor compositor, ReadOnlySpan<byte> bytes)
+            => LoadComposition(compositor, new ByteBuffer(bytes.ToArray()), bytes.Length);
+
+        static Wc.Visual LoadComposition(Wc.Compositor compositor, ByteBuffer buffer, int length)
         {
             if (compositor is null)
             {
@@ -142,9 +163,7 @@ namespace CommunityToolkit.WinUI.Lottie.LottieRuntime
 
             // The buffer is untrusted, so nothing is read out of it until the verifier
             // has agreed that every offset in it is inside it.
-            var buffer = new ByteBuffer(bytes.ToArray());
-
-            if (bytes.Length < MinimumBufferLength ||
+            if (length < MinimumBufferLength ||
                 !Fb.LottieComposition.LottieCompositionBufferHasIdentifier(buffer))
             {
                 throw new FlatBufferFormatException("The buffer is not a composition.");
@@ -208,7 +227,7 @@ namespace CommunityToolkit.WinUI.Lottie.LottieRuntime
         /// <summary>
         /// Returns the property set that drives an interpreted composition.
         /// </summary>
-        /// <param name="root">A root returned by <see cref="LoadComposition"/>.</param>
+        /// <param name="root">A root returned by <c>LoadComposition</c>.</param>
         /// <returns>The property set that holds the animation's Progress property.</returns>
         public static Wc.CompositionPropertySet ProgressPropertySet(Wc.Visual root)
         {
@@ -1507,35 +1526,34 @@ namespace CommunityToolkit.WinUI.Lottie.LottieRuntime
         Wc.CompositionAnimation CreateKeyFrameAnimation(Fb.Animation table)
         {
             Wc.KeyFrameAnimation result;
+            Wc.ScalarKeyFrameAnimation? scalar = null;
+            Wc.Vector2KeyFrameAnimation? vector2 = null;
+            Wc.Vector3KeyFrameAnimation? vector3 = null;
+            Wc.Vector4KeyFrameAnimation? vector4 = null;
+            Wc.ColorKeyFrameAnimation? color = null;
+            Wc.BooleanKeyFrameAnimation? boolean = null;
+            Wc.PathKeyFrameAnimation? path = null;
 
             switch (table.Kind)
             {
                 case Fb.AnimationKind.Scalar:
-                    var scalar = _compositor.CreateScalarKeyFrameAnimation();
-                    ForEachValueKeyFrame(table, frame =>
-                        scalar.InsertKeyFrame(frame.Progress, frame.Scalar, GetEasing(frame.Easing)));
+                    scalar = _compositor.CreateScalarKeyFrameAnimation();
                     result = scalar;
                     break;
                 case Fb.AnimationKind.Vector2:
-                    var vector2 = _compositor.CreateVector2KeyFrameAnimation();
-                    ForEachValueKeyFrame(table, frame =>
-                        vector2.InsertKeyFrame(frame.Progress, ToVector2(frame.Vector), GetEasing(frame.Easing)));
+                    vector2 = _compositor.CreateVector2KeyFrameAnimation();
                     result = vector2;
                     break;
                 case Fb.AnimationKind.Vector3:
-                    var vector3 = _compositor.CreateVector3KeyFrameAnimation();
-                    ForEachValueKeyFrame(table, frame =>
-                        vector3.InsertKeyFrame(frame.Progress, ToVector3(frame.Vector), GetEasing(frame.Easing)));
+                    vector3 = _compositor.CreateVector3KeyFrameAnimation();
                     result = vector3;
                     break;
                 case Fb.AnimationKind.Vector4:
-                    var vector4 = _compositor.CreateVector4KeyFrameAnimation();
-                    ForEachValueKeyFrame(table, frame =>
-                        vector4.InsertKeyFrame(frame.Progress, ToVector4(frame.Vector), GetEasing(frame.Easing)));
+                    vector4 = _compositor.CreateVector4KeyFrameAnimation();
                     result = vector4;
                     break;
                 case Fb.AnimationKind.Color:
-                    var color = _compositor.CreateColorKeyFrameAnimation();
+                    color = _compositor.CreateColorKeyFrameAnimation();
 
                     if (table.InterpolationColorSpace.HasValue)
                     {
@@ -1543,40 +1561,20 @@ namespace CommunityToolkit.WinUI.Lottie.LottieRuntime
                             (Wc.CompositionColorSpace)table.InterpolationColorSpace.Value;
                     }
 
-                    ForEachValueKeyFrame(table, frame =>
-                        color.InsertKeyFrame(
-                            frame.Progress,
-                            ToColor(Require(frame.Color, "color")),
-                            GetEasing(frame.Easing)));
                     result = color;
                     break;
                 case Fb.AnimationKind.Boolean:
-                    var boolean = _compositor.CreateBooleanKeyFrameAnimation();
-
-                    // A boolean cannot be interpolated, so it has no easing.
-                    ForEachValueKeyFrame(table, frame =>
-                        boolean.InsertKeyFrame(frame.Progress, frame.Scalar != 0));
+                    boolean = _compositor.CreateBooleanKeyFrameAnimation();
                     result = boolean;
                     break;
                 case Fb.AnimationKind.Path:
-                    var path = _compositor.CreatePathKeyFrameAnimation();
-                    ForEachValueKeyFrame(table, frame =>
-                        path.InsertKeyFrame(
-                            frame.Progress,
-                            new Wc.CompositionPath(
-                                GetCanvasGeometry(frame.Path)
-                                ?? throw new FlatBufferFormatException("A path key frame has no path.")),
-                            GetEasing(frame.Easing)));
+                    path = _compositor.CreatePathKeyFrameAnimation();
                     result = path;
                     break;
                 default:
                     throw new FlatBufferFormatException($"Unsupported animation kind {table.Kind}.");
             }
 
-            // Expression key frames are inserted through the base type, so they do not
-            // have to be repeated in every branch above. They are inserted after the
-            // value key frames, which is safe because a key frame animation is a map
-            // keyed on progress rather than a list.
             for (var i = 0; i < table.KeyFramesLength; i++)
             {
                 var frame = Require(table.KeyFrames(i), "key frame");
@@ -1588,24 +1586,56 @@ namespace CommunityToolkit.WinUI.Lottie.LottieRuntime
                         GetRequiredString(frame.Expression),
                         GetEasing(frame.Easing));
                 }
+                else if (frame.Kind == Fb.KeyFrameKind.Value)
+                {
+                    switch (table.Kind)
+                    {
+                        case Fb.AnimationKind.Scalar:
+                            scalar!.InsertKeyFrame(frame.Progress, frame.Scalar, GetEasing(frame.Easing));
+                            break;
+                        case Fb.AnimationKind.Vector2:
+                            vector2!.InsertKeyFrame(
+                                frame.Progress,
+                                ToVector2(frame.Vector),
+                                GetEasing(frame.Easing));
+                            break;
+                        case Fb.AnimationKind.Vector3:
+                            vector3!.InsertKeyFrame(
+                                frame.Progress,
+                                ToVector3(frame.Vector),
+                                GetEasing(frame.Easing));
+                            break;
+                        case Fb.AnimationKind.Vector4:
+                            vector4!.InsertKeyFrame(
+                                frame.Progress,
+                                ToVector4(frame.Vector),
+                                GetEasing(frame.Easing));
+                            break;
+                        case Fb.AnimationKind.Color:
+                            color!.InsertKeyFrame(
+                                frame.Progress,
+                                ToColor(Require(frame.Color, "color")),
+                                GetEasing(frame.Easing));
+                            break;
+                        case Fb.AnimationKind.Boolean:
+                            // A boolean cannot be interpolated, so it has no easing.
+                            boolean!.InsertKeyFrame(frame.Progress, frame.Scalar != 0);
+                            break;
+                        case Fb.AnimationKind.Path:
+                            path!.InsertKeyFrame(
+                                frame.Progress,
+                                new Wc.CompositionPath(
+                                    GetCanvasGeometry(frame.Path)
+                                    ?? throw new FlatBufferFormatException("A path key frame has no path.")),
+                                GetEasing(frame.Easing));
+                            break;
+                    }
+                }
             }
 
             result.Duration = TimeSpan.FromTicks(table.DurationTicks);
 
             return result;
-        }
-
-        void ForEachValueKeyFrame(Fb.Animation table, Action<Fb.KeyFrame> apply)
-        {
-            for (var i = 0; i < table.KeyFramesLength; i++)
-            {
-                var frame = Require(table.KeyFrames(i), "key frame");
-
-                if (frame.Kind == Fb.KeyFrameKind.Value)
-                {
-                    apply(frame);
-                }
-            }
         }
 
         // ---------------------------------------------------------------------

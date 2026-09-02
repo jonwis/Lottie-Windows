@@ -89,9 +89,9 @@ takes the Win2D dependency, exactly as a consumer of `Instantiator` or of
 ## Incorporate it in a build
 
 `LottieRuntime.projitems` is a shared project. Import it into the application
-project alongside `CompDataFlatbuffer.projitems`, which contains the generated schema
-binding and the format constants, and add a package reference to
-`Google.FlatBuffers`.
+project and add a package reference to `Google.FlatBuffers`. The runtime imports
+the generated schema binding and format constants without bringing in the
+tool-side serializer, deserializer, or `WinCompData` model.
 
 Define `WINAPPSDK` when building for the Windows App SDK, which switches the
 interpreter from `Windows.UI.Composition` to `Microsoft.UI.Composition`. Define
