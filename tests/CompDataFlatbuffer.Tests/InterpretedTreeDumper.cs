@@ -653,7 +653,7 @@ namespace CommunityToolkit.WinUI.Lottie.CompDataFlatbuffer.Tests
 
             void WritePropertySetContents(CompositionPropertySet value)
             {
-                foreach (var (name, _) in value.Names.Select(n => (n.Key, n.Value)))
+                foreach (var name in value.Names.Keys)
                 {
                     WriteLine($"{name}: {Text(value.GetValue(name))}");
                 }
