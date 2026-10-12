@@ -438,29 +438,66 @@ namespace CommunityToolkit.WinUI.Lottie.LottieGen
                 return false;
             }
 
-            // NOTE: this only writes the latest version of a multi-version translation.
-            var translationResult = _translationResults[0];
-            var sourceMetadata = new SourceMetadata(translationResult.SourceMetadata);
-            var result = TryWriteBinaryFile(
-                outputFilePath,
-                CompositionSerializer.Serialize(
-                    translationResult.RootVisual!,
-                    checked((ushort)translationResult.MinimumRequiredUapVersion),
-                    sourceMetadata.LottieMetadata,
-                    sourceMetadata.PropertyBindings,
-                    (float)lottieComposition.Width,
-                    (float)lottieComposition.Height));
+            var result = true;
+            var maximumUapVersion = _options.TargetUapVersion ?? uint.MaxValue;
 
-            if (result)
+            for (var i = 0; i < _translationResults.Count; i++)
             {
+                var translationResult = _translationResults[i];
+                var sourceMetadata = new SourceMetadata(translationResult.SourceMetadata);
+                var minimumUapVersion = translationResult.MinimumRequiredUapVersion;
+                var maximumVariantUapVersion = i == 0
+                    ? maximumUapVersion
+                    : _translationResults[i - 1].MinimumRequiredUapVersion - 1;
+                var variantPath = _translationResults.Count == 1
+                    ? outputFilePath
+                    : GetFlatbufferVariantPath(
+                        outputFilePath,
+                        minimumUapVersion,
+                        maximumVariantUapVersion);
+
+                if (!TryWriteBinaryFile(
+                    variantPath,
+                    CompositionSerializer.Serialize(
+                        translationResult.RootVisual!,
+                        checked((ushort)minimumUapVersion),
+                        sourceMetadata.LottieMetadata,
+                        sourceMetadata.PropertyBindings,
+                        (float)lottieComposition.Width,
+                        (float)lottieComposition.Height)))
+                {
+                    result = false;
+                    continue;
+                }
+
                 using (_reporter.InfoStream.Lock())
                 {
-                    _reporter.WriteInfo($"Flatbuffer data for class {_className} written to:");
-                    _reporter.WriteInfo(InfoType.FilePath, $" {outputFilePath}");
+                    _reporter.WriteInfo(
+                        $"Flatbuffer data for class {_className}, UAP versions " +
+                        (maximumVariantUapVersion == uint.MaxValue
+                            ? $"{minimumUapVersion} and later"
+                            : $"{minimumUapVersion} through {maximumVariantUapVersion}") +
+                        ", written to:");
+                    _reporter.WriteInfo(InfoType.FilePath, $" {variantPath}");
                 }
             }
 
             return result;
+        }
+
+        static string GetFlatbufferVariantPath(
+            string outputFilePath,
+            uint minimumUapVersion,
+            uint maximumUapVersion)
+        {
+            var directory = System.IO.Path.GetDirectoryName(outputFilePath);
+            var fileName = System.IO.Path.GetFileNameWithoutExtension(outputFilePath);
+            var extension = System.IO.Path.GetExtension(outputFilePath);
+            var range = maximumUapVersion == uint.MaxValue
+                ? $"uap{minimumUapVersion}-plus"
+                : $"uap{minimumUapVersion}-{maximumUapVersion}";
+
+            return System.IO.Path.Combine(directory ?? string.Empty, $"{fileName}.{range}{extension}");
         }
 
         bool TryGenerateWincompDgml(
@@ -861,7 +898,15 @@ namespace CommunityToolkit.WinUI.Lottie.LottieGen
             var translationResult = LottieToMultiVersionWinCompTranslator.TryTranslateLottieComposition(
                 lottieComposition: lottieComposition,
                 configuration: configuration,
-                minimumUapVersion: _options.WinUIVersion.Major >= 3 ? uint.MaxValue : _minimumUapVersion);
+                minimumUapVersion:
+                    _options.WinUIVersion.Major < 3 ||
+                    !_options.Languages.Any(
+                        language =>
+                            language == Language.CSharp ||
+                            language == Language.Cx ||
+                            language == Language.Cppwinrt)
+                        ? _minimumUapVersion
+                        : uint.MaxValue);
 
             _translationResults = translationResult.TranslationResults;
             _translationIssues = translationResult.Issues;

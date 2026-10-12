@@ -2,16 +2,15 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-// Loads a serialized Lottie composition through the registration-free COM surface.
+// Loads a serialized Lottie composition through the statically linked WinUI 2 reader.
 
 #include <unknwn.h>
 
 #include <Windows.h>
 #include <DispatcherQueue.h>
-#include <shlwapi.h>
 #include <windows.ui.composition.interop.h>
 
-#include <LottieRuntimeCom.h>
+#include <LottieRuntime.h>
 
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -45,40 +44,6 @@ namespace
             options,
             reinterpret_cast<PDISPATCHERQUEUECONTROLLER*>(winrt::put_abi(controller))));
         return controller;
-    }
-
-    winrt::com_ptr<ILottieCompositionLoader> CreateLoader()
-    {
-        wchar_t moduleDirectory[MAX_PATH]{};
-        winrt::check_bool(GetModuleFileNameW(nullptr, moduleDirectory, MAX_PATH));
-        winrt::check_bool(PathRemoveFileSpecW(moduleDirectory));
-
-        auto const manifestPath =
-            std::wstring(moduleDirectory) + L"\\LottieRuntime.manifest";
-
-        ACTCTXW context{ sizeof(ACTCTXW) };
-        context.lpSource = manifestPath.c_str();
-        context.lpAssemblyDirectory = moduleDirectory;
-        context.dwFlags = ACTCTX_FLAG_ASSEMBLY_DIRECTORY_VALID;
-
-        auto const activationContext = CreateActCtxW(&context);
-        winrt::check_bool(activationContext != INVALID_HANDLE_VALUE);
-
-        ULONG_PTR cookie{};
-        winrt::check_bool(ActivateActCtx(activationContext, &cookie));
-
-        winrt::com_ptr<ILottieCompositionLoader> loader;
-        auto const result = CoCreateInstance(
-            CLSID_LottieCompositionLoader,
-            nullptr,
-            CLSCTX_INPROC_SERVER,
-            __uuidof(ILottieCompositionLoader),
-            loader.put_void());
-
-        DeactivateActCtx(0, cookie);
-        ReleaseActCtx(activationContext);
-        winrt::check_hresult(result);
-        return loader;
     }
 
     std::vector<std::byte> ReadFileBytes(wchar_t const* path)
@@ -322,13 +287,8 @@ int wmain(int argc, wchar_t* argv[])
         auto dispatcherQueueController = CreateDispatcherQueue();
         auto bytes = ReadFileBytes(argv[1]);
 
-        auto loader = CreateLoader();
-        Visual root{ nullptr };
-        winrt::check_hresult(loader->LoadComposition(
-            static_cast<UINT32>(bytes.size()),
-            reinterpret_cast<BYTE const*>(bytes.data()),
-            winrt::guid_of<Visual>(),
-            winrt::put_abi(root)));
+        Compositor compositor;
+        auto root = CommunityToolkit::WinUI2::Lottie::LoadComposition(compositor, bytes);
 
         switch (mode)
         {

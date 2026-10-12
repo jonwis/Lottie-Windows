@@ -70,6 +70,11 @@ package. Both are currently 25.2.10.
 | --- | --- |
 | `source/CompDataFlatbuffer/CompositionSerializer.cs` | Writes a graph |
 | `source/CompDataFlatbuffer/CompositionDeserializer.cs` | Reads one back, in C# |
-| `dlls/LottieRuntime` | Reads one back, in C++/WinRT |
+| `source/LottieRuntime` | Reads one back using statically compiled WinUI 2 or WinUI 3 C++/WinRT source |
 | `LottieGen -Language flatbuffer` | Produces a `.lcomp` file |
 | `tests/CompDataFlatbuffer.Tests` | Asserts a graph survives the round trip unchanged |
+
+When the requested UAP range needs different translated graphs, LottieGen writes
+one `.lcomp` file per range. The file names contain the supported range, such as
+`.uap12-plus.lcomp` or `.uap7-11.lcomp`; the consumer selects the appropriate
+variant before calling the native reader.

@@ -25,7 +25,7 @@ $expectedCppVersion = "25.12.19"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $schema = Join-Path $repoRoot "source/LottieFlatbuffer/lottie_comp.fbs"
 $csharpOut = Join-Path $repoRoot "source/CompDataFlatbuffer/Generated"
-$cppOut = Join-Path $repoRoot "dlls/LottieRuntime/Generated"
+$cppOut = Join-Path $repoRoot "source/LottieRuntime/Generated"
 
 $actualCSharpVersion = (& $CSharpFlatc --version) -replace '^flatc version ', ''
 if ($actualCSharpVersion.Trim() -ne $expectedCSharpVersion) {

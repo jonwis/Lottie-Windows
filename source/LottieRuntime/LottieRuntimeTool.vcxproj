@@ -20,15 +20,13 @@
   </ItemGroup>
 
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{6E0A5B4C-2F1D-4B7A-9C3E-1D5A8F0B2E47}</ProjectGuid>
+    <ProjectGuid>{9A7B4C2E-1F3D-4B7A-9C3E-2D5A8F0B2E48}</ProjectGuid>
     <RootNamespace>LottieRuntime</RootNamespace>
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <TargetName>LottieRuntime</TargetName>
+    <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
-
-    <!-- The DLL loads on the Lottie-Windows minimum. Each buffer declares and
-         validates the UniversalApiContract version needed by its graph. -->
     <WindowsTargetPlatformMinVersion>10.0.17763.0</WindowsTargetPlatformMinVersion>
     <FlatBuffersIncludeDirectory
         Condition="'$(FlatBuffersIncludeDirectory)'=='' and Exists('$(MSBuildThisFileDirectory)..\..\external\flatbuffers\include')">$(MSBuildThisFileDirectory)..\..\external\flatbuffers\include</FlatBuffersIncludeDirectory>
@@ -43,57 +41,42 @@
     <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
     <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
     <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">true</WholeProgramOptimization>
+    <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
     <ClCompile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;LOTTIE_RUNTIME_WINUI2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory);$(FlatBuffersIncludeDirectory);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-
-      <!-- Exceptions are the error channel, and every interop entry point is
-           noexcept, so there is nothing to unwind across an ABI boundary. -->
       <ExceptionHandling>Sync</ExceptionHandling>
-
-      <!-- Size is the first thing this component optimizes for. -->
-      <Optimization Condition="'$(Configuration)'=='Release'">MinSpace</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <StringPooling>true</StringPooling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>d2d1.lib;dxguid.lib;shcore.lib;shlwapi.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>LottieRuntime.def</ModuleDefinitionFile>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>CoreMessaging.lib;d2d1.lib;dxguid.lib;ole32.lib;shcore.lib;shlwapi.lib;user32.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
 
-      <!-- Discards the code for any node type the application never reaches. -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MinSpace</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <StringPooling>true</StringPooling>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+    </ClCompile>
+    <Link>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
   </ItemDefinitionGroup>
 
   <ItemGroup>
-    <ClInclude Include="LottieRuntime.h" />
-    <ClInclude Include="LottieRuntimeCom.h" />
-    <ClInclude Include="Generated\lottie_comp_generated.h" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ClCompile Include="LottieRuntimeTool.cpp" />
     <ClCompile Include="LottieRuntime.cpp" />
-    <ClCompile Include="LottieRuntimeCom.cpp" />
   </ItemGroup>
-
-  <ItemGroup>
-    <!-- Consumers activate this private assembly manifest instead of registering
-         the class in HKEY_CLASSES_ROOT. -->
-    <None Include="LottieRuntime.manifest" />
-  </ItemGroup>
-
-  <ItemDefinitionGroup>
-    <Link>
-      <GenerateManifest>false</GenerateManifest>
-    </Link>
-  </ItemDefinitionGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

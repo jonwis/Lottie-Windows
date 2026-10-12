@@ -32,6 +32,10 @@
 // C++/WinRT requires <unknwn.h> before projected headers.
 #include <unknwn.h>
 
+#if defined(LOTTIE_RUNTIME_WINUI2) == defined(LOTTIE_RUNTIME_WINUI3)
+#error Define exactly one of LOTTIE_RUNTIME_WINUI2 or LOTTIE_RUNTIME_WINUI3.
+#endif
+
 #include "LottieRuntime.h"
 
 #include <cstdint>
@@ -53,17 +57,28 @@
 #include <winrt/Windows.Graphics.Effects.h>
 #include <winrt/Windows.Storage.Streams.h>
 #include <winrt/Windows.UI.h>
-#include <winrt/Windows.UI.Composition.h>
 
 #undef GetCurrentTime
+#if defined(LOTTIE_RUNTIME_WINUI3)
+#include <winrt/Microsoft.UI.Composition.h>
+#include <winrt/Microsoft.UI.Xaml.Media.h>
+#else
+#include <winrt/Windows.UI.Composition.h>
 #include <winrt/Windows.UI.Xaml.Media.h>
+#endif
 
 #include "Generated/lottie_comp_generated.h"
 
 namespace Fb = CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema;
 
 using namespace winrt::Windows::Foundation::Numerics;
+#if defined(LOTTIE_RUNTIME_WINUI3)
+using namespace winrt::Microsoft::UI::Composition;
+namespace XamlMedia = winrt::Microsoft::UI::Xaml::Media;
+#else
 using namespace winrt::Windows::UI::Composition;
+namespace XamlMedia = winrt::Windows::UI::Xaml::Media;
+#endif
 
 namespace
 {
@@ -74,6 +89,10 @@ namespace
     // The schema version this build understands. A buffer that declares a higher
     // version is rejected, because it may use fields that are not read here.
     constexpr uint16_t SupportedSchemaVersion = 1;
+
+    // Recursive composition graphs are invalid. Limit nesting even for acyclic
+    // graphs so a small malicious buffer cannot exhaust the native stack.
+    constexpr uint32_t MaximumTraversalDepth = 128;
 
     // Object references that can point at more than one category pack the category
     // into the top four bits.
@@ -354,6 +373,28 @@ namespace
         }
 
     private:
+        class TraversalGuard
+        {
+        public:
+            explicit TraversalGuard(Interpreter& owner) :
+                m_owner(owner)
+            {
+                Check(m_owner.m_traversalDepth < MaximumTraversalDepth);
+                ++m_owner.m_traversalDepth;
+            }
+
+            ~TraversalGuard()
+            {
+                --m_owner.m_traversalDepth;
+            }
+
+            TraversalGuard(TraversalGuard const&) = delete;
+            TraversalGuard& operator=(TraversalGuard const&) = delete;
+
+        private:
+            Interpreter& m_owner;
+        };
+
         template<typename T>
         static size_t Count(T const* vector)
         {
@@ -686,6 +727,7 @@ namespace
                 return m_visuals[index];
             }
 
+            TraversalGuard const traversalGuard(*this);
             auto const* source = At(m_root.visuals(), index);
 
             // The concrete type is known only here. Everything below this point,
@@ -856,6 +898,7 @@ namespace
                 return m_shapes[index];
             }
 
+            TraversalGuard const traversalGuard(*this);
             auto const* source = At(m_root.shapes(), index);
 
             CompositionShape result{ nullptr };
@@ -1140,6 +1183,7 @@ namespace
                 break;
             }
 
+            TraversalGuard const traversalGuard(*this);
             m_canvasGeometryStates[index] = CanvasGeometryState::Realizing;
             auto result = BuildGeometryCore(index);
             Check(result != nullptr);
@@ -1720,7 +1764,7 @@ namespace
                 auto const uri = source->uri();
                 Check(uri != NullIndex);
                 m_surfaces[index] =
-                    winrt::Windows::UI::Xaml::Media::LoadedImageSurface::StartLoadFromUri(
+                    XamlMedia::LoadedImageSurface::StartLoadFromUri(
                         winrt::Windows::Foundation::Uri(GetString(uri)));
                 break;
             }
@@ -1741,7 +1785,7 @@ namespace
                     winrt::put_abi(stream)));
 
                 m_surfaces[index] =
-                    winrt::Windows::UI::Xaml::Media::LoadedImageSurface::StartLoadFromStream(
+                    XamlMedia::LoadedImageSurface::StartLoadFromStream(
                         stream);
                 break;
             }
@@ -2110,10 +2154,15 @@ namespace
         std::vector<CompositionAnimation> m_animations;
         std::vector<CompositionPropertySet> m_propertySets;
         std::vector<AnimationController> m_controllers;
+        uint32_t m_traversalDepth = 0;
     };
 }
 
-namespace CommunityToolkit::WinUI::Lottie
+#if defined(LOTTIE_RUNTIME_WINUI3)
+namespace CommunityToolkit::WinUI3::Lottie
+#else
+namespace CommunityToolkit::WinUI2::Lottie
+#endif
 {
     Visual LoadComposition(Compositor const& compositor, std::span<std::byte const> buffer)
     {
@@ -2141,6 +2190,7 @@ namespace CommunityToolkit::WinUI::Lottie
         }
 
         auto const requiredUapVersion = root->required_uap_version();
+#if !defined(LOTTIE_RUNTIME_WINUI3)
         if (requiredUapVersion != 0 &&
             !winrt::Windows::Foundation::Metadata::ApiInformation::IsApiContractPresent(
                 L"Windows.Foundation.UniversalApiContract",
@@ -2148,6 +2198,12 @@ namespace CommunityToolkit::WinUI::Lottie
         {
             ThrowUnsupported();
         }
+#else
+        // Windows App SDK carries its Composition implementation with the app rather
+        // than exposing it through the OS UniversalApiContract. The consumer selects
+        // a buffer variant whose required APIs are present in its WASDK version.
+        static_cast<void>(requiredUapVersion);
+#endif
 
         return Interpreter(compositor, *root).Run();
     }

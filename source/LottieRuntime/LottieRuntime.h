@@ -9,12 +9,24 @@
 #include <cstddef>
 #include <span>
 
-#include <winrt/Windows.UI.Composition.h>
+#if defined(LOTTIE_RUNTIME_WINUI2) == defined(LOTTIE_RUNTIME_WINUI3)
+#error Define exactly one of LOTTIE_RUNTIME_WINUI2 or LOTTIE_RUNTIME_WINUI3.
+#endif
 
-namespace CommunityToolkit::WinUI::Lottie
+#if defined(LOTTIE_RUNTIME_WINUI3)
+#include <winrt/Microsoft.UI.Composition.h>
+namespace CommunityToolkit::WinUI3::Lottie
 {
-    // LoadComposition is the direct-link C++ API.
-    // DLL callers use ILottieCompositionLoader from LottieRuntimeCom.h.
+    using namespace winrt::Microsoft::UI::Composition;
+#else
+#include <winrt/Windows.UI.Composition.h>
+namespace CommunityToolkit::WinUI2::Lottie
+{
+    using namespace winrt::Windows::UI::Composition;
+#endif
+
+    // Define LOTTIE_RUNTIME_WINUI2 for Windows.UI.Composition or
+    // LOTTIE_RUNTIME_WINUI3 for Microsoft.UI.Composition.
     // Builds the composition described by a serialized Lottie composition.
     //
     // The buffer is the output of LottieGen -Language flatbuffer, or equivalently of
@@ -32,14 +44,13 @@ namespace CommunityToolkit::WinUI::Lottie
     //
     // Throws winrt::hresult_error with E_INVALIDARG if the buffer is not a well formed
     // composition, and E_NOTIMPL if it requires a feature this build does not have.
-    winrt::Windows::UI::Composition::Visual LoadComposition(
-        winrt::Windows::UI::Composition::Compositor const& compositor,
+    Visual LoadComposition(
+        Compositor const& compositor,
         std::span<std::byte const> buffer);
 
     // The property set that drives the animation. Animating its "Progress" scalar from
     // 0 to 1 plays the animation once.
     //
     // Returns the root Visual's property set.
-    winrt::Windows::UI::Composition::CompositionPropertySet ProgressPropertySet(
-        winrt::Windows::UI::Composition::Visual const& root);
+    CompositionPropertySet ProgressPropertySet(Visual const& root);
 }
