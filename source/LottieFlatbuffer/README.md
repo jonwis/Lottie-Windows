@@ -57,12 +57,16 @@ a buffer may carry meaning in fields the reader does not look at.
 installed. After changing the schema:
 
 ```powershell
-./build/RegenerateFlatbuffers.ps1 -Flatc <path to flatc>
+./build/RegenerateFlatbuffers.ps1 `
+    -CSharpFlatc <path to 25.2.10 flatc> `
+    -CppFlatc <path to 25.12.19 flatc.exe> `
+    -CppSource <path to extracted pinned FlatBuffers source>
 ```
 
-The `flatc` version **must** match the `Google.FlatBuffers` NuGet package version;
-the generated C# calls a version-stamped method that only exists in the matching
-package. Both are currently 25.2.10.
+The C# `flatc` version **must** match the `Google.FlatBuffers` NuGet package
+version. The C++ `flatc` and headers must match each other. The script validates
+both versions and, when `-CppSource` is supplied, refreshes the vendored C++
+headers and license.
 
 ## Consumers
 
