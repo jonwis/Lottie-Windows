@@ -23,13 +23,15 @@ env:
 
 jobs:
   build_lottie:
-    runs-on: windows-latest
+    # windows-latest ships VS 2026 only, which Cake 3.0 can't locate.
+    runs-on: windows-2022
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: true
 
       # Install NuGet tools.  
       - name: Setup NuGet
@@ -57,9 +59,9 @@ jobs:
         run: .\build\Install-WindowsSdkISO.ps1 18362
         shell: pwsh
 
-      # Run the build.
+      # Run the build. Pushes to main and rel/* also build the full multi-arch sample app bundles.
       - name: Build
-        run: .\build.ps1 --target=Package
+        run: .\build.ps1 --target=Package ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/rel/')) && '--fullAppBuild=true' || '' }}
         shell: pwsh
         working-directory: .\build
 
@@ -80,6 +82,7 @@ jobs:
 
   sign:
     needs: [build_lottie]
+    if: ${{ github.event_name == 'push' }}
     runs-on: windows-latest
     permissions:
       id-token: write # Required for requesting the JWT
