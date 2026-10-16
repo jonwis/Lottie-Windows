@@ -7,7 +7,11 @@
 #include <unknwn.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
+#include <vector>
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Numerics.h>
 
 #if defined(LOTTIE_RUNTIME_WINUI2) == defined(LOTTIE_RUNTIME_WINUI3)
 #error Define exactly one of LOTTIE_RUNTIME_WINUI2 or LOTTIE_RUNTIME_WINUI3.
@@ -47,6 +51,61 @@ namespace CommunityToolkit::WinUI2::Lottie
     Visual LoadComposition(
         Compositor const& compositor,
         std::span<std::byte const> buffer);
+
+    struct CompositionMarker
+    {
+        winrt::hstring Name;
+        float Progress = 0;
+        float DurationProgress = 0;
+    };
+
+    struct CompositionImageSurface
+    {
+        uint32_t Index = 0;
+        ICompositionSurface Surface{ nullptr };
+    };
+
+    struct LoadedComposition
+    {
+        Visual Root{ nullptr };
+        winrt::Windows::Foundation::TimeSpan Duration{};
+        winrt::Windows::Foundation::Numerics::float2 Size{};
+        float FramesPerSecond = 0;
+        std::vector<CompositionMarker> Markers;
+        CompositionPropertySet ThemeProperties{ nullptr };
+        std::vector<CompositionImageSurface> ImageSurfaces;
+    };
+
+    // Loads the same animated tree as LoadComposition, together with its serialized
+    // metadata. Duration uses 100ns ticks. Marker progress and duration are fractions
+    // of the animation duration; order and duplicate names are preserved. Markers
+    // outside the animation's playback range are not clamped or discarded.
+    //
+    // ThemeProperties is the actual standalone property set referenced by the
+    // loaded graph's expressions, or nullptr when no theme set is declared.
+    // Inserting values into it updates the existing graph, not a separate copy.
+    //
+    // ImageSurfaces contains the actual realized LoadedImageSurface objects and
+    // their serialized surface indices, in index order. Visual surfaces and
+    // unrealized images are excluded. A host can observe image completion and
+    // reuse these objects when loading another tree from the same buffer.
+    //
+    // Requires a metadata table. Missing metadata, invalid numeric metadata, or
+    // invalid metadata indices throw winrt::hresult_invalid_argument. The returned
+    // metadata owns its values and does not require the buffer to remain alive.
+    LoadedComposition LoadCompositionWithMetadata(
+        Compositor const& compositor,
+        std::span<std::byte const> buffer);
+
+    // Reuses images from a previous load of the same buffer on the same XAML host
+    // compositor. Null surfaces, duplicate/out-of-range indices, nonimage indices,
+    // and objects that are not this projection's LoadedImageSurface are rejected.
+    // Other images are loaded normally. Completion events and playback policy
+    // remain the host's responsibility; this overload does not wait for images.
+    LoadedComposition LoadCompositionWithMetadata(
+        Compositor const& compositor,
+        std::span<std::byte const> buffer,
+        std::span<CompositionImageSurface const> imageSurfaces);
 
     // The property set that drives the animation. Animating its "Progress" scalar from
     // 0 to 1 plays the animation once.

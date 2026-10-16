@@ -38,6 +38,7 @@
 
 #include "LottieRuntime.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <optional>
@@ -75,9 +76,11 @@ using namespace winrt::Windows::Foundation::Numerics;
 #if defined(LOTTIE_RUNTIME_WINUI3)
 using namespace winrt::Microsoft::UI::Composition;
 namespace XamlMedia = winrt::Microsoft::UI::Xaml::Media;
+namespace Runtime = CommunityToolkit::WinUI3::Lottie;
 #else
 using namespace winrt::Windows::UI::Composition;
 namespace XamlMedia = winrt::Windows::UI::Xaml::Media;
+namespace Runtime = CommunityToolkit::WinUI2::Lottie;
 #endif
 
 namespace
@@ -109,6 +112,7 @@ namespace
         throw winrt::hresult_not_implemented(L"The composition uses a feature this build does not support.");
     }
 
+    _Post_satisfies_(condition)
     void Check(bool condition)
     {
         if (!condition)
@@ -340,7 +344,10 @@ namespace
     class Interpreter
     {
     public:
-        Interpreter(Compositor const& compositor, Fb::LottieComposition const& root) :
+        Interpreter(
+            Compositor const& compositor,
+            Fb::LottieComposition const& root,
+            std::span<Runtime::CompositionImageSurface const> imageSurfaces = {}) :
             m_compositor(compositor),
             m_root(root),
             m_strings(Count(root.strings())),
@@ -363,12 +370,103 @@ namespace
             m_propertySets(Count(root.property_sets()), nullptr),
             m_controllers(Count(root.controllers()), nullptr)
         {
+            for (auto const& image : imageSurfaces)
+            {
+                auto const* source = At(root.surfaces(), image.Index);
+                Check(source->kind() == Fb::SurfaceKind::LoadedImageFromStream ||
+                    source->kind() == Fb::SurfaceKind::LoadedImageFromUri);
+                Check(image.Surface != nullptr && m_surfaces[image.Index] == nullptr);
+                Check(image.Surface.try_as<XamlMedia::LoadedImageSurface>() != nullptr);
+                m_surfaces[image.Index] = image.Surface;
+            }
         }
 
         Visual Run()
         {
             auto result = GetVisual(m_root.root_visual());
             Check(result != nullptr);
+            return result;
+        }
+
+        Runtime::LoadedComposition RunWithMetadata()
+        {
+            auto const* metadata = m_root.metadata();
+            if (metadata == nullptr)
+            {
+                ThrowMalformed();
+            }
+            Check(std::isfinite(metadata->width()) && metadata->width() >= 0);
+            Check(std::isfinite(metadata->height()) && metadata->height() >= 0);
+            Check(metadata->duration_ticks() >= 0);
+            Check(std::isfinite(metadata->frames_per_second()) && metadata->frames_per_second() >= 0);
+
+            // Check even the metadata string references that are not exposed by this API.
+            GetString(metadata->name());
+            if (auto const* bindings = metadata->property_bindings(); bindings != nullptr)
+            {
+                for (uint32_t i = 0; i != bindings->size(); ++i)
+                {
+                    auto const* binding = At(bindings, i);
+                    Check(binding->name() != NullIndex && binding->display_name() != NullIndex);
+                    GetString(binding->name());
+                    GetString(binding->display_name());
+                    Check(binding->actual_type() >= Fb::PropertyValueType::Color &&
+                        binding->actual_type() <= Fb::PropertyValueType::Vector4);
+                    Check(binding->exposed_type() >= Fb::PropertyValueType::Color &&
+                        binding->exposed_type() <= Fb::PropertyValueType::Vector4);
+                    Check(std::isfinite(binding->default_scalar()));
+                    if (auto const* value = binding->default_vector(); value != nullptr)
+                    {
+                        Check(std::isfinite(value->x()) && std::isfinite(value->y()) &&
+                            std::isfinite(value->z()) && std::isfinite(value->w()));
+                    }
+                }
+            }
+
+            auto const themeIndex = metadata->theming_property_set();
+            if (themeIndex != NullIndex)
+            {
+                // Metadata must not expose an object's owned property set as a theme.
+                Check(At(m_root.property_sets(), themeIndex)->owner() == NullIndex);
+            }
+
+            Runtime::LoadedComposition result;
+            result.Duration = winrt::Windows::Foundation::TimeSpan{ metadata->duration_ticks() };
+            result.Size = { metadata->width(), metadata->height() };
+            result.FramesPerSecond = metadata->frames_per_second();
+            if (auto const* markers = metadata->markers(); markers != nullptr)
+            {
+                result.Markers.reserve(markers->size());
+                for (uint32_t i = 0; i != markers->size(); ++i)
+                {
+                    auto const* marker = At(markers, i);
+                    Check(marker->name() != NullIndex);
+                    Check(std::isfinite(marker->progress()));
+                    Check(std::isfinite(marker->duration_progress()) && marker->duration_progress() >= 0);
+                    result.Markers.push_back({
+                        GetString(marker->name()), marker->progress(), marker->duration_progress() });
+                }
+            }
+
+            result.Root = Run();
+            if (themeIndex != NullIndex)
+            {
+                result.ThemeProperties = GetPropertySet(themeIndex);
+            }
+
+            for (uint32_t i = 0; i != m_surfaces.size(); ++i)
+            {
+                if (m_surfaces[i] != nullptr)
+                {
+                    auto const kind = At(m_root.surfaces(), i)->kind();
+                    if (kind == Fb::SurfaceKind::LoadedImageFromStream ||
+                        kind == Fb::SurfaceKind::LoadedImageFromUri)
+                    {
+                        result.ImageSurfaces.push_back({ i, m_surfaces[i] });
+                    }
+                }
+            }
+
             return result;
         }
 
@@ -409,11 +507,17 @@ namespace
             }
 
             auto const* strings = m_root.strings();
-            Check(strings != nullptr && index < strings->size());
+            if (strings == nullptr || index >= strings->size())
+            {
+                ThrowMalformed();
+            }
             if (!m_stringCached[index])
             {
                 auto const* value = strings->Get(index);
-                Check(value != nullptr);
+                if (value == nullptr)
+                {
+                    ThrowMalformed();
+                }
 
                 m_strings[index] =
                     winrt::to_hstring(std::string_view(value->c_str(), value->size()));
@@ -596,9 +700,12 @@ namespace
 
                 if (auto owner = source->owner(); owner != NullIndex)
                 {
-                    // Realizing the owner populates the cache as a side effect,
-                    // because Initialize realizes the owner's property set.
-                    GetObjectReference(owner);
+                    // The owner may be cached while its children are still being
+                    // initialized. A child's expression can reference these properties
+                    // before the owner's InitializeProperties call is reached.
+                    auto target = GetObjectReference(owner);
+                    Check(target != nullptr);
+                    RealizePropertySet(index, target.Properties());
                 }
                 else
                 {
@@ -2156,15 +2263,8 @@ namespace
         std::vector<AnimationController> m_controllers;
         uint32_t m_traversalDepth = 0;
     };
-}
 
-#if defined(LOTTIE_RUNTIME_WINUI3)
-namespace CommunityToolkit::WinUI3::Lottie
-#else
-namespace CommunityToolkit::WinUI2::Lottie
-#endif
-{
-    Visual LoadComposition(Compositor const& compositor, std::span<std::byte const> buffer)
+    Fb::LottieComposition const& VerifyComposition(std::span<std::byte const> buffer)
     {
         // The buffer is untrusted, so nothing is read out of it until the verifier
         // has agreed that every offset in it is inside it.
@@ -2205,7 +2305,32 @@ namespace CommunityToolkit::WinUI2::Lottie
         static_cast<void>(requiredUapVersion);
 #endif
 
-        return Interpreter(compositor, *root).Run();
+        return *root;
+    }
+}
+
+#if defined(LOTTIE_RUNTIME_WINUI3)
+namespace CommunityToolkit::WinUI3::Lottie
+#else
+namespace CommunityToolkit::WinUI2::Lottie
+#endif
+{
+    Visual LoadComposition(Compositor const& compositor, std::span<std::byte const> buffer)
+    {
+        return Interpreter(compositor, VerifyComposition(buffer)).Run();
+    }
+
+    LoadedComposition LoadCompositionWithMetadata(Compositor const& compositor, std::span<std::byte const> buffer)
+    {
+        return LoadCompositionWithMetadata(compositor, buffer, {});
+    }
+
+    LoadedComposition LoadCompositionWithMetadata(
+        Compositor const& compositor,
+        std::span<std::byte const> buffer,
+        std::span<CompositionImageSurface const> imageSurfaces)
+    {
+        return Interpreter(compositor, VerifyComposition(buffer), imageSurfaces).RunWithMetadata();
     }
 
     CompositionPropertySet ProgressPropertySet(Visual const& root)
