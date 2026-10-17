@@ -332,6 +332,45 @@ namespace
     };
 }
 
+#if defined(LOTTIE_RUNTIME_WINUI3)
+namespace CommunityToolkit::WinUI3::Lottie
+#else
+namespace CommunityToolkit::WinUI2::Lottie
+#endif
+{
+    class CompositionAnimations
+    {
+    public:
+        struct ControllerAnimation
+        {
+            winrt::hstring Property;
+            CompositionAnimation Animation{ nullptr };
+        };
+
+        // One keyframe animation started on a graph object, with how to restart it.
+        struct Binding
+        {
+            CompositionObject Target{ nullptr };
+            winrt::hstring Property;
+            CompositionAnimation Animation{ nullptr };
+
+            // A custom controller outlives StopAnimation, so it is reused as is.
+            AnimationController Controller{ nullptr };
+
+            // An implicit controller is replaced on every StartAnimation, so it is
+            // realized again from this description.
+            bool HasImplicitController = false;
+            bool PauseImplicitController = false;
+            winrt::hstring ImplicitControllerComment;
+            std::vector<ControllerAnimation> ImplicitControllerAnimations;
+        };
+
+        std::vector<Binding> Bindings;
+        bool Restartable = true;
+        bool Running = true;
+    };
+}
+
 namespace
 {
     // ---------------------------------------------------------------------------
@@ -466,6 +505,11 @@ namespace
                     }
                 }
             }
+
+            auto animations = std::make_shared<Runtime::CompositionAnimations>();
+            animations->Bindings = m_animationBindings;
+            animations->Restartable = m_animationsRestartable;
+            result.Animations = std::move(animations);
 
             return result;
         }
@@ -604,11 +648,80 @@ namespace
                     target.StartAnimation(property, animation);
                 }
 
-                if (controllerIndex != NullIndex && customController == nullptr)
+                auto const implicitController = controllerIndex != NullIndex && customController == nullptr;
+                if (implicitController)
                 {
                     RealizeController(controllerIndex, target, property);
                 }
+
+                RecordAnimation(target, property, animation, customController,
+                    implicitController ? controllerIndex : NullIndex);
             }
+        }
+
+        // Records a started keyframe animation so that StopAnimations and StartAnimations
+        // can replay it. Expression animations, and animations of the controllers
+        // themselves, are bindings that stay in place, as in LottieGen's generated code.
+        void RecordAnimation(
+            CompositionObject const& target,
+            winrt::hstring const& property,
+            CompositionAnimation const& animation,
+            AnimationController const& customController,
+            uint32_t implicitControllerIndex)
+        {
+            if (animation.try_as<ExpressionAnimation>() != nullptr ||
+                target.try_as<AnimationController>() != nullptr)
+            {
+                return;
+            }
+
+            Runtime::CompositionAnimations::Binding binding{ target, property, animation, customController };
+            if (implicitControllerIndex != NullIndex)
+            {
+                // Each implicit controller must belong to exactly one animation, or a
+                // restart could not reproduce which animations it paused.
+                if (m_implicitControllerUsed.empty())
+                {
+                    m_implicitControllerUsed.resize(m_controllers.size());
+                }
+                if (m_implicitControllerUsed[implicitControllerIndex])
+                {
+                    m_animationsRestartable = false;
+                }
+                m_implicitControllerUsed[implicitControllerIndex] = true;
+
+                auto const* source = At(m_root.controllers(), implicitControllerIndex);
+                binding.HasImplicitController = true;
+                binding.PauseImplicitController = source->is_paused();
+                if (auto const* base = source->base(); base != nullptr)
+                {
+                    if (base->properties() != NullIndex)
+                    {
+                        // Other expressions may reference the set the first controller owned.
+                        m_animationsRestartable = false;
+                    }
+                    if (auto comment = base->comment(); comment != NullIndex)
+                    {
+                        binding.ImplicitControllerComment = GetString(comment);
+                    }
+                    if (auto const* animators = base->animators(); animators != nullptr)
+                    {
+                        for (uint32_t i = 0; i != animators->size(); ++i)
+                        {
+                            auto const* animator = animators->Get(i);
+                            Check(animator != nullptr);
+                            if (animator->controller() != NullIndex)
+                            {
+                                m_animationsRestartable = false;
+                            }
+                            binding.ImplicitControllerAnimations.push_back({
+                                GetString(animator->property()), GetAnimation(animator->animation()) });
+                        }
+                    }
+                }
+            }
+
+            m_animationBindings.push_back(std::move(binding));
         }
 
         bool IsCustomController(uint32_t index) const
@@ -768,6 +881,12 @@ namespace
                 {
                     GetObjectReference(source->target_object());
                 }
+            }
+
+            if (!source->is_custom())
+            {
+                // The reference would outlive the implicit controller a restart replaces.
+                m_animationsRestartable = false;
             }
 
             Check(m_controllers[index] != nullptr);
@@ -2261,6 +2380,9 @@ namespace
         std::vector<CompositionAnimation> m_animations;
         std::vector<CompositionPropertySet> m_propertySets;
         std::vector<AnimationController> m_controllers;
+        std::vector<Runtime::CompositionAnimations::Binding> m_animationBindings;
+        std::vector<bool> m_implicitControllerUsed;
+        bool m_animationsRestartable = true;
         uint32_t m_traversalDepth = 0;
     };
 
@@ -2336,5 +2458,67 @@ namespace CommunityToolkit::WinUI2::Lottie
     CompositionPropertySet ProgressPropertySet(Visual const& root)
     {
         return root.Properties();
+    }
+
+    bool CanRestartAnimations(LoadedComposition const& composition) noexcept
+    {
+        return composition.Animations != nullptr && composition.Animations->Restartable;
+    }
+
+    void StopAnimations(LoadedComposition const& composition)
+    {
+        if (!CanRestartAnimations(composition) || !composition.Animations->Running)
+        {
+            return;
+        }
+
+        for (auto const& binding : composition.Animations->Bindings)
+        {
+            binding.Target.StopAnimation(binding.Property);
+        }
+        composition.Animations->Running = false;
+    }
+
+    void StartAnimations(LoadedComposition const& composition)
+    {
+        if (!CanRestartAnimations(composition) || composition.Animations->Running)
+        {
+            return;
+        }
+
+        for (auto const& binding : composition.Animations->Bindings)
+        {
+            if (binding.Controller != nullptr)
+            {
+                binding.Target.StartAnimation(binding.Property, binding.Animation, binding.Controller);
+            }
+            else
+            {
+                binding.Target.StartAnimation(binding.Property, binding.Animation);
+            }
+
+            if (binding.HasImplicitController)
+            {
+                // Same order as the load: pause, then the controller's own state.
+                auto controller = binding.Target.TryGetAnimationController(binding.Property);
+                if (controller == nullptr)
+                {
+                    throw winrt::hresult_error(E_UNEXPECTED);
+                }
+                if (binding.PauseImplicitController)
+                {
+                    controller.Pause();
+                }
+                if (!binding.ImplicitControllerComment.empty())
+                {
+                    controller.Comment(binding.ImplicitControllerComment);
+                }
+                for (auto const& animation : binding.ImplicitControllerAnimations)
+                {
+                    controller.StartAnimation(animation.Property, animation.Animation);
+                }
+            }
+        }
+        composition.Animations->Running = true;
     }
 }

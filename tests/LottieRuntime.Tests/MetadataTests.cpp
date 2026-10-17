@@ -166,6 +166,37 @@ namespace
         throw std::runtime_error("Malformed input was not rejected with E_INVALIDARG.");
     }
 
+    // Every recorded animation is a keyframe animation, which always has a controller
+    // while it runs and none once it is stopped.
+    void RequireAnimationsRunning(Runtime::LoadedComposition const& loaded, bool running)
+    {
+        for (auto const& binding : loaded.Animations->Bindings)
+        {
+            Require(binding.Animation.try_as<ExpressionAnimation>() == nullptr);
+            Require((binding.Target.TryGetAnimationController(binding.Property) != nullptr) == running);
+        }
+    }
+
+    // Returns the number of recorded animations.
+    size_t TestRestart(Runtime::LoadedComposition const& loaded)
+    {
+        Require(Runtime::CanRestartAnimations(loaded));
+        RequireAnimationsRunning(loaded, true);
+        for (int cycle = 0; cycle != 2; ++cycle)
+        {
+            Runtime::StopAnimations(loaded);
+            Runtime::StopAnimations(loaded);
+            RequireAnimationsRunning(loaded, false);
+            Runtime::StartAnimations(loaded);
+            Runtime::StartAnimations(loaded);
+            RequireAnimationsRunning(loaded, true);
+        }
+
+        // Restarting must not disturb the expression that drives playback.
+        Runtime::ProgressPropertySet(loaded.Root).InsertScalar(L"Progress", 0.5f);
+        return loaded.Animations->Bindings.size();
+    }
+
     void Test(Compositor const& compositor)
     {
         auto bytes = Buffer();
@@ -187,6 +218,13 @@ namespace
         Require(value == 0.75f);
         Require(Runtime::ProgressPropertySet(loaded.Root).TryGetScalar(L"Progress", value) ==
             CompositionGetValueStatus::Succeeded && value == 0);
+
+        // Expression bindings are not stopped, so this tree records no animations.
+        Require(TestRestart(loaded) == 0);
+        Runtime::LoadedComposition empty;
+        Require(!Runtime::CanRestartAnimations(empty));
+        Runtime::StopAnimations(empty);
+        Runtime::StartAnimations(empty);
 
         // The expression realizes the theme while loading the root. Metadata must
         // return that same cached object, including changes made after realization.
@@ -374,7 +412,8 @@ int wmain(int argc, wchar_t** argv)
                     << L", ticks=" << loaded.Duration.count() << L", fps=" << loaded.FramesPerSecond
                     << L", markers=" << loaded.Markers.size()
                     << L", theme=" << (loaded.ThemeProperties != nullptr ? L"present" : L"absent")
-                    << L", images=" << loaded.ImageSurfaces.size() << L"\n";
+                    << L", images=" << loaded.ImageSurfaces.size()
+                    << L", restartable animations=" << TestRestart(loaded) << L"\n";
             }
         }
         queue.ShutdownQueueAsync();

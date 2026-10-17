@@ -153,6 +153,30 @@ and objects that are not the selected projection's `LoadedImageSurface` are
 rejected with `winrt::hresult_invalid_argument`. Images without a supplied
 descriptor are loaded normally.
 
+### Stopping and restarting animations
+
+Loading starts every animation, paused and driven by `Progress`. A host that
+implements `IAnimatedVisual2` (for `AnimatedVisualPlayer`'s
+`AnimationOptimization="Resources"`) can release and recreate them:
+
+```cpp
+void DestroyAnimations() { Lottie::StopAnimations(animation); }
+void CreateAnimations() { Lottie::StartAnimations(animation); }
+```
+
+`StopAnimations` stops every keyframe animation the load started; expression
+bindings, including those to `Progress` and `ThemeProperties`, stay live.
+`StartAnimations` restarts them on the same controllers, restoring each implicit
+controller's pause state, comment and controller animations, so playback
+resumes from the current `Progress`. Both calls are idempotent and no-ops on a
+default `LoadedComposition`.
+
+`CanRestartAnimations(animation)` returns false when the graph cannot be
+restarted faithfully, for example when another object references an implicit
+controller that a restart would replace. Both calls are then no-ops and the
+animations stay running, so a host can keep advertising `IAnimatedVisual2`.
+Restart state is shared by copies of the same `LoadedComposition`.
+
 `LoadCompositionWithMetadata` requires a metadata table and rejects negative
 duration/dimensions/frame rate/marker duration, nonfinite numeric metadata,
 invalid string/property-set indices and a theme index that refers to an owned

@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <vector>
 #include <winrt/Windows.Foundation.h>
@@ -65,6 +66,10 @@ namespace CommunityToolkit::WinUI2::Lottie
         ICompositionSurface Surface{ nullptr };
     };
 
+    // The keyframe animations a loaded tree started, recorded so that a host can stop
+    // and restart them. Shared by copies of the LoadedComposition that owns it.
+    class CompositionAnimations;
+
     struct LoadedComposition
     {
         Visual Root{ nullptr };
@@ -74,6 +79,7 @@ namespace CommunityToolkit::WinUI2::Lottie
         std::vector<CompositionMarker> Markers;
         CompositionPropertySet ThemeProperties{ nullptr };
         std::vector<CompositionImageSurface> ImageSurfaces;
+        std::shared_ptr<CompositionAnimations> Animations;
     };
 
     // Loads the same animated tree as LoadComposition, together with its serialized
@@ -112,4 +118,22 @@ namespace CommunityToolkit::WinUI2::Lottie
     //
     // Returns the root Visual's property set.
     CompositionPropertySet ProgressPropertySet(Visual const& root);
+
+    // Stop and restart support for IAnimatedVisual2::DestroyAnimations and
+    // CreateAnimations, matching LottieGen's generated C++ and C# sources.
+    //
+    // StopAnimations stops the keyframe animations the load started, leaving every
+    // animated property at its current value and keeping expression bindings (Progress,
+    // theme and other bindings) in place. StartAnimations starts them again with their
+    // original controllers, so the tree once more follows its Progress property. A loaded
+    // composition starts with its animations running. Both calls are idempotent.
+    //
+    // CanRestartAnimations returns false when the tree cannot be restarted faithfully:
+    // another object references an implicit animation controller, an implicit controller
+    // owns a property set, two animations share one implicit controller, or an implicit
+    // controller's own animation has a controller. For such trees, and for a default
+    // LoadedComposition, StopAnimations and StartAnimations do nothing.
+    bool CanRestartAnimations(LoadedComposition const& composition) noexcept;
+    void StopAnimations(LoadedComposition const& composition);
+    void StartAnimations(LoadedComposition const& composition);
 }
