@@ -29,6 +29,9 @@
 // to ask what a node actually is, because the buffer already said, and the answer was
 // consumed at the moment of creation.
 
+// Public SDK interop declarations must use ABI::Windows in every consumer.
+#undef BUILD_WINDOWS
+
 // C++/WinRT requires <unknwn.h> before projected headers.
 #include <unknwn.h>
 

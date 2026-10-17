@@ -65,8 +65,9 @@ The same projection definition must be visible to every file that includes
 projection-specific objects to be linked into the same binary.
 
 `LoadComposition` returns the root `Visual`. `ProgressPropertySet(root)` returns
-the Composition property set containing the `Progress` scalar. XAML integration
-and `IAnimatedVisual` wrapping remain the caller's responsibility.
+the Composition property set containing the `Progress` scalar. For
+`AnimatedVisualPlayer`, use `LottieVisualSource` (below) rather than wrapping the
+root yourself.
 
 Animations containing loaded image surfaces must be loaded on the XAML UI thread
 with the XAML host's compositor (for example, the compositor obtained from
@@ -177,6 +178,53 @@ controller that a restart would replace. Both calls are then no-ops and the
 animations stay running, so a host can keep advertising `IAnimatedVisual2`.
 Restart state is shared by copies of the same `LoadedComposition`.
 
+### Hosting in AnimatedVisualPlayer
+
+`LottieVisualSource.cpp` and `LottieVisualSource.h` adapt a buffer to
+`Microsoft.UI.Xaml.Controls.IAnimatedVisualSource2`, replacing per-animation
+LottieGen classes. Compile `LottieVisualSource.cpp` alongside `LottieRuntime.cpp`
+with the same projection flag; it also needs the C++/WinRT projection of
+Microsoft.UI.Xaml 2.8 (WinUI 2) or the Windows App SDK (WinUI 3).
+
+```cpp
+#include <LottieVisualSource.h>
+
+namespace Lottie = CommunityToolkit::WinUI2::Lottie;
+
+// One RCDATA resource per UAP variant; the highest available contract wins.
+static constexpr Lottie::EmbeddedCompositionVariant variants[]{
+    { 15, L"SPINNER_UAP15" },
+    { 7, L"SPINNER_UAP7" },
+};
+
+static int anchor;
+auto bytes = Lottie::LoadEmbeddedComposition(&anchor, variants);
+player.Source(Lottie::CreateAnimatedVisualSource(bytes));
+```
+
+`CreateAnimatedVisualSource` does not copy the buffer, so pass one that outlives
+the source, such as an embedded resource. The source:
+
+- exposes the metadata's duration, frame rate, size and markers;
+- forwards `SetColorProperty` to every live and future visual, ignoring names
+  that are not bound properties. `IAnimatedVisualSource2` has no scalar setter,
+  so use the free function `SetScalarProperty(source, name, value)` for scalars;
+- creates visuals that implement `IAnimatedVisual2`, so
+  `AnimationOptimization="Resources"` stops their animations while idle, and
+  `IClosable`;
+- for animations with images, also implements `IDynamicAnimatedVisualSource`
+  and `INotifyPropertyChanged`.
+
+`AnimatedVisualSourceOptions` reproduces the behaviour of each LottieGen
+version's generated code:
+
+| Option | Default | Effect |
+|---|---|---|
+| `Markers` | `FirstWins` | `FirstWins` keeps the first marker of each name; `Unique` sanitizes names and suffixes duplicates with `_<n>`. |
+| `IncludeFinalFrameMarkers` | `true` | Whether a marker on the final frame is kept. |
+| `ReportLoadErrors` | `false` | Return null and report the message through `diagnostics` instead of throwing. |
+| `AsynchronousImageLoading` | `false` | Return null until every image has loaded, then raise `AnimatedVisualInvalidated`. |
+
 `LoadCompositionWithMetadata` requires a metadata table and rejects negative
 duration/dimensions/frame rate/marker duration, nonfinite numeric metadata,
 invalid string/property-set indices and a theme index that refers to an owned
@@ -243,3 +291,30 @@ image-bearing files the runner also creates another tree with the returned image
 descriptors and asserts that every image object is reused rather than reloaded.
 Prefix the paths with `--legacy` to exercise the Visual-only `LoadComposition`
 path instead, separating graph-realization failures from metadata validation.
+
+### Visual source tests
+
+`tests\LottieRuntime.Tests\VisualSourceTests.cpp` exercises `LottieVisualSource`
+on each `.lcomp` path passed to it, checking:
+
+- duration, markers and image detection;
+- that `IAnimatedVisual2` stops and restarts animations;
+- that bound theme colors and scalars reach live and later visuals, and unbound
+  names are ignored;
+- that `Close` releases the visual;
+- for image assets, that another compositor throws by default and is reported
+  through `diagnostics` with `ReportLoadErrors`.
+
+It includes `LottieVisualSource.cpp` directly so it can read each visual's theme
+properties.
+
+It needs a C++/WinRT projection that includes Microsoft.UI.Xaml 2.8. Generate it
+with cppwinrt from the `Microsoft.UI.Xaml` 2.8 and `Microsoft.Web.WebView2`
+NuGet packages (substitute their local paths):
+
+```cmd
+cppwinrt.exe -base -in sdk+ -in <Microsoft.UI.Xaml>\lib\uap10.0\Microsoft.UI.Xaml.winmd -in <Microsoft.Web.WebView2>\lib\Microsoft.Web.WebView2.Core.winmd -out tests\LottieRuntime.Tests\bin\mux
+mkdir tests\LottieRuntime.Tests\bin\vst
+cl /nologo /std:c++20 /EHsc /W4 /WX /bigobj /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DLOTTIE_RUNTIME_WINUI2 /Itests\LottieRuntime.Tests\bin\mux /Iexternal\flatbuffers\include /Isource\LottieRuntime tests\LottieRuntime.Tests\VisualSourceTests.cpp source\LottieRuntime\LottieRuntime.cpp /Fotests\LottieRuntime.Tests\bin\vst\ /Fetests\LottieRuntime.Tests\bin\VisualSourceTests.exe /link /MANIFEST:EMBED /MANIFESTINPUT:tests\LottieRuntime.Tests\MetadataTests.manifest CoreMessaging.lib d2d1.lib dxguid.lib ole32.lib shcore.lib shlwapi.lib windowsapp.lib
+tests\LottieRuntime.Tests\bin\VisualSourceTests.exe Animation.lcomp
+```
