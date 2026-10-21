@@ -9,8 +9,8 @@
 // Ensure the included flatbuffers.h is the same version as when this file was
 // generated, otherwise it may not be compatible.
 static_assert(FLATBUFFERS_VERSION_MAJOR == 25 &&
-              FLATBUFFERS_VERSION_MINOR == 12 &&
-              FLATBUFFERS_VERSION_REVISION == 19,
+              FLATBUFFERS_VERSION_MINOR == 2 &&
+              FLATBUFFERS_VERSION_REVISION == 10,
              "Non-compatible flatbuffers version included");
 
 namespace CommunityToolkit {
@@ -959,8 +959,7 @@ struct Animator FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   uint32_t controller() const {
     return GetField<uint32_t>(VT_CONTROLLER, 4294967295);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_PROPERTY, 4) &&
            VerifyField<uint32_t>(verifier, VT_ANIMATION, 4) &&
@@ -1021,8 +1020,7 @@ struct CompObj FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   uint32_t properties() const {
     return GetField<uint32_t>(VT_PROPERTIES, 4294967295);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_COMMENT, 4) &&
            VerifyOffset(verifier, VT_ANIMATORS) &&
@@ -1106,8 +1104,7 @@ struct PropertyValue FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::Color *color() const {
     return GetStruct<const CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::Color *>(VT_COLOR);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_NAME, 4) &&
            VerifyField<uint8_t>(verifier, VT_TYPE, 1) &&
@@ -1176,8 +1173,7 @@ struct ReferenceParameter FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table
   uint32_t target() const {
     return GetField<uint32_t>(VT_TARGET, 0);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_NAME, 4) &&
            VerifyField<uint32_t>(verifier, VT_TARGET, 4) &&
@@ -1228,8 +1224,7 @@ struct SourceParameter FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   uint32_t brush() const {
     return GetField<uint32_t>(VT_BRUSH, 0);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_NAME, 4) &&
            VerifyField<uint32_t>(verifier, VT_BRUSH, 4) &&
@@ -1304,8 +1299,7 @@ struct KeyFrame FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   uint32_t path() const {
     return GetField<uint32_t>(VT_PATH, 4294967295);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<float>(verifier, VT_PROGRESS, 4) &&
            VerifyField<uint32_t>(verifier, VT_EASING, 4) &&
@@ -1456,8 +1450,7 @@ struct Visual FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   uint32_t shadow() const {
     return GetField<uint32_t>(VT_SHADOW, 4294967295);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -1723,8 +1716,7 @@ struct Shape FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   ::flatbuffers::Optional<float> stroke_thickness() const {
     return GetOptional<float, float>(VT_STROKE_THICKNESS);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -1970,8 +1962,7 @@ struct Geometry FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::Vec2 *radius() const {
     return GetStruct<const CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::Vec2 *>(VT_RADIUS);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -2161,8 +2152,7 @@ struct Brush FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ::flatbuffers::Vector<::flatbuffers::Offset<CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::SourceParameter>> *source_parameters() const {
     return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::SourceParameter>> *>(VT_SOURCE_PARAMETERS);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -2401,8 +2391,7 @@ struct GradientStop FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   float offset() const {
     return GetField<float>(VT_OFFSET, 0.0f);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -2460,8 +2449,7 @@ struct ViewBox FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::Vec2 *size() const {
     return GetStruct<const CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::Vec2 *>(VT_SIZE);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -2541,8 +2529,7 @@ struct Clip FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   uint32_t geometry() const {
     return GetField<uint32_t>(VT_GEOMETRY, 4294967295);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -2660,8 +2647,7 @@ struct Shadow FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   ::flatbuffers::Optional<uint8_t> source_policy() const {
     return GetOptional<uint8_t, uint8_t>(VT_SOURCE_POLICY);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -2769,8 +2755,7 @@ struct Surface FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ::flatbuffers::Vector<uint8_t> *bytes() const {
     return GetPointer<const ::flatbuffers::Vector<uint8_t> *>(VT_BYTES);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -2886,8 +2871,7 @@ struct Effect FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   float blur_amount() const {
     return GetField<float>(VT_BLUR_AMOUNT, 0.0f);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -3003,8 +2987,7 @@ struct Easing FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   ::flatbuffers::Optional<bool> is_final_step_single_frame() const {
     return GetOptional<uint8_t, bool>(VT_IS_FINAL_STEP_SINGLE_FRAME);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -3122,8 +3105,7 @@ struct Animation FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   ::flatbuffers::Optional<uint8_t> interpolation_color_space() const {
     return GetOptional<uint8_t, uint8_t>(VT_INTERPOLATION_COLOR_SPACE);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -3243,8 +3225,7 @@ struct PropertySet FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const ::flatbuffers::Vector<::flatbuffers::Offset<CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::PropertyValue>> *values() const {
     return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::PropertyValue>> *>(VT_VALUES);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -3329,8 +3310,7 @@ struct Controller FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   bool is_custom() const {
     return GetField<uint8_t>(VT_IS_CUSTOM, 0) != 0;
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_BASE) &&
            verifier.VerifyTable(base()) &&
@@ -3420,8 +3400,7 @@ struct PropertyBinding FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   const CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::Color *default_color() const {
     return GetStruct<const CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::Color *>(VT_DEFAULT_COLOR);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_NAME, 4) &&
            VerifyField<uint32_t>(verifier, VT_DISPLAY_NAME, 4) &&
@@ -3506,8 +3485,7 @@ struct Marker FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   float duration_progress() const {
     return GetField<float>(VT_DURATION_PROGRESS, 0.0f);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_NAME, 4) &&
            VerifyField<float>(verifier, VT_PROGRESS, 4) &&
@@ -3588,8 +3566,7 @@ struct Metadata FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   uint32_t theming_property_set() const {
     return GetField<uint32_t>(VT_THEMING_PROPERTY_SET, 4294967295);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_NAME, 4) &&
            VerifyField<float>(verifier, VT_WIDTH, 4) &&
@@ -3780,8 +3757,7 @@ struct LottieComposition FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table 
   const ::flatbuffers::Vector<uint32_t> *custom_controllers() const {
     return GetPointer<const ::flatbuffers::Vector<uint32_t> *>(VT_CUSTOM_CONTROLLERS);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint16_t>(verifier, VT_SCHEMA_VERSION, 2) &&
            VerifyField<uint16_t>(verifier, VT_REQUIRED_UAP_VERSION, 2) &&
@@ -4101,8 +4077,7 @@ struct CanvasGeometry FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   float radius_y() const {
     return GetField<float>(VT_RADIUS_Y, 0.0f);
   }
-  template <bool B = false>
-  bool Verify(::flatbuffers::VerifierTemplate<B> &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint8_t>(verifier, VT_KIND, 1) &&
            VerifyField<uint32_t>(verifier, VT_A, 4) &&
@@ -4291,16 +4266,14 @@ inline bool SizePrefixedLottieCompositionBufferHasIdentifier(const void *buf) {
       buf, LottieCompositionIdentifier(), true);
 }
 
-template <bool B = false>
 inline bool VerifyLottieCompositionBuffer(
-    ::flatbuffers::VerifierTemplate<B> &verifier) {
-  return verifier.template VerifyBuffer<CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::LottieComposition>(LottieCompositionIdentifier());
+    ::flatbuffers::Verifier &verifier) {
+  return verifier.VerifyBuffer<CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::LottieComposition>(LottieCompositionIdentifier());
 }
 
-template <bool B = false>
 inline bool VerifySizePrefixedLottieCompositionBuffer(
-    ::flatbuffers::VerifierTemplate<B> &verifier) {
-  return verifier.template VerifySizePrefixedBuffer<CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::LottieComposition>(LottieCompositionIdentifier());
+    ::flatbuffers::Verifier &verifier) {
+  return verifier.VerifySizePrefixedBuffer<CommunityToolkit::WinUI::Lottie::CompDataFlatbuffer::Schema::LottieComposition>(LottieCompositionIdentifier());
 }
 
 inline const char *LottieCompositionExtension() {

@@ -22,6 +22,6 @@
     <Exec Condition="'$(_RestoreFlatBuffers)' == 'true'"
           Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)RestoreFlatBuffers.ps1&quot; -VcpkgRoot &quot;$(FlatBuffersVcpkgRoot)\.&quot; -InstalledDir &quot;$(FlatBuffersVcpkgInstalledDir)\.&quot; -Triplet &quot;$(FlatBuffersVcpkgTriplet)&quot; -HostTriplet &quot;$(FlatBuffersVcpkgHostTriplet)&quot;" />
     <Error Condition="!Exists('$(FlatBuffersIncludeDirectory)\flatbuffers\flatbuffers.h')"
-           Text="FlatBuffers headers were not found at '$(FlatBuffersIncludeDirectory)'. Restore vcpkg dependencies or set FlatBuffersIncludeDirectory to the include directory for FlatBuffers 25.12.19." />
+           Text="FlatBuffers headers were not found at '$(FlatBuffersIncludeDirectory)'. Restore vcpkg dependencies or set FlatBuffersIncludeDirectory to the include directory for FlatBuffers 25.2.10." />
   </Target>
 </Project>

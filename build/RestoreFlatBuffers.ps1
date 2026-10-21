@@ -18,6 +18,7 @@ $VcpkgRoot = [IO.Path]::GetFullPath($VcpkgRoot)
 $InstalledDir = [IO.Path]::GetFullPath($InstalledDir)
 $localRoot = Join-Path $repoRoot ".vcpkg"
 $vcpkg = Join-Path $VcpkgRoot "vcpkg.exe"
+$baseline = (Get-Content (Join-Path $repoRoot "vcpkg.json") -Raw | ConvertFrom-Json).'builtin-baseline'
 
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
     & $Program @Arguments
@@ -31,7 +32,6 @@ if (!(Test-Path -LiteralPath $vcpkg)) {
         throw "vcpkg.exe was not found at '$VcpkgRoot'. Bootstrap that installation or omit FlatBuffersVcpkgRoot to use automatic discovery."
     }
 
-    $baseline = (Get-Content (Join-Path $repoRoot "vcpkg.json") -Raw | ConvertFrom-Json).'builtin-baseline'
     if (!(Test-Path -LiteralPath $VcpkgRoot)) {
         Invoke-Checked "git" @("init", $VcpkgRoot)
         Invoke-Checked "git" @("-C", $VcpkgRoot, "remote", "add", "origin", "https://github.com/microsoft/vcpkg.git")
@@ -42,9 +42,19 @@ if (!(Test-Path -LiteralPath $vcpkg)) {
         throw "'$VcpkgRoot' must be a checkout of https://github.com/microsoft/vcpkg.git."
     }
 
-    Invoke-Checked "git" @("-C", $VcpkgRoot, "fetch", "--depth=1", "origin", $baseline)
+    Invoke-Checked "git" @("-C", $VcpkgRoot, "fetch", "origin", $baseline)
     Invoke-Checked "git" @("-C", $VcpkgRoot, "checkout", "--detach", $baseline)
     Invoke-Checked (Join-Path $VcpkgRoot "bootstrap-vcpkg.bat") @("-disableMetrics")
+}
+
+if ($VcpkgRoot -eq $localRoot) {
+    $shallow = & git -C $VcpkgRoot rev-parse --is-shallow-repository
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not inspect the repo-local vcpkg checkout at '$VcpkgRoot'."
+    }
+    if ($shallow -eq "true") {
+        Invoke-Checked "git" @("-C", $VcpkgRoot, "fetch", "--unshallow", "origin", $baseline)
+    }
 }
 
 Invoke-Checked $vcpkg @(

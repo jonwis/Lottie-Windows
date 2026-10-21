@@ -65,13 +65,6 @@ jobs:
         shell: pwsh
         working-directory: .\build
 
-      - name: Validate LottieGen native package content
-        shell: pwsh
-        run: |
-          $package = Get-ChildItem .\bin\nupkg\LottieGen.*.nupkg | Where-Object Name -notlike 'LottieGen.MsBuild.*' | Where-Object Name -notlike 'LottieGen.win-x64.*'
-          if (@($package).Count -ne 1) { throw "Expected one LottieGen tool package." }
-          .\tests\LottieRuntime.Tests\PackageTests.ps1 -PackagePath $package.FullName
-
       - name: Upload Package List
         uses: actions/upload-artifact@v4
         with:

@@ -57,18 +57,15 @@ a buffer may carry meaning in fields the reader does not look at.
 installed. After changing the schema:
 
 ```powershell
-msbuild .\source\LottieRuntime\LottieRuntimeTool.vcxproj /t:RestoreFlatBuffers /p:Platform=x64
-.\build\RegenerateFlatbuffers.ps1 `
-    -CSharpFlatc <path to 25.2.10 flatc> `
-    -CppFlatc .\vcpkg_installed\x64-windows\tools\flatbuffers\flatc.exe
+.\build\RegenerateFlatbuffers.ps1
 ```
 
-The C# `flatc` version **must** match the `Google.FlatBuffers` NuGet package
-version. The C++ `flatc` and headers must match the FlatBuffers override in
-`vcpkg.json`. The script validates both compiler versions before regenerating.
-For an ARM64 host or a custom install root, pass the host's restored `flatc.exe`
-as `-CppFlatc`. Updating the C++ dependency requires updating the manifest and
-regenerating the C++ binding together.
+The script restores vcpkg dependencies, then uses the restored host
+`tools\flatbuffers\flatc.exe` to generate both bindings. It uses `VCPKG_ROOT`
+when set and otherwise bootstraps the repo-local `.vcpkg` checkout. Override
+`VcpkgRoot`, `InstalledDir`, or `HostTriplet` for a different installation.
+Updating the FlatBuffers dependency requires updating the manifest and
+the `Google.FlatBuffers` NuGet references, then regenerating the bindings.
 
 ## Consumers
 

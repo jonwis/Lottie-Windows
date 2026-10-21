@@ -40,7 +40,7 @@ WinUI 3 builder when that projection provides the APIs required by the variant.
 Add `LottieRuntime.cpp` to the native project, define the matching projection
 flag, and add `source\LottieRuntime` and the include directory from the vcpkg
 `flatbuffers` port to its include paths. The checked-in C++ binding requires
-FlatBuffers **25.12.19**. Build as C++20 and link:
+FlatBuffers **25.2.10**. Build as C++20 and link:
 
 ```text
 d2d1.lib
@@ -271,7 +271,7 @@ Defaults are `x64-windows` for x64 and `arm64-windows` for ARM64, with native-ho
 
 An explicit `/p:FlatBuffersIncludeDirectory=C:\deps\flatbuffers\include`
 skips vcpkg discovery and restore. That directory must contain FlatBuffers
-25.12.19 headers; the generated binding checks the version at compile time.
+25.2.10 headers; the generated binding checks the version at compile time.
 An explicitly selected vcpkg root without `vcpkg.exe` is an error.
 
 ### Package layout and private FlatBuffers versions
