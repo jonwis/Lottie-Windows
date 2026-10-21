@@ -38,8 +38,9 @@ WinUI 3 builder when that projection provides the APIs required by the variant.
 ## Incorporating the reader
 
 Add `LottieRuntime.cpp` to the native project, define the matching projection
-flag, and add `LottieRuntime/` and `LottieRuntime/flatbuffers/include/` to its
-include paths. Build as C++20 and link:
+flag, and add `source\LottieRuntime` and the include directory from the vcpkg
+`flatbuffers` port to its include paths. The checked-in C++ binding requires
+FlatBuffers **25.12.19**. Build as C++20 and link:
 
 ```text
 d2d1.lib
@@ -246,6 +247,55 @@ throws `winrt::hresult_not_implemented`.
 `LottieRuntimeTool.vcxproj` builds `LottieRuntime.exe`, a WinUI 2 validation and
 inspection harness that compiles the reader directly.
 
+MSBuild restores the `flatbuffers` port from the root `vcpkg.json` before native
+compilation. The manifest pins the registry baseline and FlatBuffers version.
+Headers, tools, and the upstream license are restored under `vcpkg_installed`;
+the repository does not carry a copy of the FlatBuffers headers.
+
+The build selects vcpkg in this order: `FlatBuffersVcpkgRoot`, `VcpkgRoot`,
+`VCPKG_ROOT`, Visual Studio's bundled `VC\vcpkg`, then a repo-local `.vcpkg`
+checkout. If none is installed, the first native build fetches and bootstraps
+the repo-local copy at the manifest's baseline. Git, PowerShell, the MSVC C++
+tools, and network access are required for that first restore. Subsequent
+builds reuse installed packages and vcpkg's binary cache.
+
+The restore runs vcpkg explicitly; `vcpkg integrate install` is unnecessary.
+User-wide vcpkg auto-linking is disabled for this header-only consumer. Managed
+builds do not restore vcpkg dependencies. Packing `LottieGen` also restores the
+port to include the native headers and license. IDE design-time builds skip restore.
+
+Defaults are `x64-windows` for x64 and `arm64-windows` for ARM64, with native-host
+`flatc` installed through the port's host dependency. Override
+`FlatBuffersVcpkgTriplet`, `FlatBuffersVcpkgHostTriplet`, or
+`FlatBuffersVcpkgInstalledDir` when using a different layout.
+
+An explicit `/p:FlatBuffersIncludeDirectory=C:\deps\flatbuffers\include`
+skips vcpkg discovery and restore. That directory must contain FlatBuffers
+25.12.19 headers; the generated binding checks the version at compile time.
+An explicitly selected vcpkg root without `vcpkg.exe` is an error.
+
+### Package layout and private FlatBuffers versions
+
+The `LottieGen` NuGet package contains `LottieRuntime\lottie_comp.fbs`, the native
+`.cpp` files under `LottieRuntime`, and all headers under `inc\lottiecomp`:
+`LottieRuntime.h`, `LottieVisualSource.h`, `Generated\lottie_comp_generated.h`,
+and `flatbuffers\*.h`. The port's upstream license is included as
+`LottieRuntime\flatbuffers.LICENSE.txt`. Add `inc\lottiecomp` to the compiler's
+include paths when using the packaged reader.
+
+To use a private FlatBuffers version, regenerate the binding with that version's
+`flatc.exe` and compile against its matching headers. From the extracted package
+root:
+
+```powershell
+& C:\deps\flatbuffers\flatc.exe --cpp --scoped-enums -o .\inc\lottiecomp\Generated .\LottieRuntime\lottie_comp.fbs
+```
+
+Put the private FlatBuffers include directory before `inc\lottiecomp` in the
+compiler's include search order, or replace `inc\lottiecomp\flatbuffers` with
+that version's headers. The generated binding's version assertion remains in
+force. Keep the schema and generator options unchanged to preserve the format.
+
 ```powershell
 & "C:\Program Files\Microsoft Visual Studio\18\Professional\Common7\Tools\Launch-VsDevShell.ps1" -SkipAutomaticLocation
 msbuild .\source\LottieRuntime\LottieRuntimeTool.vcxproj /p:Platform=x64 /p:Configuration=Release
@@ -273,15 +323,16 @@ metadata, buffer verification, the legacy no-metadata contract, and theme-cache
 identity, including a child's expression referencing its not-yet-initialized
 parent's owned properties, image/brush cache identity, image reuse across new
 trees, and invalid image-cache descriptors. It uses the existing generated schema
-and vendored FlatBuffers, without an additional test framework. The harness initializes XAML
+and vcpkg's FlatBuffers headers, without an additional test framework. The harness initializes XAML
 on its dispatcher thread and uses its host visual's compositor to exercise image
 assets through `LoadedImageSurface`; its manifest declares the Windows version
 required for desktop XAML hosting.
 From an x64 Visual Studio Developer Command Prompt at the repository root:
 
 ```cmd
+msbuild source\LottieRuntime\LottieRuntimeTool.vcxproj /t:RestoreFlatBuffers /p:Platform=x64
 mkdir tests\LottieRuntime.Tests\bin
-cl /nologo /std:c++20 /EHsc /W4 /WX /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DLOTTIE_RUNTIME_WINUI2 /Iexternal\flatbuffers\include tests\LottieRuntime.Tests\MetadataTests.cpp /Fotests\LottieRuntime.Tests\bin\MetadataTests.obj /Fetests\LottieRuntime.Tests\bin\MetadataTests.exe /link /MANIFEST:EMBED /MANIFESTINPUT:tests\LottieRuntime.Tests\MetadataTests.manifest CoreMessaging.lib d2d1.lib dxguid.lib ole32.lib shcore.lib shlwapi.lib windowsapp.lib
+cl /nologo /std:c++20 /EHsc /W4 /WX /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DLOTTIE_RUNTIME_WINUI2 /Ivcpkg_installed\x64-windows\include tests\LottieRuntime.Tests\MetadataTests.cpp /Fotests\LottieRuntime.Tests\bin\MetadataTests.obj /Fetests\LottieRuntime.Tests\bin\MetadataTests.exe /link /MANIFEST:EMBED /MANIFESTINPUT:tests\LottieRuntime.Tests\MetadataTests.manifest CoreMessaging.lib d2d1.lib dxguid.lib ole32.lib shcore.lib shlwapi.lib windowsapp.lib
 tests\LottieRuntime.Tests\bin\MetadataTests.exe
 ```
 
@@ -313,8 +364,9 @@ with cppwinrt from the `Microsoft.UI.Xaml` 2.8 and `Microsoft.Web.WebView2`
 NuGet packages (substitute their local paths):
 
 ```cmd
+msbuild source\LottieRuntime\LottieRuntimeTool.vcxproj /t:RestoreFlatBuffers /p:Platform=x64
 cppwinrt.exe -base -in sdk+ -in <Microsoft.UI.Xaml>\lib\uap10.0\Microsoft.UI.Xaml.winmd -in <Microsoft.Web.WebView2>\lib\Microsoft.Web.WebView2.Core.winmd -out tests\LottieRuntime.Tests\bin\mux
 mkdir tests\LottieRuntime.Tests\bin\vst
-cl /nologo /std:c++20 /EHsc /W4 /WX /bigobj /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DLOTTIE_RUNTIME_WINUI2 /Itests\LottieRuntime.Tests\bin\mux /Iexternal\flatbuffers\include /Isource\LottieRuntime tests\LottieRuntime.Tests\VisualSourceTests.cpp source\LottieRuntime\LottieRuntime.cpp /Fotests\LottieRuntime.Tests\bin\vst\ /Fetests\LottieRuntime.Tests\bin\VisualSourceTests.exe /link /MANIFEST:EMBED /MANIFESTINPUT:tests\LottieRuntime.Tests\MetadataTests.manifest CoreMessaging.lib d2d1.lib dxguid.lib ole32.lib shcore.lib shlwapi.lib windowsapp.lib
+cl /nologo /std:c++20 /EHsc /W4 /WX /bigobj /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DLOTTIE_RUNTIME_WINUI2 /Itests\LottieRuntime.Tests\bin\mux /Ivcpkg_installed\x64-windows\include /Isource\LottieRuntime tests\LottieRuntime.Tests\VisualSourceTests.cpp source\LottieRuntime\LottieRuntime.cpp /Fotests\LottieRuntime.Tests\bin\vst\ /Fetests\LottieRuntime.Tests\bin\VisualSourceTests.exe /link /MANIFEST:EMBED /MANIFESTINPUT:tests\LottieRuntime.Tests\MetadataTests.manifest CoreMessaging.lib d2d1.lib dxguid.lib ole32.lib shcore.lib shlwapi.lib windowsapp.lib
 tests\LottieRuntime.Tests\bin\VisualSourceTests.exe Animation.lcomp
 ```
