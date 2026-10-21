@@ -305,7 +305,6 @@ int wmain(int argc, wchar_t* argv[])
         }
 
         root = nullptr;
-        loader = nullptr;
         dispatcherQueueController.ShutdownQueueAsync();
     }
     catch (winrt::hresult_error const& e)
